@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@plugin "@tailwindcss/forms";
+@plugin "tailwindcss-debug-screens";
+@plugin "tailwindcss-react-aria-components";
+@theme {
+    --breakpoint-sm: 600px;
+
+    --color-drac-background: #282a36;
+    --color-drac-current-line: #6272a4;
+    --color-drac-selection: #44475a;
+    --color-drac-foreground: #f8f8f2;
+    --color-drac-comment: #6272a4;
+    --color-drac-red: #ff5555;
+    --color-drac-orange: #ffb86c;
+    --color-drac-yellow: #f1fa8c;
+    --color-drac-green: #50fa7b;
+    --color-drac-cyan: #8be9fd;
+    --color-drac-purple: #bd93f9;
+    --color-drac-pink: #ff79c6;
+}
+
+@layer base {
+    body {
+        @apply flex w-full flex-col items-center justify-center bg-black text-drac-foreground;
+    }
+
+    div#root {
+        @apply flex min-h-[100svh] w-full flex-col items-center justify-center bg-drac-background md:w-5/6 xl:w-2/3 2xl:w-1/2;
+    }
+
+    a {
+        text-decoration: underline;
+    }
+
+    a:link {
+        @apply text-drac-comment;
+    }
+
+    a:visited {
+        @apply text-drac-purple;
+    }
+
+    a:hover {
+        @apply text-drac-comment;
+    }
+
+    a:active {
+        @apply text-drac-red;
+    }
+
+    a:focus {
+        outline: thin dotted;
+    }
+}
+
+@layer component {
+    .pre {
+        @apply w-full overflow-x-auto border-[0.2rem] border-drac-selection p-2;
+    }
+}
+
+@utility flex-col-center {
+    @apply flex w-full flex-col items-center justify-center;
+}
+
+@utility flex-col-between {
+    @apply flex w-full flex-col items-center justify-between;
+}
+
+@utility flex-col-start {
+    @apply flex w-full flex-col items-center justify-start;
+}
+
+@utility flex-row-center {
+    @apply flex w-full flex-row items-center justify-center;
+}
+
+@utility flex-row-between {
+    @apply flex w-full flex-row items-center justify-between;
+}
+
+@utility flex-row-start {
+    @apply flex w-full flex-row items-center justify-start;
+}
+

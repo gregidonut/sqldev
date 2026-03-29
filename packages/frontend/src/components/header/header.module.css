@@ -1,0 +1,5 @@
+@reference "@/styles/global.css";
+
+.userButtonContainer {
+    @apply mr-2 flex h-[17.5px] w-[17.5px] flex-row items-center justify-center;
+}
