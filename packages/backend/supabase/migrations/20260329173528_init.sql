@@ -48,6 +48,34 @@ alter table "public"."user_status" validate constraint "user_status_user_id_fkey
 
 set check_function_bodies = off;
 
+CREATE OR REPLACE FUNCTION public.get_owner()
+ RETURNS TABLE(owner_id uuid)
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+DECLARE
+    v_clerk_user_id TEXT := (SELECT auth.jwt() ->> 'sub');
+    v_user_id       UUID;
+BEGIN
+    SELECT u.user_id
+    INTO v_user_id
+    FROM public.users AS u
+    WHERE u.clerk_user_id = v_clerk_user_id
+    LIMIT 1;
+
+    IF v_user_id IS NULL THEN
+        INSERT INTO public.users (clerk_user_id) VALUES (v_clerk_user_id);
+    END IF;
+
+    RETURN QUERY
+        SELECT user_id AS owner_id
+        FROM public.users
+        WHERE clerk_user_id = v_clerk_user_id
+        LIMIT 1;
+END;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.get_tk()
  RETURNS TABLE(jwt jsonb)
  LANGUAGE plpgsql
@@ -192,7 +220,7 @@ grant update on table "public"."users" to "service_role";
   as permissive
   for delete
   to authenticated
-using ((( SELECT (auth.jwt() ->> 'sub'::text)) = owner_id));
+using (((owner_id)::uuid IN ( SELECT public.get_owner() AS get_owner)));
 
 
 
@@ -201,7 +229,7 @@ using ((( SELECT (auth.jwt() ->> 'sub'::text)) = owner_id));
   as permissive
   for insert
   to authenticated
-with check ((( SELECT (auth.jwt() ->> 'sub'::text)) = owner_id));
+with check (((owner_id)::uuid IN ( SELECT public.get_owner() AS get_owner)));
 
 
 
@@ -210,7 +238,7 @@ with check ((( SELECT (auth.jwt() ->> 'sub'::text)) = owner_id));
   as permissive
   for select
   to authenticated
-using ((( SELECT (auth.jwt() ->> 'sub'::text)) = owner_id));
+using (((owner_id)::uuid IN ( SELECT public.get_owner() AS get_owner)));
 
 
 
@@ -219,7 +247,7 @@ using ((( SELECT (auth.jwt() ->> 'sub'::text)) = owner_id));
   as permissive
   for update
   to authenticated
-using ((( SELECT (auth.jwt() ->> 'sub'::text)) = owner_id));
+using (((owner_id)::uuid IN ( SELECT public.get_owner() AS get_owner)));
 
 
 

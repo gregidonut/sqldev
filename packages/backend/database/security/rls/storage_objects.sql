@@ -5,9 +5,8 @@ CREATE POLICY objects_select_policy
     FOR SELECT
     TO authenticated
     USING (
-    ((SELECT auth.jwt() ->> 'sub') = (owner_id)::TEXT)
+    (owner_id::UUID IN (SELECT get_owner()))
     );
-
 
 DROP POLICY IF EXISTS
     objects_insert_policy ON storage.objects;
@@ -17,7 +16,7 @@ CREATE POLICY objects_insert_policy
     FOR INSERT
     TO authenticated
     WITH CHECK (
-    ((SELECT auth.jwt() ->> 'sub') = (owner_id)::TEXT)
+    (owner_id::UUID IN (SELECT get_owner()))
     );
 
 DROP POLICY IF EXISTS
@@ -28,7 +27,7 @@ CREATE POLICY objects_update_policy
     FOR UPDATE
     TO authenticated
     USING (
-    ((SELECT auth.jwt() ->> 'sub') = (owner_id)::TEXT)
+    (owner_id::UUID IN (SELECT get_owner()))
     );
 
 DROP POLICY IF EXISTS
@@ -39,7 +38,7 @@ CREATE POLICY objects_delete_policy
     FOR DELETE
     TO authenticated
     USING (
-    ((SELECT auth.jwt() ->> 'sub') = (owner_id)::TEXT)
+    (owner_id::UUID IN (SELECT get_owner()))
     );
 
 
