@@ -1,51 +1,84 @@
-import React, {useState} from "react";
+import {useForm, Controller} from 'react-hook-form';
+import React from "react";
 import {FileTrigger, type FileTriggerProps} from 'react-aria-components';
 import {Form} from '@/components/ui/Form';
 import {Button} from '@/components/ui/Button';
+import {
+    useMutation
+} from "@tanstack/react-query";
+import axios from "axios";
+
+function submitForm(data: FormData) {
+    return axios({
+        method: "post",
+        url: '/api/igPostAttachments/post',
+        data,
+        headers: {'Content-Type': 'multipart/form-data'}
+    });
+}
+
+type FormSectionData = {
+    files: File[];
+}
 
 export default function FormSection(props: FileTriggerProps): React.JSX.Element {
-    const [files, setFiles] = useState<File[]>([]);
+    let {handleSubmit, control, reset, watch} = useForm<FormSectionData>({
+        defaultValues: {
+            files: [],
+        },
+    });
+
+    const selectedFiles = watch("files") as File[];
+
+    const {mutate, isPending} = useMutation({
+        mutationFn: submitForm,
+        onSuccess: () => {
+            reset({files: []});
+            window.location.reload();
+        },
+        onError: (error) => console.log(error)
+    });
+
+
+    let onSubmit = (data: FormSectionData) => {
+        const formData = new FormData();
+
+        for (const file of data.files) {
+            formData.append("files", file);
+        }
+        mutate(formData)
+    };
+
 
     return (
-        <Form
-            action={async () => {
-                if (files.length === 0) {
-                    return;
-                }
-
-                const formData = new FormData();
-
-                for (const file of files) {
-                    formData.append("files", file);
-                }
-
-                const response = await fetch("/api/igPostAttachments/post", {
-                    method: "POST",
-                    body: formData,
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    console.error(result);
-                    return;
-                }
-
-                console.log(result);
-            }}>
-            <section>
-                <FileTrigger
-                    {...props}
-                    acceptedFileTypes={["image/*"]}
-                    onSelect={(selected) => {
-                        const nextFiles = selected ? Array.from(selected) : [];
-                        setFiles(nextFiles);
-                    }}>
-                    <Button>Select a file</Button>
-                </FileTrigger>
-                {files.length > 0 ? files.map((file) => file.name).join(", ") : "No file selected"}
-            </section>
-            <Button type="submit" isDisabled={files.length === 0}>Submit</Button>
+        <Form onSubmit={handleSubmit(onSubmit)}>
+            <Controller
+                control={control}
+                name="files"
+                rules={{required: true, minLength: 1}}
+                render={({
+                             field: {name, value, onChange, onBlur, ref},
+                             fieldState: {invalid, error},
+                         }) => (
+                    <>
+                        <FileTrigger
+                            {...props}
+                            acceptedFileTypes={["image/*"]}
+                            onSelect={(selected) => {
+                                const nextFiles = selected ? Array.from(selected) : [];
+                                onChange(nextFiles);
+                            }}>
+                            <Button>Select a file</Button>
+                        </FileTrigger>
+                        {selectedFiles.length > 0
+                            ? selectedFiles.map((file) => file.name).join(", ")
+                            : "No file selected"}
+                    </>
+                )}/>
+            <Button type="submit" isDisabled={isPending}>
+                {isPending ? "Submitting..." : "Submit"}
+            </Button>
         </Form>
     );
-};
+}
+

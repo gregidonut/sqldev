@@ -14,7 +14,6 @@ export const POST: APIRoute = async (context) => {
         }
 
         const formData = await context.request.formData();
-        console.log(formData);
 
         const files = formData
             .getAll("files")
@@ -31,7 +30,6 @@ export const POST: APIRoute = async (context) => {
         const uploadedFiles = await Promise.all(
             files.map(async (file) => {
                 const filePath = `uploads/${crypto.randomUUID()}-${file.name}`;
-                console.log(filePath);
 
                 const {data, error} = await client.storage
                     .from("ig_post_attachments")

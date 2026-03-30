@@ -220,7 +220,7 @@ grant update on table "public"."users" to "service_role";
   as permissive
   for delete
   to authenticated
-using ((owner_id = (auth.jwt() ->> 'sub'::text)));
+using (((auth.jwt() ->> 'role'::text) = 'authenticated'::text));
 
 
 
@@ -229,7 +229,7 @@ using ((owner_id = (auth.jwt() ->> 'sub'::text)));
   as permissive
   for insert
   to authenticated
-with check ((owner_id = (auth.jwt() ->> 'sub'::text)));
+with check (((auth.jwt() ->> 'role'::text) = 'authenticated'::text));
 
 
 
@@ -238,7 +238,7 @@ with check ((owner_id = (auth.jwt() ->> 'sub'::text)));
   as permissive
   for select
   to authenticated
-using ((owner_id = (auth.jwt() ->> 'sub'::text)));
+using (((auth.jwt() ->> 'role'::text) = 'authenticated'::text));
 
 
 
@@ -247,7 +247,7 @@ using ((owner_id = (auth.jwt() ->> 'sub'::text)));
   as permissive
   for update
   to authenticated
-using ((owner_id = (auth.jwt() ->> 'sub'::text)));
+using (((auth.jwt() ->> 'role'::text) = 'authenticated'::text));
 
 
 

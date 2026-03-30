@@ -2,16 +2,13 @@ import React from 'react';
 import {$authStore} from "@clerk/astro/client";
 import {useStore} from "@nanostores/react";
 import {
-    QueryClient,
-    QueryClientProvider,
     useQuery,
 } from "@tanstack/react-query";
-import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {queryFn} from "./queryFn"
 import PhotoList from "./PhotoList.tsx";
 
 
-function FilesSection(): React.JSX.Element {
+export default function FilesSection(): React.JSX.Element {
     const {userId} = useStore($authStore);
     const {
             data,
@@ -54,12 +51,3 @@ function FilesSection(): React.JSX.Element {
     );
 }
 
-export default function FilesSectionWrapper(): React.JSX.Element {
-    const queryClient = new QueryClient();
-    return (
-        <QueryClientProvider client={queryClient}>
-            <ReactQueryDevtools initialIsOpen={false}/>
-            <FilesSection/>
-        </QueryClientProvider>
-    );
-}
