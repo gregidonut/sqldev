@@ -2,11 +2,13 @@
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
+
+import FileUploadSection from "./_components/react/FileUploadSection"
 ---
 
-<Layout title="instagreg">
-    <Header title="instagreg"/>
+<Layout title="components demo">
+    <Header title="components demo"/>
     <Main>
-
+        <FileUploadSection client:only="react"/>
     </Main>
 </Layout>

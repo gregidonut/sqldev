@@ -14,8 +14,8 @@ const {title = "SQLDev"} = Astro.props;
     <meta name="generator" content={Astro.generator}/>
     <title>{title === "SQLDev" ? title: genTitle(title) }</title>
 </head>
-<body>
-<div id="root" class="dark">
+<body class="dark">
+<div id="root">
     <slot/>
 </div>
 </body>

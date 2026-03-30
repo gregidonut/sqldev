@@ -6,7 +6,7 @@ import genTitle from "@/utils/titleGen"
 const {title = "SQLDev"} = Astro.props;
 
 
-const titleParts = ( title === "SQLDev" ? title: genTitle( title ) ).split(" - ");
+const titleParts = (title === "SQLDev" ? title : genTitle(title)).split(" - ");
 ---
 
 <header
@@ -26,9 +26,12 @@ const titleParts = ( title === "SQLDev" ? title: genTitle( title ) ).split(" - "
             <a href="/sign-in">Sign in</a>
         </Show>
     </main>
-    <nav class="ml-auto">
+    <nav class="flex-row-end gap-3">
         <ul>
             <li><a href="/instagreg">instagreg</a></li>
+        </ul>
+        <ul>
+            <li><a href="/components">components demo</a></li>
         </ul>
     </nav>
 </header>
