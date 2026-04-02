@@ -2,8 +2,7 @@ import React from 'react';
 import {useForm} from 'react-hook-form';
 import {Form} from '@/components/ui/Form.tsx';
 import {Button} from '@/components/ui/Button.tsx';
-import {type BasicFormSectionData} from "./BasicFormSectionData.ts";
-import {BasicFormSectionContext} from "./BasicFormSectionContext.ts";
+import {BasicFormSectionContext, type BasicFormSectionData} from "./BasicFormSectionContext.ts";
 import OrderNumberField
     from "./Fields/OrderNumberField.tsx";
 import NameField
@@ -12,6 +11,8 @@ import EmailField
     from "./Fields/EmailField.tsx";
 import MobileNumberField
     from "./Fields/MobileNumberField.tsx";
+import PaymentMethodField
+    from "./Fields/PaymentMethodField.tsx";
 
 
 export default function BasicFormSection(): React.JSX.Element {
@@ -21,6 +22,7 @@ export default function BasicFormSection(): React.JSX.Element {
             customerName: "",
             email: "",
             mobileNumber: "",
+            // paymentMethod: "Cash on Delivery"
         },
         mode: 'onChange',
     });
@@ -37,6 +39,7 @@ export default function BasicFormSection(): React.JSX.Element {
                     <NameField/>
                     <EmailField/>
                     <MobileNumberField/>
+                    <PaymentMethodField/>
                 </BasicFormSectionContext.Provider>
                 <Button type="submit" className="max-w-20">Submit</Button>
             </Form>

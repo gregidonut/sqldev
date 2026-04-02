@@ -25,18 +25,17 @@ export interface TextFieldProps extends AriaTextFieldProps {
     errorMessage?: string | ((validation: ValidationResult) => string);
 }
 
-export const TextField = React.forwardRef<HTMLDivElement, TextFieldProps>(function (
-    {label, description, errorMessage, ...props}: TextFieldProps
-    , ref
+export function TextField(
+    {label, description, errorMessage, ref, ...props}: TextFieldProps & { ref?: React.Ref<HTMLDivElement> }
 ) {
     return (
         <AriaTextField {...props}
-                       ref={ref}
-                       className={composeTailwindRenderProps(props.className, 'flex flex-col gap-1 font-sans')}>
+                       className={composeTailwindRenderProps(props.className, 'flex flex-col gap-1 font-sans')}
+                       ref={ref}>
             {label && <Label>{label}</Label>}
             <Input className={inputStyles}/>
             {description && <Description>{description}</Description>}
             <FieldError>{errorMessage}</FieldError>
         </AriaTextField>
     );
-})
+}

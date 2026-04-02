@@ -6,8 +6,7 @@ import {useBasicFormSection} from "../BasicFormSectionContext.ts";
 export default function OrderNumberField() {
     const control = useBasicFormSection();
     if (!control) {
-        console.error('useBasicFormSection must be used within a BasicFormSectionProvider');
-        return null
+        throw new Error('useBasicFormSection must be used within a BasicFormSectionProvider');
     }
     return (
         <Controller
