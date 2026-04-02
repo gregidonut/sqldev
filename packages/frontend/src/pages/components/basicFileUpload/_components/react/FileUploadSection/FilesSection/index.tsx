@@ -24,6 +24,7 @@ export default function FilesSection(): React.JSX.Element {
                     },
                 ],
                 queryFn: queryFn,
+                enabled: !!userId,
             }
         )
     ;
@@ -42,7 +43,7 @@ export default function FilesSection(): React.JSX.Element {
             <header className="pb-5">
                 <h2>Files</h2>
             </header>
-            <PhotoList images={data.map((item) => ({
+            <PhotoList images={data.map((item: any) => ({
                 ...item,
                 id: item.name,
                 userId,

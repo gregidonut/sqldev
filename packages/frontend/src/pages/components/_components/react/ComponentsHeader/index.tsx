@@ -1,6 +1,6 @@
 import React, {useState, useEffect, Suspense, lazy} from "react";
 
-// import {CurrentPageContext} from "./CurrentPageContext.tsx";
+// import {CurrentPageContext} from "./CurrentPageContext.ts";
 
 const NavList = lazy(() => import("./NavList"));
 

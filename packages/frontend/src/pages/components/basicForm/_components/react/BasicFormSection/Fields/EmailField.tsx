@@ -3,7 +3,7 @@ import {Controller} from "react-hook-form";
 import {TextField} from "@/components/ui/TextField.tsx";
 import {useBasicFormSection} from "../BasicFormSectionContext.ts";
 
-export default function OrderNumberField() {
+export default function EmailField() {
     const control = useBasicFormSection();
     if (!control) {
         console.error('useBasicFormSection must be used within a BasicFormSectionProvider');
@@ -12,14 +12,19 @@ export default function OrderNumberField() {
     return (
         <Controller
             control={control}
-            name="orderNumber"
-            rules={{required: 'order number is required.'}}
+            name="email"
+            rules={{
+                required: 'email is required.',
+                pattern: {
+                    value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                    message: 'Invalid email address',
+                }
+            }}
             render={({
                          field: {name, value, onChange, onBlur, ref},
                          fieldState: {invalid, error},
                      }) => (
                 <TextField
-                    isDisabled={true}
                     label={name}
                     name={name}
                     value={value}
