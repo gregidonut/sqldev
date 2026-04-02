@@ -2,16 +2,16 @@
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
+
 import ComponentsHeader from "@/pages/components/_components/react/ComponentsHeader";
 
-return Astro.redirect("/components/basicFileUpload", 302);
-
+import FileUploadSection from "./_components/react/FileUploadSection"
 ---
 
 <Layout title="components demo">
     <Header title="components demo"/>
     <Main>
-        <ComponentsHeader client:idle/>
-        <main>blank</main>
+        <ComponentsHeader client:only="react"/>
+        <FileUploadSection client:only="react"/>
     </Main>
 </Layout>

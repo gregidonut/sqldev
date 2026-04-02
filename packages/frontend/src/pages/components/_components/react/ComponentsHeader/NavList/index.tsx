@@ -1,0 +1,32 @@
+import {Autocomplete, useFilter} from 'react-aria-components';
+import {MenuTrigger, Menu, MenuItem} from './Menu/Menu.tsx';
+import {Button} from './Menu/Button.tsx';
+import {SearchField} from './Menu/SearchField.tsx';
+
+export default function Index({pathname}: { pathname: string }) {
+    let {contains} = useFilter({sensitivity: 'base'});
+
+    return (
+        <nav>
+            <MenuTrigger>
+                <h2>
+                    <Button>{pathname}</Button>
+                </h2>
+                <div style={{display: 'flex', flexDirection: 'column', maxHeight: 'inherit'}}>
+                    <Autocomplete filter={contains}>
+                        <SearchField aria-label="Search Components" placeholder="Search Components" autoFocus
+                                     style={{margin: 4}}/>
+                        <Menu style={{flex: 1}}>
+                            <MenuItem href="/components/basicForm"
+                                      isDisabled={pathname === 'basicForm'}
+                            >basicForm</MenuItem>
+                            <MenuItem href="/components/basicFileUpload"
+                                      isDisabled={pathname === 'basicFileUpload'}>
+                                basicFileUpload</MenuItem>
+                        </Menu>
+                    </Autocomplete>
+                </div>
+            </MenuTrigger>
+        </nav>
+    );
+}

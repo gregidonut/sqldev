@@ -1,4 +1,4 @@
-import { GridList, GridListItem } from '@/components/ui/GridList';
+import { GridList, GridListItem } from '@/components/ui/GridList.tsx';
 import { Text } from 'react-aria-components';
 
 export type PhotoListProps = {

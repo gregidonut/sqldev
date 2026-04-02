@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 
-const FormSection = lazy(() => import('./FormSection'));
+const FormSection = lazy(() => import('./FormSection.tsx'));
 const FilesSection = lazy(() => import('./FilesSection'));
 
 

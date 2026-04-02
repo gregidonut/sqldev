@@ -1,8 +1,8 @@
 import {useForm, Controller} from 'react-hook-form';
 import React from "react";
 import {FileTrigger, type FileTriggerProps} from 'react-aria-components';
-import {Form} from '@/components/ui/Form';
-import {Button} from '@/components/ui/Button';
+import {Form} from '@/components/ui/Form.tsx';
+import {Button} from '@/components/ui/Button.tsx';
 import {
     useMutation
 } from "@tanstack/react-query";

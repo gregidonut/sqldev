@@ -4,7 +4,7 @@ import {useStore} from "@nanostores/react";
 import {
     useQuery,
 } from "@tanstack/react-query";
-import {queryFn} from "./queryFn"
+import {queryFn} from "./queryFn.ts"
 import PhotoList from "./PhotoList.tsx";
 
 
