@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS ig_post_likes;
 CREATE TABLE ig_post_likes
 (
     post_like_id UUID PRIMARY KEY     DEFAULT gen_random_uuid(),

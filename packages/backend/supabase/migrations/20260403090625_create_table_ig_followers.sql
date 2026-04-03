@@ -1,4 +1,3 @@
-DROP TABLE ig_followers;
 CREATE TABLE ig_followers
 (
     hashtag_id UUID PRIMARY KEY     DEFAULT gen_random_uuid(),

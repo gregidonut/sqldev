@@ -1,5 +1,3 @@
-DROP POLICY IF EXISTS
-    objects_select_policy ON storage.objects;
 CREATE POLICY objects_select_policy
     ON storage.objects
     FOR SELECT
@@ -8,8 +6,6 @@ CREATE POLICY objects_select_policy
     (auth.jwt() ->> 'role'::TEXT = 'authenticated')
     );
 
-DROP POLICY IF EXISTS
-    objects_insert_policy ON storage.objects;
 CREATE POLICY objects_insert_policy
     ON storage.objects
     AS PERMISSIVE
@@ -19,8 +15,6 @@ CREATE POLICY objects_insert_policy
     (auth.jwt() ->> 'role'::TEXT = 'authenticated')
     );
 
-DROP POLICY IF EXISTS
-    objects_update_policy ON storage.objects;
 CREATE POLICY objects_update_policy
     ON storage.objects
     AS PERMISSIVE
@@ -30,8 +24,6 @@ CREATE POLICY objects_update_policy
     (auth.jwt() ->> 'role'::TEXT = 'authenticated')
     );
 
-DROP POLICY IF EXISTS
-    objects_delete_policy ON storage.objects;
 CREATE POLICY objects_delete_policy
     ON storage.objects
     AS PERMISSIVE

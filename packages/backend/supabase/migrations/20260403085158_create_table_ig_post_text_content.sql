@@ -1,4 +1,3 @@
-DROP TABLE ig_post_text_content;
 CREATE TABLE ig_post_text_content
 (
     post_content_id UUID PRIMARY KEY                            DEFAULT gen_random_uuid(),

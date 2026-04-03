@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS ig_hashtags CASCADE ;
 CREATE TABLE ig_hashtags
 (
     hashtag_id   UUID PRIMARY KEY     DEFAULT gen_random_uuid(),

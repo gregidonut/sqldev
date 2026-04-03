@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS ig_bio;
 CREATE TABLE ig_bio
 (
     bio_id     UUID PRIMARY KEY     DEFAULT gen_random_uuid(),

@@ -1,1 +1,0 @@
-CREATE TYPE STATUS AS ENUM ('online', 'offline', 'away');
