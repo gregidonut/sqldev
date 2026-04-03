@@ -2,9 +2,9 @@
 import axios from "axios";
 
 export async function queryFn() {
-    const {data} = await axios({
+    const { data } = await axios({
         method: "get",
-        url: "/api/igPostAttachments/get",
+        url: "/api/igAttachments/get",
     });
     return data;
 }

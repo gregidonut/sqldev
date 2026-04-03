@@ -1,33 +1,23 @@
-import React from 'react';
-import {$authStore} from "@clerk/astro/client";
-import {useStore} from "@nanostores/react";
-import {
-    useQuery,
-} from "@tanstack/react-query";
-import {queryFn} from "./queryFn.ts"
+import React from "react";
+import { $authStore } from "@clerk/astro/client";
+import { useStore } from "@nanostores/react";
+import { useQuery } from "@tanstack/react-query";
+import { queryFn } from "./queryFn.ts";
 import PhotoList from "./PhotoList.tsx";
 
-
 export default function FilesSection(): React.JSX.Element {
-    const {userId} = useStore($authStore);
-    const {
-            data,
-            isLoading,
-            isError,
-            error,
-        } = useQuery({
-                queryKey: [
-                    "get",
-                    "igPostAttachments",
-                    {
-                        userId,
-                    },
-                ],
-                queryFn: queryFn,
-                enabled: !!userId,
-            }
-        )
-    ;
+    const { userId } = useStore($authStore);
+    const { data, isLoading, isError, error } = useQuery({
+        queryKey: [
+            "get",
+            "igAttachments",
+            {
+                userId,
+            },
+        ],
+        queryFn: queryFn,
+        enabled: !!userId,
+    });
     if (isLoading) {
         return <p>loading...</p>;
     }
@@ -43,12 +33,13 @@ export default function FilesSection(): React.JSX.Element {
             <header className="pb-5">
                 <h2>Files</h2>
             </header>
-            <PhotoList images={data.map((item: any) => ({
-                ...item,
-                id: item.name,
-                userId,
-            }))}/>
+            <PhotoList
+                images={data.map((item: any) => ({
+                    ...item,
+                    id: item.name,
+                    userId,
+                }))}
+            />
         </section>
     );
 }
-
