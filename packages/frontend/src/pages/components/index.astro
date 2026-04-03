@@ -3,15 +3,19 @@ import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
 import ComponentsHeader from "@/pages/components/_components/react/ComponentsHeader";
+import PageHeader from "@/pages/instagreg/_components/react/PageHeader";
 
 return Astro.redirect("/components/basicFileUpload", 302);
-
 ---
 
 <Layout title="components demo">
-    <Header title="components demo"/>
+    <Header title="components demo" />
     <Main>
-        <ComponentsHeader client:idle/>
+        <ComponentsHeader
+            client:idle
+            pathname={Astro.url.pathname.split("/").filter(Boolean).at(-1) ??
+                "home"}
+        />
         <main>blank</main>
     </Main>
 </Layout>

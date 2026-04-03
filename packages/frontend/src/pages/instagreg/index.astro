@@ -2,11 +2,19 @@
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
+
+import PageHeader from "./_components/react/PageHeader";
+
+return Astro.redirect("/instagreg/home", 302);
 ---
 
 <Layout title="instagreg">
-    <Header title="instagreg"/>
+    <Header title="instagreg" />
     <Main>
-
+        <PageHeader
+            client:only="react"
+            pathname={Astro.url.pathname.split("/").filter(Boolean).at(-1) ??
+                "home"}
+        />
     </Main>
 </Layout>

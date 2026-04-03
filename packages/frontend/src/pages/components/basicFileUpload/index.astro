@@ -5,13 +5,17 @@ import Main from "@/components/main/Main.astro";
 
 import ComponentsHeader from "@/pages/components/_components/react/ComponentsHeader";
 
-import FileUploadSection from "./_components/react/FileUploadSection"
+import FileUploadSection from "./_components/react/FileUploadSection";
 ---
 
 <Layout title="components demo">
-    <Header title="components demo"/>
+    <Header title="components demo" />
     <Main>
-        <ComponentsHeader client:only="react"/>
-        <FileUploadSection client:only="react"/>
+        <ComponentsHeader
+            client:idle
+            pathname={Astro.url.pathname.split("/").filter(Boolean).at(-1) ??
+                "home"}
+        />
+        <FileUploadSection client:only="react" />
     </Main>
 </Layout>
