@@ -12,7 +12,7 @@ export default function PhotoList(props: { images: PhotoListProps[] }) {
     return (
         <GridList
             className="w-full"
-            aria-label="Nature photos"
+            aria-label="storage images"
             selectionMode="multiple"
             layout="grid"
             items={props.images}
@@ -23,17 +23,13 @@ export default function PhotoList(props: { images: PhotoListProps[] }) {
                         <figure>
                             <img
                                 src={image.url}
-                                width={640}
-                                height={480}
+                                width={256}
+                                height={144}
                                 alt={image.name}
                                 className="aspect-video w-full object-contain"
                             />
                             <figcaption>
                                 <Text>{image.name}</Text>
-                                <br />
-                                <Text slot="description">
-                                    By {image.userId}
-                                </Text>
                             </figcaption>
                         </figure>
                     </GridListItem>

@@ -37,7 +37,6 @@ export default function FilesSection(): React.JSX.Element {
                 images={data.map((item: any) => ({
                     ...item,
                     id: item.name,
-                    userId,
                 }))}
             />
         </section>
