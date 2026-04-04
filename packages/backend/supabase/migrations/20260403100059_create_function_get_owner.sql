@@ -1,7 +1,8 @@
 CREATE OR REPLACE FUNCTION get_owner()
     RETURNS TABLE
             (
-                USER_ID UUID
+                USER_ID       UUID,
+                CLERK_USER_ID TEXT
             )
     LANGUAGE plpgsql
     SET search_path = ''
@@ -22,7 +23,7 @@ BEGIN
     END IF;
 
     RETURN QUERY
-        SELECT u1.user_id
+        SELECT u1.user_id, u1.clerk_user_id
         FROM public.users AS u1
         WHERE u1.clerk_user_id = v_clerk_user_id
         LIMIT 1;
