@@ -22,8 +22,8 @@ export const GET: APIRoute = async function (context) {
                     .from("ig_attachments")
                     .createSignedUrl(`ig_post_attachments/${file.name}`, 60, {
                         transform: {
-                            width: 640,
-                            height: 480,
+                            width: 256,
+                            height: 144,
                             resize: "contain", // 'cover' | 'fill'
                         },
                     });
@@ -38,9 +38,11 @@ export const GET: APIRoute = async function (context) {
                 );
             }
 
+            const parsedUrl = new URL(signedUrlData.signedUrl);
+
             return {
                 name: file.name,
-                url: signedUrlData.signedUrl,
+                url: `/api/storageProxy${parsedUrl.pathname}${parsedUrl.search}`,
             };
         }),
     );
