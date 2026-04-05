@@ -4,6 +4,7 @@ import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
 
 import PageHeader from "../_components/react/PageHeader";
+import PostArea from "./_components/react/PostArea";
 ---
 
 <Layout title="instagreg">
@@ -14,5 +15,6 @@ import PageHeader from "../_components/react/PageHeader";
             pathname={Astro.url.pathname.split("/").filter(Boolean).at(-1) ??
                 "home"}
         />
+        <PostArea client:only="react" />
     </Main>
 </Layout>
