@@ -7,10 +7,19 @@ import {
   supabaseUrl,
 } from "./secrets";
 import { Vpc as SupabaseVPC } from "./vpc";
+import { realtime } from "./realtime";
 
 export const frontend = new sst.aws.Astro("Frontend", {
   path: "packages/frontend",
-  link: [astroAppDomain, feAcmCertArn, supabaseKey, supabaseUrl],
+  link: [
+    astroAppDomain,
+    feAcmCertArn,
+    clerkPublic,
+    clerkSecret,
+    supabaseKey,
+    supabaseUrl,
+    realtime,
+  ],
   environment: {
     PUBLIC_APP_STAGE: $app.stage,
     ASTRO_SITE: astroAppDomain.value,

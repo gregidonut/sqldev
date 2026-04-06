@@ -1,0 +1,14 @@
+{
+  "name": "@sqldev/functions",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@sqldev/core": "*",
+    "jsonwebtoken": "^9.0.3",
+    "sst": "*"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8",
+    "@types/jsonwebtoken": "^9.0.10"
+  }
+}

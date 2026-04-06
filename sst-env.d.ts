@@ -30,6 +30,11 @@ declare module "sst" {
       "type": "sst.aws.Astro"
       "url": string
     }
+    "SQLDevRealtimeSST": {
+      "authorizer": string
+      "endpoint": string
+      "type": "sst.aws.Realtime"
+    }
     "SupabaseKey": {
       "type": "sst.sst.Secret"
       "value": string
