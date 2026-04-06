@@ -5,6 +5,7 @@ import Main from "@/components/main/Main.astro";
 
 import PageHeader from "../_components/react/PageHeader";
 import PostArea from "./_components/react/PostArea";
+import PostList from "./_components/react/PostList";
 ---
 
 <Layout title="instagreg">
@@ -16,5 +17,6 @@ import PostArea from "./_components/react/PostArea";
                 "home"}
         />
         <PostArea client:only="react" />
+        <PostList client:idle />
     </Main>
 </Layout>

@@ -57,6 +57,7 @@ function PostArea() {
                         validationBehavior="aria"
                         isInvalid={invalid}
                         errorMessage={error?.message}
+                        isDisabled={invalid || isPending}
                     />
                 )}
             />
