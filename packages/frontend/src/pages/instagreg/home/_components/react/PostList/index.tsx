@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
+import mqtt from "mqtt";
+import type { MqttClient } from "mqtt";
 import {
     useQuery,
-    useQueryClient,
     QueryClient,
     QueryClientProvider,
 } from "@tanstack/react-query";
@@ -13,13 +14,39 @@ import { useStore } from "@nanostores/react";
 
 type PostView = Database["public"]["Views"]["ig_posts_view"]["Row"];
 
-function PostList() {
-    const { userId } = useStore($authStore);
+interface PostListProps {
+    realtimeEndpoint: string;
+    realtimeAuthorizer: string;
+    appName: string;
+    appStage: string;
+}
+
+function createConnection(endpoint: string, authorizer: string, token: string) {
+    return mqtt.connect(
+        `wss://${endpoint}/mqtt?x-amz-customauthorizer-name=${authorizer}`,
+        {
+            protocolVersion: 5,
+            manualConnect: true,
+            username: "", // Must be empty for the authorizer
+            password: token, // Passed as the token to the authorizer
+            clientId: `client_${window.crypto.randomUUID()}`,
+        },
+    );
+}
+
+function PostList({
+    realtimeEndpoint,
+    realtimeAuthorizer,
+    appName,
+    appStage,
+}: PostListProps) {
+    const { userId, session } = useStore($authStore);
 
     const {
         data: posts,
         isLoading,
         error,
+        refetch,
     } = useQuery<PostView[]>({
         queryKey: [
             "get",
@@ -35,6 +62,49 @@ function PostList() {
             return response.data;
         },
     });
+    useEffect(() => {
+        if (!session) return;
+
+        let mqttClient: MqttClient | null = null;
+
+        async function initMqtt() {
+            const token = await session?.getToken();
+
+            if (!token) return;
+
+            mqttClient = createConnection(
+                realtimeEndpoint,
+                realtimeAuthorizer,
+                token,
+            );
+
+            mqttClient.on("connect", () => {
+                // console.log("Connected to SST Realtime");
+                mqttClient?.subscribe(`${appName}/${appStage}/ig_posts_view`);
+            });
+
+            mqttClient.on("message", (topic, message) => {
+                const payload = message.toString();
+                // console.log("Received message:", topic, payload);
+                refetch();
+            });
+
+            mqttClient.connect();
+        }
+
+        initMqtt();
+
+        return () => {
+            mqttClient?.end();
+        };
+    }, [
+        session,
+        realtimeEndpoint,
+        realtimeAuthorizer,
+        appName,
+        appStage,
+        refetch,
+    ]);
 
     if (isLoading)
         return (
@@ -68,11 +138,9 @@ function PostList() {
                         <header className="flex justify-between items-start mb-3">
                             <UserBadge clerk_user_id={post.clerk_user_id!} />
                             <time className="text-[10px] text-drac-comment uppercase tracking-wider">
-                                {post.created_at
-                                    ? new Date(
-                                          post.created_at,
-                                      ).toLocaleDateString()
-                                    : ""}
+                                {new Date(
+                                    post.created_at!,
+                                ).toLocaleDateString()}
                             </time>
                         </header>
                         <p className="text-drac-foreground leading-relaxed whitespace-pre-wrap">
@@ -85,11 +153,11 @@ function PostList() {
     );
 }
 
-export default function PostListWrapper() {
+export default function PostListWrapper(props: PostListProps) {
     const queryClient = new QueryClient();
     return (
         <QueryClientProvider client={queryClient}>
-            <PostList />
+            <PostList {...props} />
         </QueryClientProvider>
     );
 }

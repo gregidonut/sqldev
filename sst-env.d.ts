@@ -43,6 +43,9 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "sqldevSupabaseVPC": {
+      "type": "sst.aws.Vpc"
+    }
   }
 }
 /// <reference path="sst-env.d.ts" />

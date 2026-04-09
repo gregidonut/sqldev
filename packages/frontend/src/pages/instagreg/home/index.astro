@@ -6,6 +6,7 @@ import Main from "@/components/main/Main.astro";
 import PageHeader from "../_components/react/PageHeader";
 import PostArea from "./_components/react/PostArea";
 import PostList from "./_components/react/PostList";
+import { Resource } from "sst";
 ---
 
 <Layout title="instagreg">
@@ -17,6 +18,12 @@ import PostList from "./_components/react/PostList";
                 "home"}
         />
         <PostArea client:only="react" />
-        <PostList client:idle />
+        <PostList
+            client:idle
+            realtimeEndpoint={Resource.SQLDevRealtimeSST.endpoint}
+            realtimeAuthorizer={Resource.SQLDevRealtimeSST.authorizer}
+            appName={Resource.App.name}
+            appStage={Resource.App.stage}
+        />
     </Main>
 </Layout>
