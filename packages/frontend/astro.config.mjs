@@ -1,11 +1,11 @@
 // @ts-check
-import {defineConfig} from 'astro/config';
-import compressor from 'astro-compressor';
-import react from '@astrojs/react';
-import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from "astro/config";
+import compressor from "astro-compressor";
+import react from "@astrojs/react";
+import tailwindcss from "@tailwindcss/vite";
 import aws from "astro-sst";
 import clerk from "@clerk/astro";
-import {shadesOfPurple} from "@clerk/themes";
+import { neobrutalism } from "@clerk/themes";
 
 // https://astro.build/config
 export default defineConfig({
@@ -14,7 +14,7 @@ export default defineConfig({
         react(),
         clerk({
             appearance: {
-                theme: [shadesOfPurple],
+                theme: [neobrutalism],
             },
         }),
     ],
@@ -28,6 +28,6 @@ export default defineConfig({
         plugins: [
             // @ts-ignore
             tailwindcss(),
-        ]
-    }
+        ],
+    },
 });

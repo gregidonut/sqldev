@@ -1,13 +1,14 @@
 ---
-import {SignIn} from "@clerk/astro/components";
+import { SignIn as ClerkSignIn, Waitlist } from "@clerk/astro/components";
 import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
 ---
 
 <Layout>
-    <Header/>
+    <Header />
     <Main>
-        <SignIn class="text-drac-foreground"/>
+        <ClerkSignIn />
+        <Waitlist />
     </Main>
 </Layout>
