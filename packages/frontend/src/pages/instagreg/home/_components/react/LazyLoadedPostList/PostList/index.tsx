@@ -8,18 +8,13 @@ import {
 } from "@tanstack/react-query";
 import axios from "axios";
 import type { Database } from "@/utils/supabase/models";
-import UserBadge from "@/pages/instagreg/home/_components/react/PostList/UserBadge";
 import { $authStore } from "@clerk/astro/client";
 import { useStore } from "@nanostores/react";
+import { type PostListProps } from "../../PostListProps.ts";
+import PostListUI from "@/pages/instagreg/home/_components/react/LazyLoadedPostList/PostList/PostListUI";
 
 type PostView = Database["public"]["Views"]["ig_posts_view"]["Row"];
-
-interface PostListProps {
-    realtimeEndpoint: string;
-    realtimeAuthorizer: string;
-    appName: string;
-    appStage: string;
-}
+const queryClient = new QueryClient();
 
 function createConnection(endpoint: string, authorizer: string, token: string) {
     return mqtt.connect(
@@ -30,6 +25,8 @@ function createConnection(endpoint: string, authorizer: string, token: string) {
             username: "", // Must be empty for the authorizer
             password: token, // Passed as the token to the authorizer
             clientId: `client_${window.crypto.randomUUID()}`,
+            reconnectPeriod: 0, // Disable internal reconnection, we handle it manually to refresh the token
+            connectTimeout: 5000,
         },
     );
 }
@@ -62,40 +59,92 @@ function PostList({
             return response.data;
         },
     });
+
     useEffect(() => {
         if (!session) return;
 
         let mqttClient: MqttClient | null = null;
+        let isConnecting = false;
+        let isDisposed = false;
+        let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
         async function initMqtt() {
-            const token = await session?.getToken();
+            // Guard against multiple concurrent connection attempts
+            if (isConnecting || isDisposed) return;
+            isConnecting = true;
 
-            if (!token) return;
+            try {
+                if (mqttClient) {
+                    mqttClient.end();
+                    mqttClient = null;
+                }
 
-            mqttClient = createConnection(
-                realtimeEndpoint,
-                realtimeAuthorizer,
-                token,
-            );
+                const token = await session?.getToken();
+                if (!token || isDisposed) return;
 
-            mqttClient.on("connect", () => {
-                // console.log("Connected to SST Realtime");
-                mqttClient?.subscribe(`${appName}/${appStage}/ig_posts_view`);
-            });
+                const client = createConnection(
+                    realtimeEndpoint,
+                    realtimeAuthorizer,
+                    token,
+                );
+                mqttClient = client;
 
-            mqttClient.on("message", (topic, message) => {
-                const payload = message.toString();
-                // console.log("Received message:", topic, payload);
-                refetch();
-            });
+                const scheduleReconnect = () => {
+                    if (isDisposed || reconnectTimeout) return;
+                    reconnectTimeout = setTimeout(() => {
+                        reconnectTimeout = null;
+                        initMqtt();
+                    }, 1000);
+                };
 
-            mqttClient.connect();
+                client.on("connect", () => {
+                    if (isDisposed) {
+                        client.end(true);
+                        return;
+                    }
+                    client.subscribe(`${appName}/${appStage}/ig_posts_view`);
+                });
+
+                client.on("message", (topic, message) => {
+                    if (isDisposed) return;
+                    const m = (
+                        JSON.parse(message.toString()) as { message: string }
+                    ).message;
+                    if (m === "new_post") refetch();
+                });
+
+                client.on("error", (err) => {
+                    if (isDisposed) return;
+                    console.error("MQTT error:", err);
+                    client.end(true);
+                    if (mqttClient === client) mqttClient = null;
+                    scheduleReconnect();
+                });
+
+                client.on("close", () => {
+                    if (isDisposed) return;
+                    if (mqttClient === client) mqttClient = null;
+                    scheduleReconnect();
+                });
+
+                client.connect();
+            } catch (err) {
+                console.error("Failed to initialize MQTT:", err);
+            } finally {
+                isConnecting = false;
+            }
         }
 
         initMqtt();
 
         return () => {
-            mqttClient?.end();
+            isDisposed = true;
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
+            if (mqttClient) {
+                mqttClient.end(true);
+            }
         };
     }, [
         session,
@@ -121,14 +170,23 @@ function PostList({
 
     return (
         <section className="mt-12 w-full">
-            <h2 className="text-xl font-bold mb-6 text-drac-purple border-b border-drac-comment pb-2">
-                Recent Posts
-            </h2>
-            {posts?.length === 0 && (
+            <header>
+                <h2 className="text-xl font-bold mb-6 text-drac-purple border-b border-drac-comment pb-2">
+                    Recent Posts
+                </h2>
+            </header>
+            {posts && posts.length !== 0 ? (
+                <PostListUI posts={posts} />
+            ) : (
                 <p className="text-center text-drac-comment py-10 italic">
                     No posts yet. Be the first to post!
                 </p>
             )}
+        </section>
+    );
+}
+
+/*
             {posts?.map((post) => (
                 <div
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -149,12 +207,9 @@ function PostList({
                     </article>
                 </div>
             ))}
-        </section>
-    );
-}
+ */
 
 export default function PostListWrapper(props: PostListProps) {
-    const queryClient = new QueryClient();
     return (
         <QueryClientProvider client={queryClient}>
             <PostList {...props} />

@@ -14,6 +14,10 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "ClerkJWKSPublicKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "ClerkPublicKey": {
       "type": "sst.sst.Secret"
       "value": string

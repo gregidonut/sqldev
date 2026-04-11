@@ -5,7 +5,7 @@ import Main from "@/components/main/Main.astro";
 
 import PageHeader from "../_components/react/PageHeader";
 import PostArea from "./_components/react/PostArea";
-import PostList from "./_components/react/PostList";
+import LazyLoadedPostList from "./_components/react/LazyLoadedPostList";
 import { Resource } from "sst";
 ---
 
@@ -18,7 +18,7 @@ import { Resource } from "sst";
                 "home"}
         />
         <PostArea client:only="react" />
-        <PostList
+        <LazyLoadedPostList
             client:idle
             realtimeEndpoint={Resource.SQLDevRealtimeSST.endpoint}
             realtimeAuthorizer={Resource.SQLDevRealtimeSST.authorizer}
