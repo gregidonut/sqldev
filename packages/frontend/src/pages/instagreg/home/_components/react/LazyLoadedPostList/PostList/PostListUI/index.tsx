@@ -1,3 +1,8 @@
+import {
+    Disclosure,
+    DisclosureHeader,
+    DisclosurePanel,
+} from "@/components/ui/Disclosure.tsx";
 import { GridList, GridListItem } from "@/components/ui/GridList.tsx";
 import { Text } from "react-aria-components";
 import type { Database } from "@/utils/supabase/models";
@@ -12,7 +17,7 @@ export default function PostListUI({ posts }: { posts: PostViewRow[] }) {
         <GridList
             className="w-full"
             aria-label="posts"
-            selectionMode="multiple"
+            // selectionMode="single"
             layout="grid"
             items={posts.map(function (p) {
                 return {
@@ -24,16 +29,40 @@ export default function PostListUI({ posts }: { posts: PostViewRow[] }) {
             {function (post) {
                 return (
                     <GridListItem textValue={post.text_content as string}>
-                        <div className="flex-col-start-start">
-                            <header>
+                        <article className="flex-col-start-start">
+                            <header className="flex-row-between mb-3">
                                 <UserBadge
-                                    clerk_user_id={post.clerk_user_id as string}
+                                    clerk_user_id={post.clerk_user_id!}
                                 />
+                                <time
+                                    className="text-xs text-drac-comment uppercase tracking-wider"
+                                    dateTime={new Date(
+                                        post.created_at!,
+                                    ).toISOString()}
+                                >
+                                    {new Date(
+                                        post.created_at!,
+                                    ).toLocaleDateString()}
+                                </time>
                             </header>
-                            <Text slot="description">
-                                {post.text_content as string}
-                            </Text>
-                        </div>
+                            <main className="pl-[2rem]">
+                                <p className="text-drac-foreground leading-relaxed whitespace-pre-wrap text-lg">
+                                    <Text slot="description">
+                                        {post.text_content as string}
+                                    </Text>
+                                </p>
+                            </main>
+                            <footer>
+                                <Disclosure isDisabled={true}>
+                                    <DisclosureHeader>
+                                        no comments yet
+                                    </DisclosureHeader>
+                                    <DisclosurePanel>
+                                        how'd you open this panel?
+                                    </DisclosurePanel>
+                                </Disclosure>
+                            </footer>
+                        </article>
                     </GridListItem>
                 );
             }}

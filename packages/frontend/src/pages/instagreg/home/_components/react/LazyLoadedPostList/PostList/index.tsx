@@ -186,29 +186,6 @@ function PostList({
     );
 }
 
-/*
-            {posts?.map((post) => (
-                <div
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                    key={post.post_id}
-                >
-                    <article className="p-5 border border-drac-comment rounded-lg bg-drac-background-lighter hover:border-drac-pink transition-colors duration-200">
-                        <header className="flex justify-between items-start mb-3">
-                            <UserBadge clerk_user_id={post.clerk_user_id!} />
-                            <time className="text-[10px] text-drac-comment uppercase tracking-wider">
-                                {new Date(
-                                    post.created_at!,
-                                ).toLocaleDateString()}
-                            </time>
-                        </header>
-                        <p className="text-drac-foreground leading-relaxed whitespace-pre-wrap">
-                            {post.text_content}
-                        </p>
-                    </article>
-                </div>
-            ))}
- */
-
 export default function PostListWrapper(props: PostListProps) {
     return (
         <QueryClientProvider client={queryClient}>

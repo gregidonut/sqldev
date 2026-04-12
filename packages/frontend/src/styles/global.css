@@ -86,6 +86,10 @@
     @apply flex w-full flex-col items-center justify-start;
 }
 
+@utility flex-col-start-start {
+    @apply flex w-full flex-col items-start justify-start;
+}
+
 @utility flex-row-center {
     @apply flex w-full flex-row items-center justify-center;
 }

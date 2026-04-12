@@ -57,7 +57,7 @@ export default function UserBadge({
                     className="w-6 h-6 rounded-full border border-drac-purple"
                 />
             )}
-            <span className="text-sm font-semibold text-drac-pink italic">
+            <span className="text-xs font-semibold text-drac-pink italic">
                 @{user.username}
             </span>
         </div>
