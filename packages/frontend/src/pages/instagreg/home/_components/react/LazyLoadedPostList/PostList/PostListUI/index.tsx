@@ -8,6 +8,7 @@ import { Text } from "react-aria-components";
 import type { Database } from "@/utils/supabase/models";
 
 import UserBadge from "@/pages/instagreg/home/_components/react/UserBadge";
+import MenuButton from "./MenuButton";
 import React from "react";
 
 type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
@@ -30,20 +31,27 @@ export default function PostListUI({ posts }: { posts: PostViewRow[] }) {
                 return (
                     <GridListItem textValue={post.text_content as string}>
                         <article className="flex-col-start-start">
-                            <header className="flex-row-between mb-3">
-                                <UserBadge
-                                    clerk_user_id={post.clerk_user_id!}
-                                />
-                                <time
-                                    className="text-xs text-drac-comment uppercase tracking-wider"
-                                    dateTime={new Date(
-                                        post.created_at!,
-                                    ).toISOString()}
-                                >
-                                    {new Date(
-                                        post.created_at!,
-                                    ).toLocaleDateString()}
-                                </time>
+                            <header className="flex-col-start-start mb-3 relative">
+                                <main className="flex-row-between">
+                                    <UserBadge
+                                        clerk_user_id={post.clerk_user_id!}
+                                    />
+                                    <time
+                                        className="text-xs text-drac-comment uppercase tracking-wider"
+                                        dateTime={new Date(
+                                            post.created_at!,
+                                        ).toISOString()}
+                                    >
+                                        {new Date(
+                                            post.created_at!,
+                                        ).toLocaleDateString()}
+                                    </time>
+                                </main>
+                                <footer className="absolute top-[2rem] right-0">
+                                    <MenuButton
+                                        postOwnerId={post.clerk_user_id!}
+                                    />
+                                </footer>
                             </header>
                             <main className="pl-[2rem]">
                                 <p className="text-drac-foreground leading-relaxed whitespace-pre-wrap text-lg">
