@@ -111,7 +111,7 @@ function PostList({
                     const m = (
                         JSON.parse(message.toString()) as { message: string }
                     ).message;
-                    if (m === "new_post") refetch();
+                    if (["new_post", "update_post"].includes(m)) refetch();
                 });
 
                 client.on("error", (err) => {

@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION post_text(
+CREATE OR REPLACE FUNCTION create_ig_post(
     p_text_content TEXT
 )
     RETURNS TABLE
@@ -22,7 +22,7 @@ BEGIN
     VALUES (v_post_id, p_text_content);
 
     RETURN QUERY
-        SELECT v_post_id as post_id;
+        SELECT v_post_id AS post_id;
 
 END;
 $$;

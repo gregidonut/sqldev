@@ -3,7 +3,7 @@ import { useForm, Controller } from "react-hook-form";
 import { Form } from "@/components/ui/Form";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import type { Database } from "@/utils/supabase/models";
 import { useStore } from "@nanostores/react";
@@ -15,6 +15,15 @@ interface PostEditFormProps {
     postId: string;
     onCancel: () => void;
     onSuccess?: () => void;
+}
+
+function submitForm(data: FormData) {
+    return axios<Database["public"]["Functions"]["update_ig_post"]["Args"]>({
+        method: "PATCH",
+        url: "/api/igPosts/one/patch",
+        data,
+        headers: { "Content-Type": "multipart/form-data" },
+    });
 }
 
 export default function PostEditForm({
@@ -42,26 +51,40 @@ export default function PostEditForm({
         },
     });
 
-    const { handleSubmit, control, reset } = useForm<{ text_content: string }>({
+    const { handleSubmit, control, reset } = useForm<
+        Database["public"]["Functions"]["update_ig_post"]["Args"]
+    >({
         defaultValues: {
-            text_content: "",
+            p_text_content: "",
         },
     });
 
     useEffect(() => {
         if (data) {
-            reset({ text_content: (data.text_content as string) || "" });
+            reset({ p_text_content: (data.text_content as string) || "" });
         }
     }, [data, reset]);
 
-    const onSubmit = async (formData: { text_content: string }) => {
-        console.log("Submitting updated post:", postId, formData);
-        // For now, just call onSuccess and onCancel as there's no update API provided in the prompt.
-        if (onSuccess) onSuccess();
-        onCancel();
+    const { mutate, isPending } = useMutation({
+        mutationFn: submitForm,
+        onSuccess: () => {
+            reset();
+            if (onSuccess) onSuccess();
+            onCancel();
+        },
+        onError: (error) => console.log(error),
+    });
+
+    const onSubmit = async (
+        updateFormData: Database["public"]["Functions"]["update_ig_post"]["Args"],
+    ) => {
+        const formData = new FormData();
+        formData.append("p_post_id", postId);
+        formData.append("p_text_content", updateFormData.p_text_content ?? "");
+        mutate(formData);
     };
 
-    if (isLoading) {
+    if (isLoading || isPending) {
         return (
             <div className="p-4 border border-drac-comment rounded-lg bg-drac-background/50">
                 <p className="text-drac-comment italic">
@@ -85,13 +108,10 @@ export default function PostEditForm({
     }
 
     return (
-        <Form
-            onSubmit={handleSubmit(onSubmit)}
-            className="w-full p-4 border border-drac-purple rounded-lg bg-drac-background/50 shadow-lg"
-        >
+        <Form onSubmit={handleSubmit(onSubmit)} className="w-full p-4">
             <Controller
                 control={control}
-                name="text_content"
+                name="p_text_content"
                 rules={{ required: "Post content cannot be empty." }}
                 render={({
                     field: { name, value, onChange, onBlur, ref },
