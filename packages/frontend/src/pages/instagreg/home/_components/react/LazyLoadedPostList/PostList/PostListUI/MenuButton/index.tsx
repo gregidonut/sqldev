@@ -4,7 +4,13 @@ import { MoreHorizontal } from "lucide-react";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 
-export default function MenuButton({ postOwnerId }: { postOwnerId: string }) {
+export default function MenuButton({
+    postOwnerId,
+    onEdit,
+}: {
+    postOwnerId: string;
+    onEdit: () => void;
+}) {
     const { userId } = useStore($authStore);
     if (userId !== postOwnerId) return null;
     return (
@@ -14,7 +20,7 @@ export default function MenuButton({ postOwnerId }: { postOwnerId: string }) {
             </Button>
             <Menu>
                 <MenuItem onAction={() => alert("open")}>Open</MenuItem>
-                <MenuItem onAction={() => alert("rename")}>edit..</MenuItem>
+                <MenuItem onAction={onEdit}>Edit..</MenuItem>
                 <MenuItem onAction={() => alert("delete")}>Delete…</MenuItem>
             </Menu>
         </MenuTrigger>

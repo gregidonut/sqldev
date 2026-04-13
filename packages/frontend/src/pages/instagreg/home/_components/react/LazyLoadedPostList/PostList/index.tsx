@@ -48,6 +48,7 @@ function PostList({
         queryKey: [
             "get",
             "igPosts",
+            "list",
             {
                 userId,
             },
