@@ -1,13 +1,14 @@
 import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Form } from "@/components/ui/Form";
-import { TextField } from "@/components/ui/TextField";
+// import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import type { Database } from "@/utils/supabase/models";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
+import { FieldError, Label, TextArea, TextField } from "react-aria-components";
 
 type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
 
@@ -118,7 +119,6 @@ export default function PostEditForm({
                     fieldState: { invalid, error: fieldError },
                 }) => (
                     <TextField
-                        label={name}
                         name={name}
                         value={value}
                         onChange={onChange}
@@ -128,9 +128,20 @@ export default function PostEditForm({
                         autoFocus
                         validationBehavior="aria"
                         isInvalid={invalid}
-                        errorMessage={fieldError?.message}
-                        className="w-full"
-                    />
+                        // errorMessage={fieldError?.message}
+                        className="flex-col-start-start gap-1"
+                    >
+                        <Label>{name}</Label>
+                        <TextArea
+                            rows={4}
+                            className="w-full resize-none rounded-sm border-drac-comment px-3 py-2 bg-drac-background field-sizing-content"
+                        />
+                        {fieldError && (
+                            <FieldError className="text-drac-red">
+                                {fieldError.message}
+                            </FieldError>
+                        )}
+                    </TextField>
                 )}
             />
             <div className="flex gap-3 mt-4 justify-end">
