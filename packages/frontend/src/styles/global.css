@@ -66,6 +66,10 @@
     html {
         @apply font-mono;
     }
+
+    .cl-footer {
+        @apply bg-drac-selection
+    }
 }
 
 @layer component {
@@ -109,6 +113,7 @@
 @utility flex-row-end {
     @apply flex w-full flex-row items-center justify-end;
 }
+
 
 @theme inline {
     --font-heading: var(--font-mono);
@@ -186,6 +191,15 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    --clerk-color-background: #212126;
+    --clerk-color-neutral: white;
+    --clerk-color-primary: #FFFFFF;
+    --clerk-color-primary-foreground: black;
+    --clerk-color-foreground: white;
+    --clerk-color-input-foreground: white;
+    --clerk-color-input: #26262B;
+    --clerk-spacing: 1.125rem;
+    --clerk-border-radius: 0rem;
 }
 
 .dark {
@@ -220,4 +234,21 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+    --clerk-color-background: #282A36;
+    --clerk-color-neutral: #44475E;
+    --clerk-color-primary: #FFFFFF;
+    --clerk-color-primary-foreground: #6272A4;
+    --clerk-color-foreground: #F8F8F2;
+    --clerk-color-input-foreground: #FFFFFF;
+    --clerk-color-input: #26262B;
+    --clerk-color-muted: #44475A;
+    --clerk-color-border: #6272A1;
+    --clerk-color-shadow: #282A36;
+    --clerk-spacing: 1.125rem;
+    --clerk-color-modal-backdrop: #44475B;
+    --clerk-color-success: #50FA7B;
+    --clerk-color-danger: #FF5555;
+    --clerk-color-warning: #F1FA8C;
+    --clerk-border-radius: 0rem;
+    --clerk-color-ring: #8BE9FD;
 }

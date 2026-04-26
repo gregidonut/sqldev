@@ -1,22 +1,37 @@
 ---
 import "@/styles/global.css";
 
-import genTitle from "@/utils/titleGen"
-const {title = "SQLDev"} = Astro.props;
+import genTitle from "@/utils/titleGen";
+const { title = "SQLDev" } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width"/>
-    <link rel="icon" type="image/svg+xml" href="/sword.svg"/>
-    <meta name="generator" content={Astro.generator}/>
-    <title>{title === "SQLDev" ? title: genTitle(title) }</title>
-</head>
-<body class="dark">
-<div id="root">
-    <slot/>
-</div>
-</body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <title>{title === "SQLDev" ? title : genTitle(title)}</title>
+
+        <link
+            rel="icon"
+            type="image/png"
+            href="/favicon-96x96.png?v=20260425"
+            sizes="96x96"
+        />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260425" />
+        <link rel="shortcut icon" href="/favicon.ico?v=20260425" />
+        <link
+            rel="apple-touch-icon"
+            sizes="180x180"
+            href="/apple-touch-icon.png?v=20260425"
+        />
+        <meta name="apple-mobile-web-app-title" content="MyWebSite" />
+        <link rel="manifest" href="/site.webmanifest?v=20260425" />
+    </head>
+    <body class="dark">
+        <div id="root">
+            <slot />
+        </div>
+    </body>
 </html>
