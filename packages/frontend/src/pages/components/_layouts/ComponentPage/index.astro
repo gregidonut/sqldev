@@ -1,0 +1,30 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/header/Header.astro";
+import Main from "@/components/main/Main.astro";
+
+import ComponentsHeader from "@/pages/components/_components/react/ComponentsHeader";
+---
+
+<Layout title="components demo">
+    <Header title="components demo" />
+    <Main>
+        <ComponentsHeader
+            client:idle
+            pathname={Astro.url.pathname.split("/").filter(Boolean).at(-1) ??
+                "home"}
+            staticpaths={Object.keys(
+                import.meta.glob("@/pages/components/**/*.astro"),
+            )
+                .map(function (p) {
+                    const pname = p.split("/").filter(Boolean).at(-2);
+                    if (pname === "components") {
+                        return;
+                    }
+                    return pname;
+                })
+                .filter(Boolean) as string[]}
+        />
+        <slot />
+    </Main>
+</Layout>
