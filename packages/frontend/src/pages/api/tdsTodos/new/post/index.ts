@@ -11,19 +11,20 @@ const iotClient = new IoTDataPlaneClient({
     endpoint: `https://${Resource.SQLDevRealtimeSST.endpoint}`,
 });
 
-export const PATCH: APIRoute = async (context) => {
+export const POST: APIRoute = async (context) => {
     const client = getSupabaseBrowserClient(context);
 
     const formData = await context.request.formData();
-    const p_todo_item_ids = formData.getAll("p_todo_item_ids") as string[];
-    const p_new_parent_id = formData.get("p_new_parent_id") as string;
 
-    const { data, error } = await client.rpc("move_tds_todo_items", {
-        p_todo_item_ids,
-        p_new_parent_id,
-    } as Database["public"]["Functions"]["move_tds_todo_items"]["Args"]);
+    const { data, error } = await client.rpc(
+        "create_tds_todo",
+        Object.fromEntries(
+            formData,
+        ) as Database["public"]["Functions"]["create_tds_todo"]["Args"],
+    );
 
     if (error) {
+        console.error("Supabase RPC error in tdsTodos/new/post:", error);
         return new Response(JSON.stringify({ message: error.message }), {
             status: 500,
             headers: { "Content-Type": "application/json" },
@@ -35,7 +36,7 @@ export const PATCH: APIRoute = async (context) => {
         await iotClient.send(
             new PublishCommand({
                 topic,
-                payload: JSON.stringify({ message: "move_tds_todo_items" }),
+                payload: JSON.stringify({ message: "new_tds_todo" }),
                 qos: 1,
             }),
         );

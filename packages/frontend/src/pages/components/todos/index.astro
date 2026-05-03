@@ -2,9 +2,11 @@
 import ComponentPage from "../_layouts/ComponentPage/index.astro";
 import MovableTodoTree from "./_components/react/MovableTodoTree";
 import { Resource } from "sst";
+import NewTodoButton from "./_components/react/NewTodoButton";
 ---
 
 <ComponentPage>
+    <NewTodoButton client:idle />
     <MovableTodoTree
         client:only="react"
         realtimeEndpoint={Resource.SQLDevRealtimeSST.endpoint}

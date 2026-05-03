@@ -31,7 +31,7 @@
         "astro": "6.1.5",
         "astro-compressor": "^1.3.0",
         "astro-sst": "../../astro-sst/packages/astro-sst",
-        "axios": "^1.14.0",
+        "axios": "^1.16.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "lucide-react": "^1.11.0",
