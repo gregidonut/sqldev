@@ -7,7 +7,7 @@
     "sst": "*"
   },
   "scripts": {
-    "shell": "sst shell tsx"
+    "shell": "sst --stage $STAGE shell bun"
   },
   "devDependencies": {
     "@types/node": "^22",
