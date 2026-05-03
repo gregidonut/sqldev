@@ -14,11 +14,11 @@ import type { Database } from "@/utils/supabase/models";
 
 function PostArea() {
     const { handleSubmit, control, reset } = useForm<
-        Database["public"]["Functions"]["post_text"]["Args"]
+        Database["public"]["Functions"]["create_ig_post"]["Args"]
     >({
         defaultValues: {
             p_text_content: "",
-        } satisfies Database["public"]["Functions"]["post_text"]["Args"],
+        } satisfies Database["public"]["Functions"]["create_ig_post"]["Args"],
     });
 
     const { mutate, isPending } = useMutation({
@@ -30,7 +30,7 @@ function PostArea() {
     });
 
     let onSubmit = (
-        data: Database["public"]["Functions"]["post_text"]["Args"],
+        data: Database["public"]["Functions"]["create_ig_post"]["Args"],
     ) => {
         mutate(data);
     };
