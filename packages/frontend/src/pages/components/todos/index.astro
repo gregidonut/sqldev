@@ -1,8 +1,15 @@
 ---
 import ComponentPage from "../_layouts/ComponentPage/index.astro";
 import MovableTodoTree from "./_components/react/MovableTodoTree";
+import { Resource } from "sst";
 ---
 
 <ComponentPage>
-    <MovableTodoTree client:only="react" />
+    <MovableTodoTree
+        client:only="react"
+        realtimeEndpoint={Resource.SQLDevRealtimeSST.endpoint}
+        realtimeAuthorizer={Resource.SQLDevRealtimeSST.authorizer}
+        appName={Resource.App.name}
+        appStage={Resource.App.stage}
+    />
 </ComponentPage>

@@ -1,5 +1,5 @@
 import { type TodoItem, TodoTree } from "./TodoTree.tsx";
-import React from "react";
+import React, { useEffect } from "react";
 import { useDragAndDrop, useTreeData } from "react-aria-components";
 import axios from "axios";
 import { useMutation } from "@tanstack/react-query";
@@ -40,6 +40,16 @@ export function RACMovableTree({ todoItems }: { todoItems: TodoItem[] }) {
         getKey: (item) => item.todo_item_id as string,
         getChildren: (item) => item.children ?? [],
     });
+
+    useEffect(() => {
+        if (!todoItems) return;
+
+        const existingKeys = tree.items.map((item) => item.key);
+        if (existingKeys.length > 0) {
+            tree.remove(...existingKeys);
+        }
+        tree.append(null, ...todoItems);
+    }, [todoItems]);
 
     let { dragAndDropHooks } = useDragAndDrop({
         getItems(keys, items: TodoItem[]) {

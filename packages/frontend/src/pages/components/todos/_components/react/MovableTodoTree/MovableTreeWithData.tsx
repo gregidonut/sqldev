@@ -9,14 +9,15 @@ import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 import axios from "axios";
 import { RACMovableTree } from "./RACMovableTree.tsx";
+import useMqtt from "@/components/react/hooks/useMqtt";
 
 function RACMovableTreeWithData() {
-    const { userId } = useStore($authStore);
+    const { userId, session } = useStore($authStore);
 
     const {
         data: todos,
         error,
-        // refetch,
+        refetch,
     } = useSuspenseQuery<TodoItem[]>({
         queryKey: [
             "get",
@@ -33,6 +34,13 @@ function RACMovableTreeWithData() {
             });
             return data;
         },
+    });
+
+    useMqtt({
+        session,
+        refetch,
+        topic: "move_tds_todo_items",
+        messagesToListenTo: ["move_tds_todo_items"],
     });
 
     if (error)
