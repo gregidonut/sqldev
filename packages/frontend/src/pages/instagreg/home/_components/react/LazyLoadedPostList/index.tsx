@@ -1,12 +1,17 @@
 import React, { Suspense, lazy } from "react";
-import { type PostListProps } from "../PostListProps.ts";
+import {
+    MQTTPropsStore,
+    type MQTTProps,
+} from "@/components/react/hooks/useMqtt/mqttStore.ts";
 
 const PostList = lazy(() => import("./PostList"));
 
-export default function LazyLoadedPostList(props: PostListProps) {
+export default function LazyLoadedPostList(props: MQTTProps) {
+    MQTTPropsStore.set(props);
+
     return (
         <Suspense fallback={<p>Loading...</p>}>
-            <PostList {...props} />
+            <PostList />
         </Suspense>
     );
 }
