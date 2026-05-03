@@ -1,6 +1,6 @@
-import type {APIContext} from "astro";
-import {type Database} from "../models";
-import {createBrowserClient} from "@supabase/ssr";
+import type { APIContext } from "astro";
+import { type Database } from "../models";
+import { createBrowserClient } from "@supabase/ssr";
 
 export function getSupabaseBrowserClient(Astro: APIContext) {
     return createBrowserClient<Database>(
@@ -9,7 +9,7 @@ export function getSupabaseBrowserClient(Astro: APIContext) {
         {
             async accessToken() {
                 const { getToken } = Astro.locals.auth();
-                return await getToken();
+                return await getToken({ template: "supabase" });
             },
         },
     );
