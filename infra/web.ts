@@ -38,4 +38,7 @@ export const frontend = new sst.aws.Astro("Frontend", {
     cert: feAcmCertArn.value,
   },
   vpc: ["dev"].includes($app.stage) ? undefined : SupabaseVPC,
+  server: {
+    runtime: "nodejs22.x",
+  },
 });
