@@ -1,15 +1,15 @@
 import React from "react";
 import {
-    useQuery,
+    useSuspenseQuery,
     QueryClient,
     QueryClientProvider,
 } from "@tanstack/react-query";
-import axios from "axios";
 import type { Database } from "@/utils/supabase/models";
 import { $authStore } from "@clerk/astro/client";
 import { useStore } from "@nanostores/react";
 import PostListUI from "@/pages/instagreg/home/_components/react/LazyLoadedPostList/PostList/PostListUI";
 import useMqtt from "@/components/react/hooks/useMqtt";
+import createIgPostsListGetQueryOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsListGet.ts";
 
 type PostView = Database["public"]["Views"]["ig_posts_view"]["Row"];
 const queryClient = new QueryClient();
@@ -19,25 +19,11 @@ function PostList() {
 
     const {
         data: posts,
-        isLoading,
         error,
         refetch,
-    } = useQuery<PostView[]>({
-        queryKey: [
-            "get",
-            "igPosts",
-            "list",
-            {
-                userId,
-            },
-        ],
-        queryFn: async () => {
-            const response = await axios.get<PostView[]>(
-                "/api/igPosts/list/get",
-            );
-            return response.data;
-        },
-    });
+    } = useSuspenseQuery<PostView[]>(
+        createIgPostsListGetQueryOptions(userId ?? ""),
+    );
 
     useMqtt({
         session,
@@ -46,12 +32,6 @@ function PostList() {
         messagesToListenTo: ["new_post", "update_post"],
     });
 
-    if (isLoading)
-        return (
-            <p className="mt-8 text-drac-comment italic text-center w-full">
-                Loading posts...
-            </p>
-        );
     if (error)
         return (
             <p className="mt-8 text-drac-red italic text-center w-full">

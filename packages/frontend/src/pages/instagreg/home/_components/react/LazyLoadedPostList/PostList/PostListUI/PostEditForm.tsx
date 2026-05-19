@@ -1,56 +1,24 @@
 import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Form } from "@/components/ui/Form";
-// import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import axios from "axios";
+import { useSuspenseQuery, useMutation } from "@tanstack/react-query";
 import type { Database } from "@/utils/supabase/models";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 import { FieldError, Label, TextArea, TextField } from "react-aria-components";
+import usePostsViewStore from "../../../store/postsViewStore.ts";
+import createIgPostsOneGetQueryOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsOneGet.ts";
+import createIgPostsOnePatchMutationOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsOnePatch.ts";
 
 type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
 
-interface PostEditFormProps {
-    postId: string;
-    onCancel: () => void;
-    onSuccess?: () => void;
-}
-
-function submitForm(data: FormData) {
-    return axios<Database["public"]["Functions"]["update_ig_post"]["Args"]>({
-        method: "PATCH",
-        url: "/api/igPosts/one/patch",
-        data,
-        headers: { "Content-Type": "multipart/form-data" },
-    });
-}
-
-export default function PostEditForm({
-    postId,
-    onCancel,
-    onSuccess,
-}: PostEditFormProps) {
+export default function PostEditForm({ postId }: { postId: string }) {
     const { userId } = useStore($authStore);
-    const { data, isLoading, error } = useQuery<PostViewRow>({
-        queryKey: [
-            "get",
-            "igPost",
-            "one",
-            {
-                userId,
-            },
-            postId,
-        ],
-        queryFn: async () => {
-            const { data } = await axios<PostViewRow>(
-                `/api/igPosts/one/get/${postId}`,
-                { method: "GET" },
-            );
-            return data;
-        },
-    });
+    const { data, error } = useSuspenseQuery<PostViewRow>(
+        createIgPostsOneGetQueryOptions(postId, userId ?? ""),
+    );
+    const { setIsEditing } = usePostsViewStore();
 
     const { handleSubmit, control, reset } = useForm<
         Database["public"]["Functions"]["update_ig_post"]["Args"]
@@ -66,15 +34,9 @@ export default function PostEditForm({
         }
     }, [data, reset]);
 
-    const { mutate, isPending } = useMutation({
-        mutationFn: submitForm,
-        onSuccess: () => {
-            reset();
-            if (onSuccess) onSuccess();
-            onCancel();
-        },
-        onError: (error) => console.log(error),
-    });
+    const { mutate, isPending } = useMutation(
+        createIgPostsOnePatchMutationOptions(reset),
+    );
 
     const onSubmit = async (
         updateFormData: Database["public"]["Functions"]["update_ig_post"]["Args"],
@@ -85,7 +47,7 @@ export default function PostEditForm({
         mutate(formData);
     };
 
-    if (isLoading || isPending) {
+    if (isPending) {
         return (
             <div className="p-4 border border-drac-comment rounded-lg bg-drac-background/50">
                 <p className="text-drac-comment italic">
@@ -101,7 +63,11 @@ export default function PostEditForm({
                 <p className="text-drac-red">
                     Error: {(error as Error).message}
                 </p>
-                <Button variant="secondary" className="mt-2" onPress={onCancel}>
+                <Button
+                    variant="secondary"
+                    className="mt-2"
+                    onPress={() => setIsEditing(false)}
+                >
                     Cancel
                 </Button>
             </div>
@@ -145,7 +111,7 @@ export default function PostEditForm({
                 )}
             />
             <div className="flex gap-3 mt-4 justify-end">
-                <Button variant="secondary" onPress={onCancel}>
+                <Button variant="secondary" onPress={() => setIsEditing(false)}>
                     Cancel
                 </Button>
                 <Button type="submit">Save Changes</Button>

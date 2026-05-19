@@ -19,7 +19,7 @@ import { Resource } from "sst";
         />
         <PostArea client:only="react" />
         <LazyLoadedPostList
-            client:idle
+            client:only="react"
             realtimeEndpoint={Resource.SQLDevRealtimeSST.endpoint}
             realtimeAuthorizer={Resource.SQLDevRealtimeSST.authorizer}
             appName={Resource.App.name}

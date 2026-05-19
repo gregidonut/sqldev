@@ -18,6 +18,7 @@ export default function PostListUI({ posts }: { posts: PostViewRow[] }) {
                     id: p.post_id!,
                 };
             })}
+            disallowTypeAhead={true}
         >
             {(post) => <PostListItemUI post={post} />}
         </GridList>

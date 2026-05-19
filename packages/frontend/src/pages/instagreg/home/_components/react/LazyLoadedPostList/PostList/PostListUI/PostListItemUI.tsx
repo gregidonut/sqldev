@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { GridListItem } from "@/components/ui/GridList.tsx";
 import { Text } from "react-aria-components";
 import type { Database } from "@/utils/supabase/models";
@@ -10,56 +10,19 @@ import {
     DisclosureHeader,
     DisclosurePanel,
 } from "@/components/ui/Disclosure.tsx";
+import usePostsViewStore from "../../../store/postsViewStore.ts";
+import { formatPostDate } from "@/pages/instagreg/home/_components/react/LazyLoadedPostList/PostList/PostListUI/formatPostDate.ts";
 
 type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
 
-function formatPostDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    const now = new Date();
-
-    // Normalize both to midnight for day comparison
-    const todayMidnight = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-    );
-    const dateMidnight = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-    );
-    const daysDiff = Math.round(
-        (todayMidnight.getTime() - dateMidnight.getTime()) / 86_400_000,
-    );
-
-    const kitchenTime = date.toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-    switch (true) {
-        case daysDiff === 0:
-            return kitchenTime;
-        case daysDiff === 1:
-            return `yesterday ${kitchenTime}`;
-        case daysDiff <= 6:
-            return `${date.toLocaleDateString(undefined, { weekday: "long" })} ${kitchenTime}`;
-        default:
-            return date.toLocaleDateString();
-    }
-}
-
 export default function PostListItemUI({ post }: { post: PostViewRow }) {
-    const [isEditing, setIsEditing] = useState(false);
+    const { isEditing, postId } = usePostsViewStore();
 
     return (
         <GridListItem textValue={post.text_content as string}>
-            {isEditing ? (
+            {isEditing && post.post_id === postId ? (
                 <div className="w-full">
-                    <PostEditForm
-                        postId={post.post_id!}
-                        onCancel={() => setIsEditing(false)}
-                        onSuccess={() => setIsEditing(false)}
-                    />
+                    <PostEditForm postId={post.post_id!} />
                 </div>
             ) : (
                 <article className="flex-col-start-start w-full">
@@ -92,7 +55,7 @@ export default function PostListItemUI({ post }: { post: PostViewRow }) {
                         <footer className="absolute top-[2rem] right-0">
                             <MenuButton
                                 postOwnerId={post.clerk_user_id!}
-                                onEdit={() => setIsEditing(true)}
+                                postId={post.post_id!}
                             />
                         </footer>
                     </header>
