@@ -34,6 +34,15 @@ declare module "sst" {
       "type": "sst.aws.Astro"
       "url": string
     }
+    "IgPostTextContentNotifier": {
+      "name": string
+      "type": "sst.aws.Function"
+      "url": string
+    }
+    "NotifySecret": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "SQLDevRealtimeSST": {
       "authorizer": string
       "endpoint": string
@@ -47,7 +56,13 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "igPostViewNotifier": {
+      "name": string
+      "type": "sst.aws.Function"
+      "url": string
+    }
     "sqldevSupabaseVPC": {
+      "bastion": string
       "type": "sst.aws.Vpc"
     }
   }

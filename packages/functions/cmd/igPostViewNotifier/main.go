@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -17,16 +19,36 @@ import (
 type RequestBody struct {
 	View string `json:"view"`
 }
-
 type PublishPayload struct {
 	Message string `json:"message"`
 }
 
-func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	var iotClient *iotdataplane.Client
-	var body RequestBody
+func handler(ctx context.Context, req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
+	nSecret := req.Headers["X-Notify-Secret"]
+	if nSecret == "" {
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusUnauthorized}, nil
+	}
 
-	err := (func() error {
+	secretVal, err := resource.Get("NotifySecret", "value")
+	if err != nil {
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
+	}
+	secret, ok := secretVal.(string)
+	if !ok || secret == "" {
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
+	}
+
+	if subtle.ConstantTimeCompare([]byte(nSecret), []byte(secret)) != 1 {
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusUnauthorized}, nil
+	}
+
+	var body RequestBody
+	if err := json.Unmarshal([]byte(req.Body), &body); err != nil || body.View == "" {
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusBadRequest}, nil
+	}
+
+	var iotClient *iotdataplane.Client
+	err = (func() error {
 		endpoint, err := resource.Get("SQLDevRealtimeSST", "endpoint")
 		if err != nil {
 			return fmt.Errorf("failed to get IoT endpoint from SST resource: %w", err)
@@ -43,11 +65,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		return nil
 	})()
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: 500, Body: fmt.Sprintf("error from init: ", err)}, nil
-	}
-
-	if err = json.Unmarshal([]byte(request.Body), &body); err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: 400, Body: "invalid request body"}, nil
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	appName := os.Getenv("SST_APP")
@@ -56,7 +74,7 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 	payload, err := json.Marshal(PublishPayload{Message: "new_post_content"})
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: 500, Body: "failed to marshal payload"}, nil
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
 	_, err = iotClient.Publish(ctx, &iotdataplane.PublishInput{
@@ -65,10 +83,10 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 		Qos:     1,
 	})
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: 500, Body: fmt.Sprintf("failed to publish: %v", err)}, nil
+		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	return events.APIGatewayProxyResponse{StatusCode: 200, Body: "ok"}, nil
+	return events.LambdaFunctionURLResponse{StatusCode: http.StatusOK}, nil
 }
 
 func main() {

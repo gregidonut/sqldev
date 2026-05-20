@@ -5,6 +5,7 @@ import { Resource } from "sst";
 const DOCKER_HOST = "unix:///var/run/docker.sock";
 const CLERK_FE_DOMAIN = Resource.ClerkFeDomain.value;
 const NOTIFY_IG_POST_VIEW_URL = Resource.igPostViewNotifier.url;
+const NOTIFY_SECRET = Resource.NotifySecret.value;
 
 export function getSupabaseEnv(): NodeJS.ProcessEnv {
   return {
@@ -12,6 +13,7 @@ export function getSupabaseEnv(): NodeJS.ProcessEnv {
     DOCKER_HOST,
     CLERK_FE_DOMAIN,
     NOTIFY_IG_POST_VIEW_URL,
+    NOTIFY_SECRET,
   };
 }
 

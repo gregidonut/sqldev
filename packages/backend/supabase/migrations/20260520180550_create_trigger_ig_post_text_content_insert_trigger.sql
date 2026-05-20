@@ -7,12 +7,18 @@ AS
 $$
 DECLARE
     notify_ig_post_view_url TEXT;
+    notify_secret           TEXT;
 BEGIN
 
     SELECT decrypted_secret
     INTO notify_ig_post_view_url
     FROM vault.decrypted_secrets
     WHERE name = 'notify_ig_post_view_url';
+
+    SELECT decrypted_secret
+    INTO notify_secret
+    FROM vault.decrypted_secrets
+    WHERE name = 'notify_ig_post_view_secret';
 
 
     PERFORM net.http_post(
@@ -22,7 +28,8 @@ BEGIN
             ),
             '{}'::JSONB,
             JSONB_BUILD_OBJECT(
-                    'Content-Type', 'application/json'
+                    'Content-Type', 'application/json',
+                    'X-Notify-Secret', notify_secret
             )
             );
 

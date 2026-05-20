@@ -9,3 +9,4 @@ export const supabaseUrl = new sst.Secret(
   "http://localhost:54321",
 );
 export const clerkJWKSPublicKey = new sst.Secret("ClerkJWKSPublicKey", "");
+export const notifySecret = new sst.Secret("NotifySecret", "");
