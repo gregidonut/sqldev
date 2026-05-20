@@ -29,7 +29,7 @@ function PostList() {
         session,
         refetch,
         topic: "ig_posts_view",
-        messagesToListenTo: ["new_post", "update_post"],
+        messagesToListenTo: ["new_post", "update_post", "new_post_content"],
     });
 
     if (error)
