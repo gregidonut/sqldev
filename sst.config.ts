@@ -1,5 +1,4 @@
 /// <reference path="./.sst/platform/config.d.ts" />
-
 export default $config({
   app(input) {
     return {
@@ -17,7 +16,6 @@ export default $config({
     await import("./infra/realtime");
     await import("./infra/lambda");
     const { frontend } = await import("./infra/web");
-
     if (["dev"].includes($app.stage)) {
       return;
     }

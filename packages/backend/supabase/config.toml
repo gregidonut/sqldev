@@ -48,8 +48,8 @@ default_pool_size = 20
 max_client_conn = 100
 
 [db.vault]
-notify_ig_post_view_url = "env(NOTIFY_IG_POST_VIEW_URL)"
-notify_ig_post_view_secret = "env(NOTIFY_SECRET)"
+notify_ig_posts_view_url = "env(NOTIFY_IG_POSTS_VIEW_URL)"
+notify_ig_posts_view_secret = "env(NOTIFY_SECRET)"
 
 [db.migrations]
 # If disabled, migrations will be skipped during a db push or reset.

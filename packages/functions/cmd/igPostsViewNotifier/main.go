@@ -24,7 +24,7 @@ type PublishPayload struct {
 }
 
 func handler(ctx context.Context, req events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
-	nSecret := req.Headers["X-Notify-Secret"]
+	nSecret := req.Headers["x-notify-secret"]
 	if nSecret == "" {
 		return events.LambdaFunctionURLResponse{StatusCode: http.StatusUnauthorized}, nil
 	}
@@ -33,6 +33,7 @@ func handler(ctx context.Context, req events.LambdaFunctionURLRequest) (events.L
 	if err != nil {
 		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
 	}
+
 	secret, ok := secretVal.(string)
 	if !ok || secret == "" {
 		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
@@ -54,7 +55,9 @@ func handler(ctx context.Context, req events.LambdaFunctionURLRequest) (events.L
 			return fmt.Errorf("failed to get IoT endpoint from SST resource: %w", err)
 		}
 
-		cfg, err := config.LoadDefaultConfig(context.Background())
+		cfg, err := config.LoadDefaultConfig(context.Background(),
+			config.WithRegion("ap-east-1"),
+		)
 		if err != nil {
 			return fmt.Errorf("failed to load AWS config: %w", err)
 		}
@@ -68,8 +71,8 @@ func handler(ctx context.Context, req events.LambdaFunctionURLRequest) (events.L
 		return events.LambdaFunctionURLResponse{StatusCode: http.StatusInternalServerError}, err
 	}
 
-	appName := os.Getenv("SST_APP")
-	appStage := os.Getenv("SST_STAGE")
+	appName := os.Getenv("APP_NAME")
+	appStage := os.Getenv("APP_STAGE")
 	topic := fmt.Sprintf("%s/%s/%s", appName, appStage, body.View)
 
 	payload, err := json.Marshal(PublishPayload{Message: "new_post_content"})

@@ -34,7 +34,7 @@ declare module "sst" {
       "type": "sst.aws.Astro"
       "url": string
     }
-    "IgPostTextContentNotifier": {
+    "IgPostsViewNotifier": {
       "name": string
       "type": "sst.aws.Function"
       "url": string
@@ -55,11 +55,6 @@ declare module "sst" {
     "SupabaseUrl": {
       "type": "sst.sst.Secret"
       "value": string
-    }
-    "igPostViewNotifier": {
-      "name": string
-      "type": "sst.aws.Function"
-      "url": string
     }
     "sqldevSupabaseVPC": {
       "bastion": string

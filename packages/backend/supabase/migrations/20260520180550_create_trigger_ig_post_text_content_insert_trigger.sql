@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION notify_ig_post_view()
+CREATE OR REPLACE FUNCTION notify_ig_posts_view()
     RETURNS TRIGGER
     LANGUAGE plpgsql
     SECURITY DEFINER
@@ -6,23 +6,23 @@ CREATE OR REPLACE FUNCTION notify_ig_post_view()
 AS
 $$
 DECLARE
-    notify_ig_post_view_url TEXT;
-    notify_secret           TEXT;
+    notify_ig_posts_view_url TEXT;
+    notify_secret            TEXT;
 BEGIN
 
     SELECT decrypted_secret
-    INTO notify_ig_post_view_url
+    INTO notify_ig_posts_view_url
     FROM vault.decrypted_secrets
-    WHERE name = 'notify_ig_post_view_url';
+    WHERE name = 'notify_ig_posts_view_url';
 
     SELECT decrypted_secret
     INTO notify_secret
     FROM vault.decrypted_secrets
-    WHERE name = 'notify_ig_post_view_secret';
+    WHERE name = 'notify_ig_posts_view_secret';
 
 
     PERFORM net.http_post(
-            notify_ig_post_view_url,
+            notify_ig_posts_view_url,
             JSONB_BUILD_OBJECT(
                     'view', 'ig_posts_view'
             ),
@@ -40,4 +40,4 @@ CREATE TRIGGER ig_post_text_content_insert_trigger
     AFTER INSERT
     ON public.ig_post_text_content
     FOR EACH ROW
-EXECUTE FUNCTION notify_ig_post_view();
+EXECUTE FUNCTION notify_ig_posts_view();

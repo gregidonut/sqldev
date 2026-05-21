@@ -1,17 +1,9 @@
 import { realtime } from "./realtime";
 import { notifySecret } from "./secrets";
+import { Vpc as SupabaseVPC } from "./vpc";
 
-export const igPostTextContentNotifier = new sst.aws.Function(
-  "IgPostTextContentNotifier",
-  {
-    handler: "packages/functions/src/igPostTextContentNotifier.handler",
-    url: true,
-    link: [realtime],
-  },
-);
-
-export const igPostViewNotifier = new sst.aws.Function("igPostViewNotifier", {
-  handler: "packages/functions/cmd/igPostViewNotifier/main.go",
+export const igPostsViewNotifier = new sst.aws.Function("IgPostsViewNotifier", {
+  handler: "packages/functions/cmd/igPostsViewNotifier/main.go",
   url: true,
   runtime: "go",
   link: [realtime, notifySecret],
@@ -19,4 +11,5 @@ export const igPostViewNotifier = new sst.aws.Function("igPostViewNotifier", {
     APP_NAME: $app.name,
     APP_STAGE: $app.stage,
   },
+  vpc: ["dev"].includes($app.stage) ? undefined : SupabaseVPC,
 });
