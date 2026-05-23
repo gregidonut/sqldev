@@ -14,7 +14,6 @@ export default $config({
   },
   async run() {
     await import("./infra/realtime");
-    await import("./infra/lambda");
     await import("./infra/api");
     await import("./infra/web");
     if (["dev"].includes($app.stage)) {

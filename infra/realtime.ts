@@ -8,8 +8,13 @@ export const realtime = new sst.aws.Realtime(
   "SQLDevRealtimeSST",
   {
     authorizer: {
-      handler: "packages/functions/src/realtimeAuthorizer.handler",
+      handler: "packages/functions/cmd/realtimeAuthorizer/main.go",
       link: [clerkJWKSPublicKey],
+      runtime: "go",
+      environment: {
+        APP_NAME: $app.name,
+        APP_STAGE: $app.stage,
+      },
     },
   },
   { provider: apEast1 },

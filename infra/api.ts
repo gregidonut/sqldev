@@ -8,7 +8,7 @@ export const api = new sst.aws.ApiGatewayV1("GoApi", {
 
 function addRoute(route: string) {
   api.route(route, {
-    handler: "packages/functions/cmd/main.go",
+    handler: "packages/functions/cmd/goapi/main.go",
     runtime: "go",
     link: [realtime, notifySecret],
     environment: {
