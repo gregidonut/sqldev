@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.7
 	github.com/aws/aws-sdk-go-v2/config v1.27.11
 	github.com/aws/aws-sdk-go-v2/service/iotdataplane v1.32.24
+	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2
 	github.com/sst/sst/v3 v3.19.3
 )
 

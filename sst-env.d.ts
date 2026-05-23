@@ -6,63 +6,8 @@
 
 declare module "sst" {
   export interface Resource {
-    "AstroAppDomain": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "ClerkFeDomain": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "ClerkJWKSPublicKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "ClerkPublicKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "ClerkSecretKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "FeAcmCertArn": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "Frontend": {
-      "type": "sst.aws.Astro"
-      "url": string
-    }
-    "IgPostsViewNotifier": {
-      "name": string
-      "type": "sst.aws.Function"
-      "url": string
-    }
-    "NotifySecret": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "SQLDevRealtimeSST": {
-      "authorizer": string
-      "endpoint": string
-      "type": "sst.aws.Realtime"
-    }
-    "SupabaseKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "SupabaseUrl": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
-    "sqldevSupabaseVPC": {
-      "bastion": string
-      "type": "sst.aws.Vpc"
-    }
   }
 }
-/// <reference path="sst-env.d.ts" />
 
 import "sst"
 export {}

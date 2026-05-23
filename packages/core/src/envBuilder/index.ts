@@ -4,7 +4,7 @@ import { Resource } from "sst";
 //github.com/supabase/cli/issues/2588
 const DOCKER_HOST = "unix:///var/run/docker.sock";
 const CLERK_FE_DOMAIN = Resource.ClerkFeDomain.value;
-const NOTIFY_IG_POSTS_VIEW_URL = Resource.IgPostsViewNotifier.url;
+const NOTIFY_IG_POSTS_VIEW_URL = Resource.GoApi.url + "/notify";
 const NOTIFY_SECRET = Resource.NotifySecret.value;
 
 export function getSupabaseEnv(): NodeJS.ProcessEnv {
