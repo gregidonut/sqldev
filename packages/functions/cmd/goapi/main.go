@@ -1,22 +1,22 @@
 package main
 
 import (
-	"net/http"
+	"context"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
-	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/handlers"
+	"github.com/gorilla/mux"
+	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/api"
 )
 
-func router() *http.ServeMux {
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /notify", handlers.IgPostsViewNotifierPost)
-
-	return mux
-}
-
 func main() {
+	r := mux.NewRouter()
+	server := &api.Server{}
+	strictHandlerWrapper := api.NewStrictHandler(server, nil)
 
-	lambda.Start(httpadapter.New(router()).ProxyWithContext)
-
+	lambda.Start(func(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+		//defer sentry.Flush(2 * time.Second)
+		return httpadapter.New(api.HandlerFromMux(strictHandlerWrapper, r)).ProxyWithContext(ctx, req)
+	})
 }

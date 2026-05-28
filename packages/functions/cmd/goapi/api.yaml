@@ -1,0 +1,342 @@
+openapi: 3.0.0
+info:
+  title: Go SDK v2 S3 Wrapper API
+  description: REST API specification mapping endpoints directly to the Go SDK V2 Amazon S3 example functions.
+  version: 1.0.0
+paths:
+  /buckets:
+    get:
+      summary: List Buckets
+      description: Lists the buckets in the current account using a paginated approach. Maps to `ListBuckets` / `s3Client.ListBuckets`.
+      operationId: listBuckets
+      responses:
+        '200':
+          description: A list of S3 buckets retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bucket'
+        '403':
+          description: Access Denied.
+
+    post:
+      summary: Create Bucket
+      description: Creates an S3 bucket with options for regional constraints and object locking. Maps to `CreateBucket` and `CreateBucketWithLock`.
+      operationId: createBucket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bucketName
+                - region
+              properties:
+                bucketName:
+                  type: string
+                  example: my-demo-bucket
+                region:
+                  type: string
+                  example: us-east-1
+                enableObjectLock:
+                  type: boolean
+                  default: false
+                  description: Optional configuration to enable object locking upon bucket initialization.
+      responses:
+        '201':
+          description: Bucket created successfully.
+        '409':
+          description: Bucket already exists or is already owned by you.
+
+  /buckets/{bucketName}:
+    get:
+      summary: Check Bucket Existence
+      description: Checks whether a bucket exists in the current account and if you have permissions. Maps to `BucketExists` / `s3Client.HeadBucket`.
+      operationId: bucketExists
+      parameters:
+        - name: bucketName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Bucket exists and you own it.
+        '404':
+          description: Bucket does not exist or is available.
+
+    delete:
+      summary: Delete Bucket
+      description: Deletes an S3 bucket. The bucket must be empty or an error is returned. Maps to `DeleteBucket` / `s3Client.DeleteBucket`.
+      operationId: deleteBucket
+      parameters:
+        - name: bucketName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Bucket deleted successfully.
+        '404':
+          description: Bucket does not exist.
+        '409':
+          description: Bucket is not empty or cannot be deleted.
+
+  /buckets/{bucketName}/objects:
+    get:
+      summary: List Objects in a Bucket
+      description: Lists the objects currently stored within a specified bucket. Maps to `ListObjects` / `s3Client.ListObjectsV2`.
+      operationId: listObjects
+      parameters:
+        - name: bucketName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Objects listed successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/S3Object'
+        '404':
+          description: Bucket does not exist.
+
+    post:
+      summary: Upload Object (Standard or Large)
+      description: Uploads a file/object payload to S3. Processes small files via PutObject or handles chunked concurrency for larger bodies. Maps to `UploadFile` or `UploadLargeObject` (via manager.Uploader).
+      operationId: uploadObject
+      parameters:
+        - name: bucketName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: true
+          description: The destination S3 key path.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File binary contents payload.
+      responses:
+        '200':
+          description: Object uploaded and verified via Waiter successfully.
+        '413':
+          description: Entity too large.
+
+    delete:
+      summary: Batch Delete Objects
+      description: Programmatically deletes multiple specified keys from a single bucket context. Maps to `DeleteObjects` / `s3Client.DeleteObjects`.
+      operationId: deleteObjects
+      parameters:
+        - name: bucketName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: bypassGovernance
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - keys
+              properties:
+                keys:
+                  type: array
+                  items:
+                    type: string
+                  example: [ "image.png", "doc-example-key" ]
+      responses:
+        '200':
+          description: Successfully executed the structural deletion request.
+        '404':
+          description: Target bucket not found.
+
+  /buckets/{bucketName}/objects/{key}:
+    get:
+      summary: Download Object
+      description: Retrieves an object chunked or directly from an S3 location. Maps to `DownloadFile` or `DownloadLargeObject` (via manager.Downloader).
+      operationId: downloadObject
+      parameters:
+        - name: bucketName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object payload successfully fetched.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: No such key exists.
+
+    post:
+      summary: Copy Object
+      description: Copies an object within the same folder space or replicates it over into a distinct destination target bucket. Maps to `CopyToFolder` or `CopyToBucket`.
+      operationId: copyObject
+      parameters:
+        - name: bucketName
+          in: path
+          description: The source bucket name.
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          description: The source key path.
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - destinationBucket
+                - destinationKey
+              properties:
+                destinationBucket:
+                  type: string
+                  description: Can be identical to sourceBucket for copy-to-folder actions.
+                destinationKey:
+                  type: string
+                  description: The target object key name or destination folder pattern string.
+      responses:
+        '200':
+          description: Copy routine execution complete.
+        '409':
+          description: Source or target object configuration error (e.g. inactive tier lifecycle conflict).
+
+    delete:
+      summary: Delete Single Object
+      description: Removes an object version or target file pointer. Allows optionally specifying a `versionId` and governance control status flags. Maps to `DeleteObject` / `s3Client.DeleteObject`.
+      operationId: deleteSingleObject
+      parameters:
+        - name: bucketName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: versionId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: bypassGovernance
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Object marked for deletion or successfully deleted.
+        '403':
+          description: Access Denied.
+  /notify:
+      post:
+        summary: Send a notification to an IoT topic
+        operationId: Notify
+        parameters:
+          - in: header
+            name: x-notify-secret
+            required: true
+            schema:
+              type: string
+            description: Secret key for authenticating the request
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - view
+                  - message # <-- 1. Added to the required list
+                additionalProperties: false
+                properties:
+                  view:
+                    type: string
+                    description: The view identifier used to construct the IoT topic
+                  message:  # <-- 2. Defined as a sibling property
+                    type: string
+                    description: The payload message to be published
+        responses:
+          '200':
+            description: Successfully published the notification.
+          '400':
+            description: Bad Request. The JSON payload is invalid or required properties are missing.
+          '401':
+            description: Unauthorized. The 'x-notify-secret' header is missing or incorrect.
+          '500':
+            description: Internal Server Error. Failed to load SST resources, AWS configuration, or publish the IoT message.
+components:
+  schemas:
+    Bucket:
+      type: object
+      properties:
+        name:
+          type: string
+          example: doc-example-bucket
+        creationDate:
+          type: string
+          format: date-time
+    S3Object:
+      type: object
+      properties:
+        key:
+          type: string
+          example: folder/subfolder/file.jpg
+        size:
+          type: integer
+          example: 1024
+        lastModified:
+          type: string
+          format: date-time
+        eTag:
+          type: string
+          example: "\"70ee1738b6b21e2c8a43f3a5ab0eee71\""

@@ -24,7 +24,8 @@ BEGIN
     PERFORM net.http_post(
             notify_ig_posts_view_url,
             JSONB_BUILD_OBJECT(
-                    'view', 'ig_posts_view'
+                    'view', 'ig_posts_view',
+                    'message', 'new_post_content'
             ),
             '{}'::JSONB,
             JSONB_BUILD_OBJECT(
