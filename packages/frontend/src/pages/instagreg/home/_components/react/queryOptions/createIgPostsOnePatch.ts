@@ -1,7 +1,7 @@
 import { mutationOptions } from "@tanstack/react-query";
 import axios from "axios";
 import type { Database } from "@/utils/supabase/models";
-import useStore from "../store/postsViewStore.ts";
+import useStore from "@/components/react/store/postsViewStore.ts";
 
 function submitForm(data: FormData) {
     return axios<Database["public"]["Functions"]["update_ig_post"]["Args"]>({

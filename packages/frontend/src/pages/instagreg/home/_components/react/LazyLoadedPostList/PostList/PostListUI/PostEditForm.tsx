@@ -7,7 +7,7 @@ import type { Database } from "@/utils/supabase/models";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 import { FieldError, Label, TextArea, TextField } from "react-aria-components";
-import usePostsViewStore from "../../../store/postsViewStore.ts";
+import usePostsViewStore from "@/components/react/store/postsViewStore.ts";
 import createIgPostsOneGetQueryOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsOneGet.ts";
 import createIgPostsOnePatchMutationOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsOnePatch.ts";
 

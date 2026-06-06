@@ -2,7 +2,7 @@ import React from "react";
 import { GridListItem } from "@/components/ui/GridList.tsx";
 import { Text } from "react-aria-components";
 import type { Database } from "@/utils/supabase/models";
-import UserBadge from "@/pages/instagreg/home/_components/react/UserBadge";
+import UserBadge from "@/components/react/UserBadge";
 import MenuButton from "./MenuButton";
 import PostEditForm from "./PostEditForm";
 import {
@@ -10,8 +10,8 @@ import {
     DisclosureHeader,
     DisclosurePanel,
 } from "@/components/ui/Disclosure.tsx";
-import usePostsViewStore from "../../../store/postsViewStore.ts";
-import { formatPostDate } from "@/pages/instagreg/home/_components/react/LazyLoadedPostList/PostList/PostListUI/formatPostDate.ts";
+import usePostsViewStore from "@/components/react/store/postsViewStore.ts";
+import { formatDate } from "@/utils/formatDate.ts";
 
 type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
 
@@ -36,7 +36,7 @@ export default function PostListItemUI({ post }: { post: PostViewRow }) {
                                         post.created_at!,
                                     ).toISOString()}
                                 >
-                                    {formatPostDate(post.created_at!)}
+                                    {formatDate(post.created_at!)}
                                 </time>
                                 {post.created_at !== post.updated_at && (
                                     <span>
@@ -46,7 +46,7 @@ export default function PostListItemUI({ post }: { post: PostViewRow }) {
                                                 post.updated_at!,
                                             ).toISOString()}
                                         >
-                                            {formatPostDate(post.updated_at!)}
+                                            {formatDate(post.updated_at!)}
                                         </time>
                                     </span>
                                 )}

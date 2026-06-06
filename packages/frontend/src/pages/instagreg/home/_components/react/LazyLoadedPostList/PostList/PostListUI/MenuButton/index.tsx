@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/Button";
 import { MoreHorizontal } from "lucide-react";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
-import usePostsViewStore from "@/pages/instagreg/home/_components/react/store/postsViewStore.ts";
+import usePostsViewStore from "@/components/react/store/postsViewStore.ts";
 
 export default function MenuButton({
     postOwnerId,
