@@ -1,18 +1,23 @@
-import { MenuTrigger, Menu, MenuItem } from "@/components/ui/Menu";
-import { Button } from "@/components/ui/Button";
+import { MenuTrigger, Menu, MenuItem } from "@/components/ui/Menu.tsx";
+import { Button } from "@/components/ui/Button.tsx";
 import { MoreHorizontal } from "lucide-react";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
-import usePostsViewStore from "@/components/react/store/postsViewStore.ts";
+import { viewStores } from "@/components/react/DDrvList/store/viewStore.ts";
+import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
 
-export default function MenuButton({
+export default function MenuButton<K extends keyof ViewMap>({
     postOwnerId,
     postId,
+    view,
 }: {
     postOwnerId: string;
     postId: string;
+    view: K;
 }) {
+    const usePostsViewStore = viewStores[view];
     const { setIsEditing, setPostId } = usePostsViewStore();
+
     const { userId } = useStore($authStore);
     if (userId !== postOwnerId) return null;
 

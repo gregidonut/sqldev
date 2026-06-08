@@ -1,15 +1,26 @@
 import { GridList } from "@/components/ui/GridList.tsx";
-import type { Database } from "@/utils/supabase/models";
 import React from "react";
-import PostListItemUI from "./PostListItemUI";
+import {
+    itemComponents,
+    type ViewMap,
+} from "@/components/react/DDrvList/viewMap.ts";
 
-type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
+export default function ListUI<K extends keyof ViewMap>({
+    posts,
+    view,
+}: {
+    posts: ViewMap[K][];
+    view: K;
+}) {
+    const Item = itemComponents[view] as React.ComponentType<{
+        post: ViewMap[K];
+        view: K;
+    }>;
 
-export default function PostListUI({ posts }: { posts: PostViewRow[] }) {
     return (
         <GridList
             className="w-full"
-            aria-label="posts"
+            aria-label={view}
             // selectionMode="single"
             layout="grid"
             items={posts.map(function (p) {
@@ -20,7 +31,7 @@ export default function PostListUI({ posts }: { posts: PostViewRow[] }) {
             })}
             disallowTypeAhead={true}
         >
-            {(post) => <PostListItemUI post={post} />}
+            {(post) => <Item post={post} view={view} />}
         </GridList>
     );
 }

@@ -1,35 +1,48 @@
 import React from "react";
 import {
-    useSuspenseQuery,
     QueryClient,
     QueryClientProvider,
+    useSuspenseQuery,
 } from "@tanstack/react-query";
-import type { Database } from "@/utils/supabase/models";
 import { $authStore } from "@clerk/astro/client";
 import { useStore } from "@nanostores/react";
-import PostListUI from "@/pages/instagreg/home/_components/react/LazyLoadedPostList/PostList/PostListUI";
+import ListUI from "@/components/react/DDrvList/DDrvListUI";
 import useMqtt from "@/components/react/hooks/useMqtt";
-import createIgPostsListGetQueryOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsListGet.ts";
+import createListGetQueryOptions from "@/components/react/DDrvList/queryOptions/createListGet.ts";
+import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
 
-type PostView = Database["public"]["Views"]["ig_posts_view"]["Row"];
 const queryClient = new QueryClient();
 
-function PostList() {
+function List<K extends keyof ViewMap>({ view }: { view: K }) {
     const { userId, session } = useStore($authStore);
 
     const {
         data: posts,
         error,
         refetch,
-    } = useSuspenseQuery<PostView[]>(
-        createIgPostsListGetQueryOptions(userId ?? ""),
+    } = useSuspenseQuery<ViewMap[K][]>(
+        createListGetQueryOptions(userId ?? "", view),
     );
 
     useMqtt({
         session,
         refetch,
-        topic: "ig_posts_view",
-        messagesToListenTo: ["new_post", "update_post", "new_post_content"],
+        topic: (function (): string {
+            switch (view) {
+                case "igPosts":
+                    return "ig_posts_view";
+                default:
+                    return "";
+            }
+        })(),
+        messagesToListenTo: (function (): string[] {
+            switch (view) {
+                case "igPosts":
+                    return ["new_post", "update_post", "new_post_content"];
+                default:
+                    return [];
+            }
+        })(),
     });
 
     if (error)
@@ -47,7 +60,7 @@ function PostList() {
                 </h2>
             </header>
             {posts && posts.length !== 0 ? (
-                <PostListUI posts={posts} />
+                <ListUI<K> posts={posts} view={view} />
             ) : (
                 <p className="text-center text-drac-comment py-10 italic">
                     No posts yet. Be the first to post!
@@ -57,10 +70,14 @@ function PostList() {
     );
 }
 
-export default function PostListWrapper() {
+export default function PostListWrapper<K extends keyof ViewMap>({
+    view,
+}: {
+    view: K;
+}) {
     return (
         <QueryClientProvider client={queryClient}>
-            <PostList />
+            <List view={view} />
         </QueryClientProvider>
     );
 }

@@ -1,28 +1,34 @@
 import React from "react";
 import { GridListItem } from "@/components/ui/GridList.tsx";
 import { Text } from "react-aria-components";
-import type { Database } from "@/utils/supabase/models";
 import UserBadge from "@/components/react/UserBadge";
 import MenuButton from "./MenuButton";
-import PostEditForm from "./PostEditForm";
+import ItemEditForm from "./ItemEditForm.tsx";
 import {
     Disclosure,
     DisclosureHeader,
     DisclosurePanel,
 } from "@/components/ui/Disclosure.tsx";
-import usePostsViewStore from "@/components/react/store/postsViewStore.ts";
+import { viewStores } from "@/components/react/DDrvList/store/viewStore.ts";
 import { formatDate } from "@/utils/formatDate.ts";
+import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
 
-type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
-
-export default function PostListItemUI({ post }: { post: PostViewRow }) {
+export default function ListItemUI<K extends keyof ViewMap>({
+    post,
+    view,
+}: {
+    post: ViewMap[K];
+    view: K;
+}) {
+    const usePostsViewStore = viewStores[view];
     const { isEditing, postId } = usePostsViewStore();
+    // const { isEditing, postId } = usePostsViewStore();
 
     return (
         <GridListItem textValue={post.text_content as string}>
             {isEditing && post.post_id === postId ? (
                 <div className="w-full">
-                    <PostEditForm postId={post.post_id!} />
+                    <ItemEditForm postId={post.post_id!} view={view} />
                 </div>
             ) : (
                 <article className="flex-col-start-start w-full">
@@ -56,6 +62,7 @@ export default function PostListItemUI({ post }: { post: PostViewRow }) {
                             <MenuButton
                                 postOwnerId={post.clerk_user_id!}
                                 postId={post.post_id!}
+                                view={view}
                             />
                         </footer>
                     </header>

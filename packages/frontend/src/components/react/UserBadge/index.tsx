@@ -2,7 +2,7 @@ import React from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
-import createIgPostsUsersGetQueryOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsUsersGet.ts";
+import createIgPostsUsersGetQueryOptions from "@/components/react/DDrvList/queryOptions/createUsersGet.ts";
 
 export default function UserBadge({
     clerk_user_id,

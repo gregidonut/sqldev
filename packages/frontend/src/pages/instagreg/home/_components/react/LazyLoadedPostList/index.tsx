@@ -4,14 +4,14 @@ import {
     type MQTTProps,
 } from "@/components/react/hooks/useMqtt/mqttStore.ts";
 
-const PostList = lazy(() => import("./PostList"));
+const List = lazy(() => import("@/components/react/DDrvList"));
 
 export default function LazyLoadedPostList(props: MQTTProps) {
     MQTTPropsStore.set(props);
 
     return (
         <Suspense fallback={<p>Loading...</p>}>
-            <PostList />
+            <List view="igPosts" />
         </Suspense>
     );
 }

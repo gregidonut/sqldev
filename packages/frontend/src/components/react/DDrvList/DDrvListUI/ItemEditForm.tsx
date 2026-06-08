@@ -1,24 +1,32 @@
 import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { Form } from "@/components/ui/Form";
-import { Button } from "@/components/ui/Button";
+import { Form } from "@/components/ui/Form.tsx";
+import { Button } from "@/components/ui/Button.tsx";
 import { useSuspenseQuery, useMutation } from "@tanstack/react-query";
 import type { Database } from "@/utils/supabase/models";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 import { FieldError, Label, TextArea, TextField } from "react-aria-components";
-import usePostsViewStore from "@/components/react/store/postsViewStore.ts";
-import createIgPostsOneGetQueryOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsOneGet.ts";
-import createIgPostsOnePatchMutationOptions from "@/pages/instagreg/home/_components/react/queryOptions/createIgPostsOnePatch.ts";
+import { viewStores } from "@/components/react/DDrvList/store/viewStore.ts";
+import createOneGetQueryOptions from "@/components/react/DDrvList/queryOptions/createOneGet.ts";
+import createOnePatchMutationOptions from "@/components/react/DDrvList/queryOptions/createOnePatch.ts";
+import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
 
 type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
 
-export default function PostEditForm({ postId }: { postId: string }) {
+export default function ItemEditForm<K extends keyof ViewMap>({
+    postId,
+    view,
+}: {
+    postId: string;
+    view: K;
+}) {
     const { userId } = useStore($authStore);
-    const { data, error } = useSuspenseQuery<PostViewRow>(
-        createIgPostsOneGetQueryOptions(postId, userId ?? ""),
-    );
+    const usePostsViewStore = viewStores[view];
     const { setIsEditing } = usePostsViewStore();
+    const { data, error } = useSuspenseQuery<PostViewRow>(
+        createOneGetQueryOptions(postId, userId ?? "", view),
+    );
 
     const { handleSubmit, control, reset } = useForm<
         Database["public"]["Functions"]["update_ig_post"]["Args"]
@@ -35,7 +43,7 @@ export default function PostEditForm({ postId }: { postId: string }) {
     }, [data, reset]);
 
     const { mutate, isPending } = useMutation(
-        createIgPostsOnePatchMutationOptions(reset),
+        createOnePatchMutationOptions(reset, view),
     );
 
     const onSubmit = async (

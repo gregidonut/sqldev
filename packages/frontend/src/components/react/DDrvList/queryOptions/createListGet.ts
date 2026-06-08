@@ -1,0 +1,19 @@
+import axios from "axios";
+import { queryOptions } from "@tanstack/react-query";
+import type { ViewMap } from "@/components/react/DDrvList/viewMap";
+
+export default function createListGetQueryOptions<K extends keyof ViewMap>(
+    userId: string,
+    view: K,
+) {
+    return queryOptions<ViewMap[K][]>({
+        queryKey: ["get", view, "list", { userId }],
+        queryFn: async function () {
+            const response = await axios<ViewMap[K][]>({
+                method: "GET",
+                url: `/api/${view}/list/get`,
+            });
+            return response.data;
+        },
+    });
+}
