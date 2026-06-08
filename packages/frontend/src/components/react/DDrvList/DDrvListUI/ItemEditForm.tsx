@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { Form } from "@/components/ui/Form.tsx";
 import { Button } from "@/components/ui/Button.tsx";
-import { useSuspenseQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Database } from "@/utils/supabase/models";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
@@ -24,7 +24,7 @@ export default function ItemEditForm<K extends keyof ViewMap>({
     const { userId } = useStore($authStore);
     const usePostsViewStore = viewStores[view];
     const { setIsEditing } = usePostsViewStore();
-    const { data, error } = useSuspenseQuery<PostViewRow>(
+    const { data, isLoading, error } = useQuery<PostViewRow>(
         createOneGetQueryOptions(postId, userId ?? "", view),
     );
 
@@ -55,7 +55,7 @@ export default function ItemEditForm<K extends keyof ViewMap>({
         mutate(formData);
     };
 
-    if (isPending) {
+    if (isLoading || isPending) {
         return (
             <div className="p-4 border border-drac-comment rounded-lg bg-drac-background/50">
                 <p className="text-drac-comment italic">
