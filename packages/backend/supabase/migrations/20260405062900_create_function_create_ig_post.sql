@@ -1,5 +1,6 @@
 CREATE OR REPLACE FUNCTION create_ig_post(
-    p_text_content TEXT
+    p_text_content TEXT,
+    p_public BOOLEAN DEFAULT TRUE
 )
     RETURNS TABLE
             (
@@ -24,10 +25,8 @@ BEGIN
     INSERT INTO public.ig_post_text_content (post_id, text_content)
     VALUES (v_post_id, p_text_content);
 
-    INSERT INTO public.ig_posts_roles(post_id, user_id, role)
-    SELECT v_post_id AS post_id, u.user_id, 'viewer' AS role
-    FROM public.users AS u
-    WHERE u.user_id != v_user_id;
+    INSERT INTO public.ig_post_config(post_id)
+    VALUES (v_post_id);
 
     RETURN QUERY
         SELECT v_post_id AS post_id;

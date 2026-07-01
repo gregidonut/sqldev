@@ -25,7 +25,6 @@ BEGIN
     FROM vault.decrypted_secrets
     WHERE name = 'render_md_url';
 
-    -- Explicitly cast parameters to VARCHAR to match pg_http's exact signature
     SELECT *
     INTO v_request_result
     FROM extensions.http_post(
@@ -34,7 +33,6 @@ BEGIN
             'application/json'::VARCHAR
          );
 
-    -- Check if the status code is 200 before attempting to parse
     IF v_request_result.status = 200 THEN
         new.text_content_html := (v_request_result.content::JSONB) ->> 'html';
     END IF;
