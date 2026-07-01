@@ -7,6 +7,6 @@
     "sst": "*"
   },
   "devDependencies": {
-    "supabase": "^2.100.1"
+    "supabase": "^2.109.0"
   }
 }

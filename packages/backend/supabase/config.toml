@@ -50,6 +50,7 @@ max_client_conn = 100
 [db.vault]
 notify_ig_posts_view_url = "env(NOTIFY_IG_POSTS_VIEW_URL)"
 notify_ig_posts_view_secret = "env(NOTIFY_SECRET)"
+render_md_url = "env(RENDER_MD_URL)"
 
 [db.migrations]
 # If disabled, migrations will be skipped during a db push or reset.
@@ -80,7 +81,7 @@ allowed_cidrs_v6 = ["::/0"]
 # enabled = true
 
 [realtime]
-enabled = true
+enabled = false
 # Bind realtime via either IPv4 or IPv6. (default: IPv4)
 # ip_version = "IPv6"
 # The maximum length in bytes of HTTP request headers. (default: 4096)
@@ -125,7 +126,7 @@ enabled = true
 
 # Image transformation API is available to Supabase Pro plan.
 [storage.image_transformation]
-enabled = true
+enabled = false
 
 # Store analytical data in S3 for running ETL jobs over Iceberg Catalog
 # This feature is only available on the hosted platform.
