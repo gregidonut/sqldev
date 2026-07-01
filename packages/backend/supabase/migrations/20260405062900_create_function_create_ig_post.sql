@@ -10,16 +10,24 @@ CREATE OR REPLACE FUNCTION create_ig_post(
 AS
 $$
 DECLARE
-    v_user_id UUID := (SELECT user_id AS v_user_id
-                       FROM public.get_owner());
+    v_user_id UUID := public.set_owner();
     v_post_id UUID;
 BEGIN
-    INSERT INTO public.ig_posts (user_id)
-    VALUES (v_user_id)
+    INSERT INTO public.ig_posts
+        DEFAULT
+    VALUES
     RETURNING ig_posts.post_id INTO v_post_id;
+
+    INSERT INTO public.ig_posts_roles (post_id, user_id, role)
+    VALUES (v_post_id, v_user_id, 'owner');
 
     INSERT INTO public.ig_post_text_content (post_id, text_content)
     VALUES (v_post_id, p_text_content);
+
+    INSERT INTO public.ig_posts_roles(post_id, user_id, role)
+    SELECT v_post_id AS post_id, u.user_id, 'viewer' AS role
+    FROM public.users AS u
+    WHERE u.user_id != v_user_id;
 
     RETURN QUERY
         SELECT v_post_id AS post_id;
