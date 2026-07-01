@@ -278,42 +278,72 @@ paths:
         '403':
           description: Access Denied.
   /notify:
-      post:
-        summary: Send a notification to an IoT topic
-        operationId: Notify
-        parameters:
-          - in: header
-            name: x-notify-secret
-            required: true
-            schema:
-              type: string
-            description: Secret key for authenticating the request
-        requestBody:
+    post:
+      summary: Send a notification to an IoT topic
+      operationId: Notify
+      parameters:
+        - in: header
+          name: x-notify-secret
           required: true
+          schema:
+            type: string
+          description: Secret key for authenticating the request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - view
+                - message # <-- 1. Added to the required list
+              additionalProperties: false
+              properties:
+                view:
+                  type: string
+                  description: The view identifier used to construct the IoT topic
+                message: # <-- 2. Defined as a sibling property
+                  type: string
+                  description: The payload message to be published
+      responses:
+        '200':
+          description: Successfully published the notification.
+        '400':
+          description: Bad Request. The JSON payload is invalid or required properties are missing.
+        '401':
+          description: Unauthorized. The 'x-notify-secret' header is missing or incorrect.
+        '500':
+          description: Internal Server Error. Failed to load SST resources, AWS configuration, or publish the IoT message.
+  /renderMd:
+    post:
+      summary: Render Markdown to HTML
+      description: Takes a markdown string and returns the rendered HTML.
+      operationId: renderMd
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                  example: "# Hello World"
+      responses:
+        '200':
+          description: Markdown rendered successfully.
           content:
             application/json:
               schema:
                 type: object
-                required:
-                  - view
-                  - message # <-- 1. Added to the required list
-                additionalProperties: false
                 properties:
-                  view:
+                  html:
                     type: string
-                    description: The view identifier used to construct the IoT topic
-                  message:  # <-- 2. Defined as a sibling property
-                    type: string
-                    description: The payload message to be published
-        responses:
-          '200':
-            description: Successfully published the notification.
-          '400':
-            description: Bad Request. The JSON payload is invalid or required properties are missing.
-          '401':
-            description: Unauthorized. The 'x-notify-secret' header is missing or incorrect.
-          '500':
-            description: Internal Server Error. Failed to load SST resources, AWS configuration, or publish the IoT message.
+                    example: "<h1>Hello World</h1>"
+        '400':
+          description: Invalid request body.
 components:
   schemas:
     Bucket:

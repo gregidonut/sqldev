@@ -100,6 +100,11 @@ type NotifyParams struct {
 	XNotifySecret string `json:"x-notify-secret"`
 }
 
+// RenderMdJSONBody defines parameters for RenderMd.
+type RenderMdJSONBody struct {
+	Text string `json:"text"`
+}
+
 // CreateBucketJSONRequestBody defines body for CreateBucket for application/json ContentType.
 type CreateBucketJSONRequestBody CreateBucketJSONBody
 
@@ -114,6 +119,9 @@ type CopyObjectJSONRequestBody CopyObjectJSONBody
 
 // NotifyJSONRequestBody defines body for Notify for application/json ContentType.
 type NotifyJSONRequestBody NotifyJSONBody
+
+// RenderMdJSONRequestBody defines body for RenderMd for application/json ContentType.
+type RenderMdJSONRequestBody RenderMdJSONBody
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -228,6 +236,11 @@ type ClientInterface interface {
 	NotifyWithBody(ctx context.Context, params *NotifyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	Notify(ctx context.Context, params *NotifyParams, body NotifyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RenderMdWithBody request with any body
+	RenderMdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RenderMd(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) ListBuckets(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -400,6 +413,30 @@ func (c *Client) NotifyWithBody(ctx context.Context, params *NotifyParams, conte
 
 func (c *Client) Notify(ctx context.Context, params *NotifyParams, body NotifyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewNotifyRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RenderMdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRenderMdRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RenderMd(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRenderMdRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -940,6 +977,46 @@ func NewNotifyRequestWithBody(server string, params *NotifyParams, contentType s
 	return req, nil
 }
 
+// NewRenderMdRequest calls the generic RenderMd builder with application/json body
+func NewRenderMdRequest(server string, body RenderMdJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRenderMdRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewRenderMdRequestWithBody generates requests for RenderMd with any type of body
+func NewRenderMdRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/renderMd")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1023,6 +1100,11 @@ type ClientWithResponsesInterface interface {
 	NotifyWithBodyWithResponse(ctx context.Context, params *NotifyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NotifyResponse, error)
 
 	NotifyWithResponse(ctx context.Context, params *NotifyParams, body NotifyJSONRequestBody, reqEditors ...RequestEditorFn) (*NotifyResponse, error)
+
+	// RenderMdWithBodyWithResponse request with any body
+	RenderMdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
+
+	RenderMdWithResponse(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
 }
 
 type ListBucketsResponse struct {
@@ -1346,6 +1428,38 @@ func (r NotifyResponse) ContentType() string {
 	return ""
 }
 
+type RenderMdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Html *string `json:"html,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r RenderMdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RenderMdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r RenderMdResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 // ListBucketsWithResponse request returning *ListBucketsResponse
 func (c *ClientWithResponses) ListBucketsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListBucketsResponse, error) {
 	rsp, err := c.ListBuckets(ctx, reqEditors...)
@@ -1475,6 +1589,23 @@ func (c *ClientWithResponses) NotifyWithResponse(ctx context.Context, params *No
 		return nil, err
 	}
 	return ParseNotifyResponse(rsp)
+}
+
+// RenderMdWithBodyWithResponse request with arbitrary body returning *RenderMdResponse
+func (c *ClientWithResponses) RenderMdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenderMdResponse, error) {
+	rsp, err := c.RenderMdWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRenderMdResponse(rsp)
+}
+
+func (c *ClientWithResponses) RenderMdWithResponse(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*RenderMdResponse, error) {
+	rsp, err := c.RenderMd(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRenderMdResponse(rsp)
 }
 
 // ParseListBucketsResponse parses an HTTP response from a ListBucketsWithResponse call
@@ -1673,6 +1804,34 @@ func ParseNotifyResponse(rsp *http.Response) (*NotifyResponse, error) {
 	return response, nil
 }
 
+// ParseRenderMdResponse parses an HTTP response from a RenderMdWithResponse call
+func ParseRenderMdResponse(rsp *http.Response) (*RenderMdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RenderMdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Html *string `json:"html,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// List Buckets
@@ -1708,6 +1867,9 @@ type ServerInterface interface {
 	// Send a notification to an IoT topic
 	// (POST /notify)
 	Notify(w http.ResponseWriter, r *http.Request, params NotifyParams)
+	// Render Markdown to HTML
+	// (POST /renderMd)
+	RenderMd(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -2088,6 +2250,20 @@ func (siw *ServerInterfaceWrapper) Notify(w http.ResponseWriter, r *http.Request
 	handler.ServeHTTP(w, r)
 }
 
+// RenderMd operation middleware
+func (siw *ServerInterfaceWrapper) RenderMd(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RenderMd(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -2222,6 +2398,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/{key}", wrapper.CopyObject).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/notify", wrapper.Notify).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/renderMd", wrapper.RenderMd).Methods(http.MethodPost)
 
 	return r
 }
@@ -2547,6 +2725,38 @@ func (response Notify500Response) VisitNotifyResponse(w http.ResponseWriter) err
 	return nil
 }
 
+type RenderMdRequestObject struct {
+	Body *RenderMdJSONRequestBody
+}
+
+type RenderMdResponseObject interface {
+	VisitRenderMdResponse(w http.ResponseWriter) error
+}
+
+type RenderMd200JSONResponse struct {
+	Html *string `json:"html,omitempty"`
+}
+
+func (response RenderMd200JSONResponse) VisitRenderMdResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RenderMd400Response struct {
+}
+
+func (response RenderMd400Response) VisitRenderMdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(400)
+	return nil
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// List Buckets
@@ -2582,6 +2792,9 @@ type StrictServerInterface interface {
 	// Send a notification to an IoT topic
 	// (POST /notify)
 	Notify(ctx context.Context, request NotifyRequestObject) (NotifyResponseObject, error)
+	// Render Markdown to HTML
+	// (POST /renderMd)
+	RenderMd(ctx context.Context, request RenderMdRequestObject) (RenderMdResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error)
@@ -2936,49 +3149,82 @@ func (sh *strictHandler) Notify(w http.ResponseWriter, r *http.Request, params N
 	}
 }
 
+// RenderMd operation middleware
+func (sh *strictHandler) RenderMd(w http.ResponseWriter, r *http.Request) {
+	var request RenderMdRequestObject
+
+	var body RenderMdJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.RenderMd(ctx, request.(RenderMdRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RenderMd")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RenderMdResponseObject); ok {
+		if err := validResponse.VisitRenderMdResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
