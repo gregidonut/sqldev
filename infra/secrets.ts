@@ -8,5 +8,9 @@ export const supabaseUrl = new sst.Secret(
   "SupabaseUrl",
   "http://localhost:54321",
 );
+export const imgproxyUrl = new sst.Secret(
+  "ImgproxyUrl",
+  "http://localhost:8080",
+);
 export const clerkJWKSPublicKey = new sst.Secret("ClerkJWKSPublicKey", "");
 export const notifySecret = new sst.Secret("NotifySecret", "");

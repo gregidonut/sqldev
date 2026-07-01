@@ -6,6 +6,7 @@ import {
   clerkJWKSPublicKey,
   supabaseKey,
   supabaseUrl,
+  imgproxyUrl,
 } from "./secrets";
 import { Vpc as SupabaseVPC } from "./vpc";
 import { realtime } from "./realtime";
@@ -19,6 +20,7 @@ export const frontend = new sst.aws.Astro("Frontend", {
     clerkSecret,
     supabaseKey,
     supabaseUrl,
+    imgproxyUrl,
     clerkJWKSPublicKey,
     realtime,
   ],
@@ -31,6 +33,7 @@ export const frontend = new sst.aws.Astro("Frontend", {
     PUBLIC_CLERK_SIGN_IN_URL: "/sign-in",
     SUPABASE_URL: supabaseUrl.value,
     SUPABASE_KEY: supabaseKey.value,
+    IMGPROXY_URL: imgproxyUrl.value,
   },
   domain: {
     name: astroAppDomain.value,
