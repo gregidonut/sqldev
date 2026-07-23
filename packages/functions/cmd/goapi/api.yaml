@@ -296,15 +296,31 @@ paths:
               type: object
               required:
                 - view
-                - message # <-- 1. Added to the required list
+                - message
+                - visibility
               additionalProperties: false
               properties:
                 view:
                   type: string
                   description: The view identifier used to construct the IoT topic
-                message: # <-- 2. Defined as a sibling property
+                message:
                   type: string
                   description: The payload message to be published
+                visibility:
+                  type: string
+                  enum:
+                    - public
+                    - private
+                  description: >
+                    public publishes once to {app}/{stage}/public/{view}.
+                    private publishes once per recipient to {app}/{stage}/user/{clerkUserId}/{view}.
+                recipients:
+                  type: array
+                  items:
+                    type: string
+                  description: >
+                    Clerk user ids (JWT sub) that should receive the notification.
+                    Required when visibility is private; ignored when public.
       responses:
         '200':
           description: Successfully published the notification.

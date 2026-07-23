@@ -22,11 +22,12 @@ BEGIN
     INSERT INTO public.ig_posts_roles (post_id, user_id, role)
     VALUES (v_post_id, v_user_id, 'owner');
 
+    -- Config must exist before text_content so the notify trigger can read visibility.
+    INSERT INTO public.ig_post_config (post_id, public)
+    VALUES (v_post_id, p_public);
+
     INSERT INTO public.ig_post_text_content (post_id, text_content)
     VALUES (v_post_id, p_text_content);
-
-    INSERT INTO public.ig_post_config(post_id)
-    VALUES (v_post_id);
 
     RETURN QUERY
         SELECT v_post_id AS post_id;

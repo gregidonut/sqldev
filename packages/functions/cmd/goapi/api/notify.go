@@ -33,10 +33,16 @@ func (s Server) Notify(ctx context.Context, request NotifyRequestObject) (Notify
 		return Notify401Response{}, nil
 	}
 
+	if request.Body == nil {
+		return Notify400Response{}, nil
+	}
 	if request.Body.View == "" {
 		return Notify400Response{}, nil
 	}
 	if request.Body.Message == "" {
+		return Notify400Response{}, nil
+	}
+	if !request.Body.Visibility.Valid() {
 		return Notify400Response{}, nil
 	}
 
@@ -58,7 +64,6 @@ func (s Server) Notify(ctx context.Context, request NotifyRequestObject) (Notify
 
 	appName := os.Getenv("APP_NAME")
 	appStage := os.Getenv("APP_STAGE")
-	topic := fmt.Sprintf("%s/%s/%s", appName, appStage, request.Body.View)
 
 	payload, err := json.Marshal(struct {
 		Message string `json:"message"`
@@ -69,14 +74,50 @@ func (s Server) Notify(ctx context.Context, request NotifyRequestObject) (Notify
 		return Notify500Response{}, nil
 	}
 
-	_, err = iotClient.Publish(ctx, &iotdataplane.PublishInput{
-		Topic:   aws.String(topic),
-		Payload: payload,
-		Qos:     1,
-	})
-	if err != nil {
-		return Notify500Response{}, nil
+	topics, ok := notifyTopics(appName, appStage, request.Body)
+	if !ok {
+		return Notify400Response{}, nil
+	}
+
+	for _, topic := range topics {
+		_, err = iotClient.Publish(ctx, &iotdataplane.PublishInput{
+			Topic:   aws.String(topic),
+			Payload: payload,
+			Qos:     1,
+		})
+		if err != nil {
+			return Notify500Response{}, nil
+		}
 	}
 
 	return Notify200Response{}, nil
+}
+
+func notifyTopics(appName, appStage string, body *NotifyJSONRequestBody) ([]string, bool) {
+	switch body.Visibility {
+	case Public:
+		return []string{
+			fmt.Sprintf("%s/%s/public/%s", appName, appStage, body.View),
+		}, true
+	case Private:
+		if body.Recipients == nil {
+			return nil, false
+		}
+		topics := make([]string, 0, len(*body.Recipients))
+		for _, recipient := range *body.Recipients {
+			if recipient == "" {
+				continue
+			}
+			topics = append(topics, fmt.Sprintf(
+				"%s/%s/user/%s/%s",
+				appName,
+				appStage,
+				recipient,
+				body.View,
+			))
+		}
+		return topics, true
+	default:
+		return nil, false
+	}
 }

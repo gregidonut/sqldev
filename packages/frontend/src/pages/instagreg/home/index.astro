@@ -7,6 +7,8 @@ import PageHeader from "../_components/react/PageHeader";
 import PostArea from "./_components/react/PostArea";
 import LazyLoadedPostList from "./_components/react/LazyLoadedPostList";
 import { Resource } from "sst";
+
+const { userId } = Astro.locals.auth();
 ---
 
 <Layout title="instagreg">
@@ -24,6 +26,7 @@ import { Resource } from "sst";
             realtimeAuthorizer={Resource.SQLDevRealtimeSST.authorizer}
             appName={Resource.App.name}
             appStage={Resource.App.stage}
+            clerkUserId={userId ?? ""}
         />
     </Main>
 </Layout>

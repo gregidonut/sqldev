@@ -23,13 +23,13 @@ export default function index({
     topic,
     messagesToListenTo,
 }: UseMqttProps) {
-    const { realtimeEndpoint, realtimeAuthorizer, appName, appStage } =
+    const { realtimeEndpoint, realtimeAuthorizer, appName, appStage, clerkUserId } =
         useStore(MQTTPropsStore);
     const view = useListStore.getState().currentView;
     if (view === "tdsTodoSpaces") return;
 
     useEffect(() => {
-        if (!session) return;
+        if (!session || !clerkUserId) return;
 
         let mqttClient: MqttClient | null = null;
         let isConnecting = false;
@@ -70,10 +70,12 @@ export default function index({
                         client.end(true);
                         return;
                     }
-                    client.subscribe(`${appName}/${appStage}/${topic}`);
+                    const userTopic = `${appName}/${appStage}/user/${clerkUserId}/${topic}`;
+                    const publicTopic = `${appName}/${appStage}/public/${topic}`;
+                    client.subscribe([userTopic, publicTopic]);
                 });
 
-                client.on("message", (topic, message) => {
+                client.on("message", (_topic, message) => {
                     if (isDisposed) return;
                     const m = (
                         JSON.parse(message.toString()) as { message: string }
@@ -116,6 +118,7 @@ export default function index({
         };
     }, [
         session,
+        clerkUserId,
         realtimeEndpoint,
         realtimeAuthorizer,
         appName,

@@ -5,6 +5,7 @@ export interface MQTTProps {
     realtimeAuthorizer: string;
     appName: string;
     appStage: string;
+    clerkUserId?: string;
 }
 
 export const MQTTPropsStore = atom<MQTTProps>({
@@ -12,4 +13,5 @@ export const MQTTPropsStore = atom<MQTTProps>({
     realtimeAuthorizer: "",
     appName: "",
     appStage: "",
+    clerkUserId: "",
 });
