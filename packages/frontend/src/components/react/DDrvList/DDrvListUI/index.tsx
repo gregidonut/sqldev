@@ -1,21 +1,27 @@
 import { GridList } from "@/components/ui/GridList.tsx";
-import React from "react";
+import React, { type ComponentType } from "react";
 import {
     itemComponents,
+    viewIdKeys,
     type ViewMap,
 } from "@/components/react/DDrvList/viewMap.ts";
+import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 
 export default function ListUI<K extends keyof ViewMap>({
     posts,
-    view,
 }: {
     posts: ViewMap[K][];
-    view: K;
 }) {
-    const Item = itemComponents[view] as React.ComponentType<{
+    const { currentView: view } = useListStore();
+    if (!view) return null;
+
+    const viewKey = view as K;
+    const Item = itemComponents[viewKey] as ComponentType<{
         post: ViewMap[K];
         view: K;
     }>;
+
+    const idKey = viewIdKeys[viewKey];
 
     return (
         <GridList
@@ -26,12 +32,12 @@ export default function ListUI<K extends keyof ViewMap>({
             items={posts.map(function (p) {
                 return {
                     ...p,
-                    id: p.post_id!,
+                    id: p[idKey] as string,
                 };
             })}
             disallowTypeAhead={true}
         >
-            {(post) => <Item post={post} view={view} />}
+            {(post) => <Item post={post} view={viewKey} />}
         </GridList>
     );
 }

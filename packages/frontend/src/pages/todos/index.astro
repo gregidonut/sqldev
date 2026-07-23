@@ -1,0 +1,21 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/header/Header.astro";
+import Main from "@/components/main/Main.astro";
+import LazyLoadedTodoSpaceList from "./_components/react/LazyLoadedTodoSpaceList";
+
+import { Resource } from "sst";
+---
+
+<Layout>
+    <Header />
+    <Main>
+        <LazyLoadedTodoSpaceList
+            client:only="react"
+            realtimeEndpoint={Resource.SQLDevRealtimeSST.endpoint}
+            realtimeAuthorizer={Resource.SQLDevRealtimeSST.authorizer}
+            appName={Resource.App.name}
+            appStage={Resource.App.stage}
+        />
+    </Main>
+</Layout>

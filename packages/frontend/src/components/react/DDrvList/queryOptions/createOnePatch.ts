@@ -1,33 +1,25 @@
-import { mutationOptions } from "@tanstack/react-query";
+import { mutationOptions, useQueryClient } from "@tanstack/react-query";
 import axios, { type AxiosResponse } from "axios";
 import type { Database } from "@/utils/supabase/models";
-import { viewStores } from "@/components/react/DDrvList/store/viewStore.ts";
-import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
+import { useListStore } from "@/components/react/DDrvList/store/store.ts";
+import {
+    type ViewMap,
+    viewRPCMap,
+} from "@/components/react/DDrvList/viewMap.ts";
 
-export default function createOnePatchMutationOptions<K extends keyof ViewMap>(
+export default function createOnePatchMutationOptions(
     reset: () => void,
-    view: K,
+    userId: string,
 ) {
-    const usePostsViewStore = viewStores[view];
-    const { setIsEditing } = usePostsViewStore();
+    const { currentView: view, setIsEditing } = useListStore();
+    const queryClient = useQueryClient();
+
     return mutationOptions({
-        mutationFn: (function (): (
-            data: FormData,
-        ) => Promise<
-            AxiosResponse<
-                Database["public"]["Functions"]["update_ig_post"]["Args"]
-            >
-        > {
-            switch (view) {
-                case "igPosts":
-                    return submitIgPostForm;
-                default:
-                    throw new Error(
-                        "Invalid view from createOnePatchMutationOptions:",
-                    );
-            }
-        })(),
+        mutationFn: submitIgPostForm,
         onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["get", view, "list", { userId }],
+            });
             reset();
             setIsEditing(false);
         },
@@ -36,9 +28,12 @@ export default function createOnePatchMutationOptions<K extends keyof ViewMap>(
 }
 
 function submitIgPostForm(data: FormData) {
-    return axios<Database["public"]["Functions"]["update_ig_post"]["Args"]>({
+    const view = useListStore.getState().currentView;
+    const rpcName = viewRPCMap[view as keyof ViewMap].update;
+
+    return axios<Database["public"]["Functions"][typeof rpcName]["Args"]>({
         method: "PATCH",
-        url: "/api/igPosts/one/patch",
+        url: `/api/${view}/one/patch`,
         data,
         headers: { "Content-Type": "multipart/form-data" },
     });

@@ -1,0 +1,14 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/header/Header.astro";
+import Main from "@/components/main/Main.astro";
+
+const { todo_space_id } = Astro.params;
+---
+
+<Layout>
+    <Header />
+    <Main>
+        <h2>{todo_space_id}</h2>
+    </Main>
+</Layout>

@@ -7,53 +7,79 @@ import type { Database } from "@/utils/supabase/models";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 import { FieldError, Label, TextArea, TextField } from "react-aria-components";
-import { viewStores } from "@/components/react/DDrvList/store/viewStore.ts";
+import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 import createOneGetQueryOptions from "@/components/react/DDrvList/queryOptions/createOneGet.ts";
 import createOnePatchMutationOptions from "@/components/react/DDrvList/queryOptions/createOnePatch.ts";
-import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
+import {
+    type ViewMap,
+    viewRPCMap,
+} from "@/components/react/DDrvList/viewMap.ts";
 
-type PostViewRow = Database["public"]["Views"]["ig_posts_view"]["Row"];
-
-export default function ItemEditForm<K extends keyof ViewMap>({
-    postId,
-    view,
-}: {
-    postId: string;
-    view: K;
-}) {
+export default function ItemEditForm({ postId }: { postId: string }) {
     const { userId } = useStore($authStore);
-    const usePostsViewStore = viewStores[view];
-    const { setIsEditing } = usePostsViewStore();
-    const { data, isLoading, error } = useQuery<PostViewRow>(
-        createOneGetQueryOptions(postId, userId ?? "", view),
+    const { currentView: view, setIsEditing } = useListStore();
+    if (!view) return null;
+
+    const updateFunctionName = viewRPCMap[view].update;
+    type UpdateArgs =
+        Database["public"]["Functions"][typeof updateFunctionName]["Args"];
+
+    const { data, isLoading, error } = useQuery<ViewMap[typeof view]>(
+        createOneGetQueryOptions(postId, userId ?? ""),
     );
 
-    const { handleSubmit, control, reset } = useForm<
-        Database["public"]["Functions"]["update_ig_post"]["Args"]
-    >({
-        defaultValues: {
-            p_text_content: "",
-        },
-    });
+    const { handleSubmit, control, reset } = useForm<UpdateArgs>(
+        (function (): { defaultValues: UpdateArgs } {
+            switch (view) {
+                case "igPosts":
+                    return {
+                        defaultValues: {
+                            p_text_content: "",
+                        },
+                    };
+                case "tdsTodoSpaces":
+                    return {
+                        defaultValues: {
+                            p_name: "",
+                        },
+                    };
+            }
+        })(),
+    );
 
     useEffect(() => {
         if (data) {
-            reset({ p_text_content: (data.text_content as string) || "" });
+            switch (view) {
+                case "igPosts":
+                    reset({
+                        p_text_content:
+                            ((data as ViewMap[typeof view])
+                                .text_content as string) || "",
+                    });
+                    break;
+            }
         }
-    }, [data, reset]);
+    }, [data, reset, view]);
 
     const { mutate, isPending } = useMutation(
-        createOnePatchMutationOptions(reset, view),
+        createOnePatchMutationOptions(reset, userId!),
     );
 
-    const onSubmit = async (
-        updateFormData: Database["public"]["Functions"]["update_ig_post"]["Args"],
-    ) => {
+    async function onSubmit(updateFormData: UpdateArgs) {
         const formData = new FormData();
-        formData.append("p_post_id", postId);
-        formData.append("p_text_content", updateFormData.p_text_content ?? "");
+        switch (view) {
+            case "igPosts":
+                formData.append("p_post_id", postId);
+                formData.append(
+                    "p_text_content",
+                    (
+                        updateFormData as Database["public"]["Functions"]["update_ig_post"]["Args"]
+                    ).p_text_content ?? "",
+                );
+                break;
+        }
         mutate(formData);
-    };
+    }
 
     if (isLoading || isPending) {
         return (
@@ -86,7 +112,14 @@ export default function ItemEditForm<K extends keyof ViewMap>({
         <Form onSubmit={handleSubmit(onSubmit)} className="w-full p-4">
             <Controller
                 control={control}
-                name="p_text_content"
+                name={(function () {
+                    switch (view) {
+                        case "igPosts":
+                            return "p_text_content";
+                        case "tdsTodoSpaces":
+                            return "p_name";
+                    }
+                })()}
                 rules={{ required: "Post content cannot be empty." }}
                 render={({
                     field: { name, value, onChange, onBlur, ref },
@@ -109,6 +142,11 @@ export default function ItemEditForm<K extends keyof ViewMap>({
                         <TextArea
                             rows={4}
                             className="w-full resize-none rounded-sm border-drac-comment px-3 py-2 bg-drac-background field-sizing-content"
+                            onKeyDown={(e) => {
+                                if (e.key.startsWith("Arrow")) {
+                                    e.stopPropagation();
+                                }
+                            }}
                         />
                         {fieldError && (
                             <FieldError className="text-drac-red">

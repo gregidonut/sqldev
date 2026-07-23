@@ -9,9 +9,16 @@ import {
     DisclosureHeader,
     DisclosurePanel,
 } from "@/components/ui/Disclosure.tsx";
-import { viewStores } from "@/components/react/DDrvList/store/viewStore.ts";
+import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 import { formatDate } from "@/utils/formatDate.ts";
-import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
+import {
+    type ViewMap,
+    viewIdKeys,
+} from "@/components/react/DDrvList/viewMap.ts";
+import type {
+    PostsViewRow,
+    TodoSpacesViewRow,
+} from "@/utils/supabase/models/aliases.ts";
 
 export default function ListItemUI<K extends keyof ViewMap>({
     post,
@@ -20,15 +27,24 @@ export default function ListItemUI<K extends keyof ViewMap>({
     post: ViewMap[K];
     view: K;
 }) {
-    const usePostsViewStore = viewStores[view];
-    const { isEditing, postId } = usePostsViewStore();
-    // const { isEditing, postId } = usePostsViewStore();
+    const { isEditing, postId } = useListStore();
+    const idKey = viewIdKeys[view];
+    const currentId = post[idKey] as string;
+
+    // Helper to get content regardless of view type
+    const textContent =
+        (post as PostsViewRow).text_content ??
+        (post as TodoSpacesViewRow).name ??
+        "";
+    const htmlContent = (post as PostsViewRow).text_content_html;
+    const href =
+        view === "tdsTodoSpaces" ? `/todos/space/${currentId}` : undefined;
 
     return (
-        <GridListItem textValue={post.text_content as string}>
-            {isEditing && post.post_id === postId ? (
+        <GridListItem textValue={textContent} href={href}>
+            {isEditing && currentId === postId ? (
                 <div className="w-full">
-                    <ItemEditForm postId={post.post_id!} view={view} />
+                    <ItemEditForm postId={currentId} />
                 </div>
             ) : (
                 <article className="flex-col-start-start w-full">
@@ -61,17 +77,25 @@ export default function ListItemUI<K extends keyof ViewMap>({
                         <footer className="absolute top-[2rem] right-0">
                             <MenuButton
                                 postOwnerId={post.clerk_user_id!}
-                                postId={post.post_id!}
-                                view={view}
+                                postId={currentId}
                             />
                         </footer>
                     </header>
                     <main className="px-[2rem]">
-                        <p className="text-drac-foreground leading-relaxed whitespace-pre-wrap text-lg wrap-break-words">
-                            <Text slot="description">
-                                {post.text_content as string}
-                            </Text>
-                        </p>
+                        {htmlContent ? (
+                            <div
+                                className={
+                                    "prose prose-invert text-drac-foreground prose-stone"
+                                }
+                                dangerouslySetInnerHTML={{
+                                    __html: htmlContent,
+                                }}
+                            />
+                        ) : (
+                            <p className="text-drac-foreground leading-relaxed whitespace-pre-wrap text-lg wrap-break-words">
+                                <Text slot="description">{textContent}</Text>
+                            </p>
+                        )}
                     </main>
                     <footer>
                         <Disclosure isDisabled={true}>

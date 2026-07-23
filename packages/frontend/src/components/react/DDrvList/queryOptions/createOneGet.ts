@@ -1,14 +1,14 @@
 import { queryOptions } from "@tanstack/react-query";
 import axios from "axios";
-import type { PostsViewRow } from "@/utils/supabase/models/aliases.ts";
+import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
 
 export default function createOneGetQueryOptions<K extends keyof ViewMap>(
-    postId: string,
+    itemId: string,
     userId: string,
-    view: K,
 ) {
-    return queryOptions<PostsViewRow>({
+    const { currentView: view } = useListStore();
+    return queryOptions<ViewMap[K]>({
         queryKey: [
             "get",
             view,
@@ -16,12 +16,12 @@ export default function createOneGetQueryOptions<K extends keyof ViewMap>(
             {
                 userId,
             },
-            postId,
+            itemId,
         ],
         queryFn: async function () {
-            const { data } = await axios<PostsViewRow>({
+            const { data } = await axios<ViewMap[K]>({
                 method: "GET",
-                url: `/api/${view}/one/get/${postId}`,
+                url: `/api/${view}/one/get/${itemId}`,
             });
             return data;
         },
