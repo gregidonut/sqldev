@@ -33,5 +33,7 @@ FROM public.ig_posts AS p
          INNER JOIN public.users AS u
                     ON u.user_id = owner_role.user_id
 WHERE lpc.public = TRUE
-   OR public.authorize_ig_post(public.set_owner(), 'ig_posts.read', p.post_id)
+   OR public.authorize_ig_post((SELECT go.user_id FROM public.get_owner() AS go)
+    , 'ig_posts.read'
+    , p.post_id)
 ORDER BY p.created_at DESC;

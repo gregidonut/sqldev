@@ -32,5 +32,8 @@ FROM public.tds_todo_spaces AS ts
          INNER JOIN public.users AS u
                     ON u.user_id = owner_role.user_id
 WHERE lpc.public = TRUE
-   OR public.authorize_tds_todo_space(public.set_owner(), 'tds_todo_spaces.read', ts.todo_space_id)
+   OR public.authorize_tds_todo_space(
+        (SELECT go.user_id FROM public.get_owner() AS go)
+    , 'tds_todo_spaces.read'
+    , ts.todo_space_id)
 ORDER BY ts.created_at DESC;
