@@ -1,7 +1,8 @@
 // src/pages/api/igAttachments/proxy/[...path].ts
 import type { APIRoute } from "astro";
+import { Resource } from "sst";
 
-const SUPABASE_URL = process.env.SUPABASE_URL!;
+const IMAGEPROXY_URL = Resource.ImgproxyUrl.value;
 
 export const GET: APIRoute = async function ({ params, locals, request }) {
     const { getToken } = locals.auth();
@@ -15,7 +16,10 @@ export const GET: APIRoute = async function ({ params, locals, request }) {
     }
 
     const incomingUrl = new URL(request.url);
-    const upstream = `${SUPABASE_URL}/${params.path}${incomingUrl.search}`;
+    console.log("Incoming URL:", incomingUrl);
+
+    const upstream = `${IMAGEPROXY_URL}/${params.path}${incomingUrl.search}`;
+    console.log("Upstream URL:", upstream);
 
     const upstreamRes = await fetch(upstream, {
         headers: {

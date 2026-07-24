@@ -4,9 +4,10 @@ import type { APIRoute } from "astro";
 export const GET: APIRoute = async function (context) {
     const client = getSupabaseBrowserClient(context);
 
-    const { data, error } = await client
-        .from("tds_todos_tree_view")
-        .select("*");
+    const { todoSpaceId } = context.params;
+    const { data, error } = await client.rpc("get_tds_todos_tree", {
+        p_todo_space_id: todoSpaceId!,
+    });
 
     if (error) {
         return new Response(JSON.stringify({ message: error.message }), {
@@ -15,7 +16,7 @@ export const GET: APIRoute = async function (context) {
         });
     }
 
-    return new Response(JSON.stringify(data[0].jsonb_agg), {
+    return new Response(JSON.stringify(data), {
         status: 200,
         headers: { "Content-Type": "application/json" },
     });

@@ -1,7 +1,6 @@
 CREATE VIEW tds_todos_view AS
-SELECT td.todo_item_id
-     , td.user_id
-     , u.clerk_user_id
+SELECT td.todo_space_id
+     , td.todo_item_id
      , td.created_at
      , latest.created_at AS updated_at
      , latest.todo_item_parent_id
@@ -15,8 +14,6 @@ FROM tds_todo_items AS td
     ORDER BY tdc.created_at DESC
     LIMIT 1
     ) AS latest ON TRUE
-         INNER JOIN users AS u
-                    ON td.user_id = u.user_id
 ORDER BY td.created_at DESC;
 
 

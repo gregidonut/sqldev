@@ -3,6 +3,10 @@ import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
 
+import { Resource } from "sst";
+import NewTodoButton from "./_components/react/NewTodoButton";
+import MovableTodoTree from "./_components/react/MovableTodoTree";
+
 const { todo_space_id } = Astro.params;
 ---
 
@@ -10,5 +14,17 @@ const { todo_space_id } = Astro.params;
     <Header />
     <Main>
         <h2>{todo_space_id}</h2>
+
+        <NewTodoButton tdsTodoSpaceId={todo_space_id!} client:idle />
+        <MovableTodoTree
+            client:only="react"
+            MQTTProps={{
+                realtimeEndpoint: Resource.SQLDevRealtimeSST.endpoint,
+                realtimeAuthorizer: Resource.SQLDevRealtimeSST.authorizer,
+                appName: Resource.App.name,
+                appStage: Resource.App.stage,
+            }}
+            tdsTodoSpaceId={todo_space_id!}
+        />
     </Main>
 </Layout>

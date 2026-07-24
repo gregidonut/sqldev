@@ -16,6 +16,7 @@ export const POST: APIRoute = async (context) => {
 
     const formData = await context.request.formData();
 
+    console.log("Form data:", formData);
     const { data, error } = await client.rpc(
         "create_tds_todo",
         Object.fromEntries(
