@@ -5,7 +5,6 @@ import { $authStore } from "@clerk/astro/client";
 import { useStore } from "@nanostores/react";
 import type { QueryObserverResult } from "@tanstack/react-query";
 import { MQTTPropsStore } from "@/components/react/hooks/useMqtt/mqttStore.ts";
-import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 
 type AuthStore = ReturnType<typeof useStore<typeof $authStore>>;
 type SessionType = AuthStore["session"];
@@ -23,10 +22,13 @@ export default function index({
     topic,
     messagesToListenTo,
 }: UseMqttProps) {
-    const { realtimeEndpoint, realtimeAuthorizer, appName, appStage, clerkUserId } =
-        useStore(MQTTPropsStore);
-    const view = useListStore.getState().currentView;
-    if (view === "tdsTodoSpaces") return;
+    const {
+        realtimeEndpoint,
+        realtimeAuthorizer,
+        appName,
+        appStage,
+        clerkUserId,
+    } = useStore(MQTTPropsStore);
 
     useEffect(() => {
         if (!session || !clerkUserId) return;
@@ -126,7 +128,6 @@ export default function index({
         refetch,
         topic,
         messagesToListenTo,
-        view,
     ]);
 }
 

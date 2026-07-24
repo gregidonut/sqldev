@@ -5,6 +5,8 @@ import Main from "@/components/main/Main.astro";
 import LazyLoadedTodoSpaceList from "./_components/react/LazyLoadedTodoSpaceList";
 
 import { Resource } from "sst";
+
+const { userId } = Astro.locals.auth();
 ---
 
 <Layout>
@@ -16,6 +18,7 @@ import { Resource } from "sst";
             realtimeAuthorizer={Resource.SQLDevRealtimeSST.authorizer}
             appName={Resource.App.name}
             appStage={Resource.App.stage}
+            clerkUserId={userId ?? ""}
         />
     </Main>
 </Layout>
