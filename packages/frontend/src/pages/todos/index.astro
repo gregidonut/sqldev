@@ -3,6 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
 import LazyLoadedTodoSpaceList from "./_components/react/LazyLoadedTodoSpaceList";
+import FormSection from "./_components/react/FormSection";
 
 import { Resource } from "sst";
 
@@ -12,6 +13,7 @@ const { userId } = Astro.locals.auth();
 <Layout>
     <Header />
     <Main>
+        <FormSection client:idle />
         <LazyLoadedTodoSpaceList
             client:only="react"
             realtimeEndpoint={Resource.SQLDevRealtimeSST.endpoint}
