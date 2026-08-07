@@ -14,6 +14,27 @@ FROM tds_todo_items AS td
     ORDER BY tdc.created_at DESC
     LIMIT 1
     ) AS latest ON TRUE
+         INNER JOIN LATERAL (
+    SELECT tsc.public
+    FROM public.tds_todo_space_config AS tsc
+    WHERE tsc.todo_space_id = td.todo_space_id
+    ORDER BY tsc.created_at DESC
+    LIMIT 1
+    ) AS lpc ON TRUE
+         INNER JOIN LATERAL (
+    SELECT r.user_id
+    FROM public.tds_todo_spaces_roles AS r
+    WHERE r.todo_space_id = td.todo_space_id
+      AND r.role = 'owner'
+    LIMIT 1
+    ) AS owner_role ON TRUE
+         INNER JOIN public.users AS u
+                    ON u.user_id = owner_role.user_id
+WHERE lpc.public = TRUE
+   OR public.authorize_tds_todo_space(
+        (SELECT go.user_id FROM public.get_owner() AS go)
+    , 'tds_todo_spaces.read'
+    , td.todo_space_id)
 ORDER BY td.created_at DESC;
 
 

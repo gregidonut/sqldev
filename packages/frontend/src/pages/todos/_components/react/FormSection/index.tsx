@@ -12,7 +12,7 @@ import type { Database } from "@/utils/supabase/models";
 import { FormSectionContext } from "./FormSectionContext.ts";
 import NameField from "./Fields/NameField.tsx";
 
-function FormSection({ onSuccess }: { onSuccess?: () => void }) {
+function FormSection() {
     const { handleSubmit, control, reset } = useForm<
         Database["public"]["Functions"]["create_tds_todo_space"]["Args"]
     >({
@@ -25,7 +25,6 @@ function FormSection({ onSuccess }: { onSuccess?: () => void }) {
         mutationFn,
         onSuccess: () => {
             reset();
-            onSuccess?.();
         },
         onError: (error) => console.log(error),
     });
@@ -54,7 +53,7 @@ export default function FormSectionWrapper({
     const queryClient = new QueryClient();
     return (
         <QueryClientProvider client={queryClient}>
-            <FormSection onSuccess={onSuccess} />
+            <FormSection />
         </QueryClientProvider>
     );
 }

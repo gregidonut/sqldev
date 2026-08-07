@@ -17,7 +17,16 @@ CREATE POLICY tds_todo_item_data_select_policy
     FOR SELECT
     TO authenticated
     USING (
-    (auth.jwt() ->> 'role'::TEXT = 'authenticated')
+    public.authorize_tds_todo_space(
+            (SELECT user_id
+             FROM public.get_owner())
+        , 'tds_todo_spaces.read'
+        , (SELECT ts.todo_space_id
+           FROM public.tds_todo_spaces AS ts
+                    INNER JOIN public.tds_todo_items AS ti
+                               ON ts.todo_space_id = ti.todo_space_id
+           WHERE ti.todo_item_id = tds_todo_item_data.todo_item_id
+           LIMIT 1))
     );
 
 CREATE POLICY tds_todo_item_data_insert_policy
@@ -26,6 +35,14 @@ CREATE POLICY tds_todo_item_data_insert_policy
     FOR INSERT
     TO authenticated
     WITH CHECK (
---     (auth.jwt() ->> 'role'::TEXT = 'authenticated')
-    auth.jwt() -> 'user_metadata' ->> 'role'::TEXT = 'admin'
+    public.authorize_tds_todo_space(
+            (SELECT user_id
+             FROM public.get_owner())
+        , 'tds_todo_spaces.write'
+        , (SELECT ts.todo_space_id
+           FROM public.tds_todo_spaces AS ts
+                    INNER JOIN public.tds_todo_items AS ti
+                               ON ts.todo_space_id = ti.todo_space_id
+           WHERE ti.todo_item_id = tds_todo_item_data.todo_item_id
+           LIMIT 1))
     );

@@ -8,6 +8,8 @@ import NewTodoButton from "./_components/react/NewTodoButton";
 import MovableTodoTree from "./_components/react/MovableTodoTree";
 
 const { todo_space_id } = Astro.params;
+
+const { userId } = Astro.locals.auth();
 ---
 
 <Layout>
@@ -23,6 +25,7 @@ const { todo_space_id } = Astro.params;
                 realtimeAuthorizer: Resource.SQLDevRealtimeSST.authorizer,
                 appName: Resource.App.name,
                 appStage: Resource.App.stage,
+                clerkUserId: userId ?? "",
             }}
             tdsTodoSpaceId={todo_space_id!}
         />

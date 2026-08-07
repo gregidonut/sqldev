@@ -44,8 +44,8 @@ function RACMovableTreeWithData({
     useMqtt({
         session,
         refetch,
-        topic: "tds_todos",
-        messagesToListenTo: ["move_tds_todo_items", "new_tds_todo"],
+        topic: "tds_todos_view",
+        messagesToListenTo: ["new_todo_item_data"],
     });
 
     if (error)
