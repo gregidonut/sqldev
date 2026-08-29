@@ -10,17 +10,20 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
+	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/bucketBasics"
+	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/s3Actions"
+	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/utils"
 )
 
 type Server struct{}
 
 func (s Server) BucketExists(ctx context.Context, request BucketExistsRequestObject) (BucketExistsResponseObject, error) {
-	client, err := newS3Client(ctx)
+	client, err := s3Actions.NewS3Client(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	exists, err := BucketBasics{S3Client: client}.BucketExists(ctx, request.BucketName)
+	exists, err := bucketBasics.BucketBasics{S3Client: client}.BucketExists(ctx, request.BucketName)
 	if err != nil {
 		return nil, err
 	}
@@ -35,13 +38,13 @@ func (s Server) DeleteObjects(ctx context.Context, request DeleteObjectsRequestO
 		return DeleteObjects200Response{}, nil
 	}
 
-	client, err := newS3Client(ctx)
+	client, err := s3Actions.NewS3Client(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	bypass := request.Params.BypassGovernance != nil && *request.Params.BypassGovernance
-	err = BucketBasics{S3Client: client}.DeleteObjects(ctx, request.BucketName, request.Body.Keys, bypass)
+	err = bucketBasics.BucketBasics{S3Client: client}.DeleteObjects(ctx, request.BucketName, request.Body.Keys, bypass)
 	if err != nil {
 		var noBucket *types.NoSuchBucket
 		if errors.As(err, &noBucket) {
@@ -53,12 +56,12 @@ func (s Server) DeleteObjects(ctx context.Context, request DeleteObjectsRequestO
 }
 
 func (s Server) ListObjects(ctx context.Context, request ListObjectsRequestObject) (ListObjectsResponseObject, error) {
-	client, err := newS3Client(ctx)
+	client, err := s3Actions.NewS3Client(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	objects, err := BucketBasics{S3Client: client}.ListObjects(ctx, request.BucketName)
+	objects, err := bucketBasics.BucketBasics{S3Client: client}.ListObjects(ctx, request.BucketName)
 	if err != nil {
 		var noBucket *types.NoSuchBucket
 		if errors.As(err, &noBucket) {
@@ -94,12 +97,12 @@ func (s Server) UploadObject(ctx context.Context, request UploadObjectRequestObj
 	}
 	defer filePart.Close()
 
-	client, err := newS3Client(ctx)
+	client, err := s3Actions.NewS3Client(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	err = BucketBasics{S3Client: client}.UploadFromReader(
+	err = bucketBasics.BucketBasics{S3Client: client}.UploadFromReader(
 		ctx, request.BucketName, request.Params.Key, filePart, size,
 	)
 	if err != nil {
@@ -113,7 +116,7 @@ func (s Server) UploadObject(ctx context.Context, request UploadObjectRequestObj
 }
 
 func (s Server) DeleteSingleObject(ctx context.Context, request DeleteSingleObjectRequestObject) (DeleteSingleObjectResponseObject, error) {
-	client, err := newS3Client(ctx)
+	client, err := s3Actions.NewS3Client(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +127,7 @@ func (s Server) DeleteSingleObject(ctx context.Context, request DeleteSingleObje
 	}
 	bypass := request.Params.BypassGovernance != nil && *request.Params.BypassGovernance
 
-	err = S3Actions{S3Client: client}.DeleteObject(
+	err = s3Actions.S3Actions{S3Client: client}.DeleteObject(
 		ctx, request.BucketName, request.Params.Key, versionID, bypass,
 	)
 	if err != nil {
@@ -138,12 +141,12 @@ func (s Server) DeleteSingleObject(ctx context.Context, request DeleteSingleObje
 }
 
 func (s Server) DownloadObject(ctx context.Context, request DownloadObjectRequestObject) (DownloadObjectResponseObject, error) {
-	client, err := newS3Client(ctx)
+	client, err := s3Actions.NewS3Client(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := BucketBasics{S3Client: client}.GetObject(ctx, request.BucketName, request.Params.Key)
+	result, err := bucketBasics.BucketBasics{S3Client: client}.GetObject(ctx, request.BucketName, request.Params.Key)
 	if err != nil {
 		var noKey *types.NoSuchKey
 		if errors.As(err, &noKey) {
@@ -152,11 +155,11 @@ func (s Server) DownloadObject(ctx context.Context, request DownloadObjectReques
 		return nil, err
 	}
 
-	return downloadObjectResponse{
+	return utils.DownloadObjectResponse{
 		Body:          result.Body,
 		ContentLength: aws.ToInt64(result.ContentLength),
-		ContentType:   contentTypeForObject(request.Params.Key, result.ContentType),
-		Filename:      objectFilename(request.Params.Key),
+		ContentType:   utils.ContentTypeForObject(request.Params.Key, result.ContentType),
+		Filename:      utils.ObjectFilename(request.Params.Key),
 	}, nil
 }
 
@@ -165,12 +168,12 @@ func (s Server) CopyObject(ctx context.Context, request CopyObjectRequestObject)
 		return nil, errors.New("request body is required")
 	}
 
-	client, err := newS3Client(ctx)
+	client, err := s3Actions.NewS3Client(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	err = BucketBasics{S3Client: client}.CopyObject(
+	err = bucketBasics.BucketBasics{S3Client: client}.CopyObject(
 		ctx,
 		request.BucketName,
 		request.Body.DestinationBucket,
