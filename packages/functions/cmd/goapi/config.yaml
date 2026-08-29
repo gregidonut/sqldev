@@ -6,6 +6,6 @@ generate:
   models: true
   embedded-spec: true
   strict-server: true
-output: api.gen.go
+output: api/api.gen.go
 output-options:
   skip-prune: true

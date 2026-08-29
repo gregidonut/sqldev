@@ -4,53 +4,6 @@ info:
   description: REST API specification mapping endpoints directly to the Go SDK V2 Amazon S3 example functions.
   version: 1.0.0
 paths:
-  /buckets:
-    get:
-      summary: List Buckets
-      description: Lists the buckets in the current account using a paginated approach. Maps to `ListBuckets` / `s3Client.ListBuckets`.
-      operationId: listBuckets
-      responses:
-        '200':
-          description: A list of S3 buckets retrieved successfully.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Bucket'
-        '403':
-          description: Access Denied.
-
-    post:
-      summary: Create Bucket
-      description: Creates an S3 bucket with options for regional constraints and object locking. Maps to `CreateBucket` and `CreateBucketWithLock`.
-      operationId: createBucket
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - bucketName
-                - region
-              properties:
-                bucketName:
-                  type: string
-                  example: my-demo-bucket
-                region:
-                  type: string
-                  example: us-east-1
-                enableObjectLock:
-                  type: boolean
-                  default: false
-                  description: Optional configuration to enable object locking upon bucket initialization.
-      responses:
-        '201':
-          description: Bucket created successfully.
-        '409':
-          description: Bucket already exists or is already owned by you.
-
   /buckets/{bucketName}:
     get:
       summary: Check Bucket Existence
@@ -67,24 +20,6 @@ paths:
           description: Bucket exists and you own it.
         '404':
           description: Bucket does not exist or is available.
-
-    delete:
-      summary: Delete Bucket
-      description: Deletes an S3 bucket. The bucket must be empty or an error is returned. Maps to `DeleteBucket` / `s3Client.DeleteBucket`.
-      operationId: deleteBucket
-      parameters:
-        - name: bucketName
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: Bucket deleted successfully.
-        '404':
-          description: Bucket does not exist.
-        '409':
-          description: Bucket is not empty or cannot be deleted.
 
   /buckets/{bucketName}/objects:
     get:
@@ -180,10 +115,14 @@ paths:
         '404':
           description: Target bucket not found.
 
-  /buckets/{bucketName}/objects/{key}:
+  /buckets/{bucketName}/objects/download:
     get:
       summary: Download Object
-      description: Retrieves an object chunked or directly from an S3 location. Maps to `DownloadFile` or `DownloadLargeObject` (via manager.Downloader).
+      description: >
+        Retrieves an object chunked or directly from an S3 location.
+        Maps to `DownloadFile` or `DownloadLargeObject` (via manager.Downloader).
+        Key is a query parameter so prefixed S3 keys (e.g. uploads/file.jpg) work
+        with API Gateway REST and gorilla/mux path routing.
       operationId: downloadObject
       parameters:
         - name: bucketName
@@ -192,8 +131,9 @@ paths:
           schema:
             type: string
         - name: key
-          in: path
+          in: query
           required: true
+          description: The S3 object key path (may include prefixes/slashes).
           schema:
             type: string
       responses:
@@ -207,6 +147,7 @@ paths:
         '404':
           description: No such key exists.
 
+  /buckets/{bucketName}/objects/copy:
     post:
       summary: Copy Object
       description: Copies an object within the same folder space or replicates it over into a distinct destination target bucket. Maps to `CopyToFolder` or `CopyToBucket`.
@@ -219,8 +160,8 @@ paths:
           schema:
             type: string
         - name: key
-          in: path
-          description: The source key path.
+          in: query
+          description: The source S3 object key path (may include prefixes/slashes).
           required: true
           schema:
             type: string
@@ -246,6 +187,7 @@ paths:
         '409':
           description: Source or target object configuration error (e.g. inactive tier lifecycle conflict).
 
+  /buckets/{bucketName}/objects/object:
     delete:
       summary: Delete Single Object
       description: Removes an object version or target file pointer. Allows optionally specifying a `versionId` and governance control status flags. Maps to `DeleteObject` / `s3Client.DeleteObject`.
@@ -257,8 +199,9 @@ paths:
           schema:
             type: string
         - name: key
-          in: path
+          in: query
           required: true
+          description: The S3 object key path (may include prefixes/slashes).
           schema:
             type: string
         - name: versionId
@@ -362,15 +305,6 @@ paths:
           description: Invalid request body.
 components:
   schemas:
-    Bucket:
-      type: object
-      properties:
-        name:
-          type: string
-          example: doc-example-bucket
-        creationDate:
-          type: string
-          format: date-time
     S3Object:
       type: object
       properties:

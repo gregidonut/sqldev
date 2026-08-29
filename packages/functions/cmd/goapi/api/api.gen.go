@@ -43,27 +43,12 @@ func (e NotifyJSONBodyVisibility) Valid() bool {
 	}
 }
 
-// Bucket defines model for Bucket.
-type Bucket struct {
-	CreationDate *time.Time `json:"creationDate,omitempty"`
-	Name         *string    `json:"name,omitempty"`
-}
-
 // S3Object defines model for S3Object.
 type S3Object struct {
 	ETag         *string    `json:"eTag,omitempty"`
 	Key          *string    `json:"key,omitempty"`
 	LastModified *time.Time `json:"lastModified,omitempty"`
 	Size         *int       `json:"size,omitempty"`
-}
-
-// CreateBucketJSONBody defines parameters for CreateBucket.
-type CreateBucketJSONBody struct {
-	BucketName string `json:"bucketName"`
-
-	// EnableObjectLock Optional configuration to enable object locking upon bucket initialization.
-	EnableObjectLock *bool  `json:"enableObjectLock,omitempty"`
-	Region           string `json:"region"`
 }
 
 // DeleteObjectsJSONBody defines parameters for DeleteObjects.
@@ -88,12 +73,6 @@ type UploadObjectParams struct {
 	Key string `form:"key" json:"key"`
 }
 
-// DeleteSingleObjectParams defines parameters for DeleteSingleObject.
-type DeleteSingleObjectParams struct {
-	VersionId        *string `form:"versionId,omitempty" json:"versionId,omitempty"`
-	BypassGovernance *bool   `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
-}
-
 // CopyObjectJSONBody defines parameters for CopyObject.
 type CopyObjectJSONBody struct {
 	// DestinationBucket Can be identical to sourceBucket for copy-to-folder actions.
@@ -101,6 +80,26 @@ type CopyObjectJSONBody struct {
 
 	// DestinationKey The target object key name or destination folder pattern string.
 	DestinationKey string `json:"destinationKey"`
+}
+
+// CopyObjectParams defines parameters for CopyObject.
+type CopyObjectParams struct {
+	// Key The source S3 object key path (may include prefixes/slashes).
+	Key string `form:"key" json:"key"`
+}
+
+// DownloadObjectParams defines parameters for DownloadObject.
+type DownloadObjectParams struct {
+	// Key The S3 object key path (may include prefixes/slashes).
+	Key string `form:"key" json:"key"`
+}
+
+// DeleteSingleObjectParams defines parameters for DeleteSingleObject.
+type DeleteSingleObjectParams struct {
+	// Key The S3 object key path (may include prefixes/slashes).
+	Key              string  `form:"key" json:"key"`
+	VersionId        *string `form:"versionId,omitempty" json:"versionId,omitempty"`
+	BypassGovernance *bool   `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
 }
 
 // NotifyJSONBody defines parameters for Notify.
@@ -131,9 +130,6 @@ type NotifyJSONBodyVisibility string
 type RenderMdJSONBody struct {
 	Text string `json:"text"`
 }
-
-// CreateBucketJSONRequestBody defines body for CreateBucket for application/json ContentType.
-type CreateBucketJSONRequestBody CreateBucketJSONBody
 
 // DeleteObjectsJSONRequestBody defines body for DeleteObjects for application/json ContentType.
 type DeleteObjectsJSONRequestBody DeleteObjectsJSONBody
@@ -223,17 +219,6 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// ListBuckets request
-	ListBuckets(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateBucketWithBody request with any body
-	CreateBucketWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateBucket(ctx context.Context, body CreateBucketJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteBucket request
-	DeleteBucket(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// BucketExists request
 	BucketExists(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -248,16 +233,16 @@ type ClientInterface interface {
 	// UploadObjectWithBody request with any body
 	UploadObjectWithBody(ctx context.Context, bucketName string, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteSingleObject request
-	DeleteSingleObject(ctx context.Context, bucketName string, key string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// CopyObjectWithBody request with any body
+	CopyObjectWithBody(ctx context.Context, bucketName string, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CopyObject(ctx context.Context, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DownloadObject request
-	DownloadObject(ctx context.Context, bucketName string, key string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DownloadObject(ctx context.Context, bucketName string, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CopyObjectWithBody request with any body
-	CopyObjectWithBody(ctx context.Context, bucketName string, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CopyObject(ctx context.Context, bucketName string, key string, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// DeleteSingleObject request
+	DeleteSingleObject(ctx context.Context, bucketName string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// NotifyWithBody request with any body
 	NotifyWithBody(ctx context.Context, params *NotifyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -268,54 +253,6 @@ type ClientInterface interface {
 	RenderMdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	RenderMd(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-}
-
-func (c *Client) ListBuckets(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListBucketsRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateBucketWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateBucketRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateBucket(ctx context.Context, body CreateBucketJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateBucketRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) DeleteBucket(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteBucketRequest(c.Server, bucketName)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
 }
 
 func (c *Client) BucketExists(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -378,8 +315,8 @@ func (c *Client) UploadObjectWithBody(ctx context.Context, bucketName string, pa
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteSingleObject(ctx context.Context, bucketName string, key string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteSingleObjectRequest(c.Server, bucketName, key, params)
+func (c *Client) CopyObjectWithBody(ctx context.Context, bucketName string, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCopyObjectRequestWithBody(c.Server, bucketName, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -390,8 +327,8 @@ func (c *Client) DeleteSingleObject(ctx context.Context, bucketName string, key 
 	return c.Client.Do(req)
 }
 
-func (c *Client) DownloadObject(ctx context.Context, bucketName string, key string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDownloadObjectRequest(c.Server, bucketName, key)
+func (c *Client) CopyObject(ctx context.Context, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCopyObjectRequest(c.Server, bucketName, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -402,8 +339,8 @@ func (c *Client) DownloadObject(ctx context.Context, bucketName string, key stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) CopyObjectWithBody(ctx context.Context, bucketName string, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCopyObjectRequestWithBody(c.Server, bucketName, key, contentType, body)
+func (c *Client) DownloadObject(ctx context.Context, bucketName string, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDownloadObjectRequest(c.Server, bucketName, params)
 	if err != nil {
 		return nil, err
 	}
@@ -414,8 +351,8 @@ func (c *Client) CopyObjectWithBody(ctx context.Context, bucketName string, key 
 	return c.Client.Do(req)
 }
 
-func (c *Client) CopyObject(ctx context.Context, bucketName string, key string, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCopyObjectRequest(c.Server, bucketName, key, body)
+func (c *Client) DeleteSingleObject(ctx context.Context, bucketName string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteSingleObjectRequest(c.Server, bucketName, params)
 	if err != nil {
 		return nil, err
 	}
@@ -472,107 +409,6 @@ func (c *Client) RenderMd(ctx context.Context, body RenderMdJSONRequestBody, req
 		return nil, err
 	}
 	return c.Client.Do(req)
-}
-
-// NewListBucketsRequest generates requests for ListBuckets
-func NewListBucketsRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/buckets")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewCreateBucketRequest calls the generic CreateBucket builder with application/json body
-func NewCreateBucketRequest(server string, body CreateBucketJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateBucketRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewCreateBucketRequestWithBody generates requests for CreateBucket with any type of body
-func NewCreateBucketRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/buckets")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteBucketRequest generates requests for DeleteBucket
-func NewDeleteBucketRequest(server string, bucketName string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/buckets/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
 }
 
 // NewBucketExistsRequest generates requests for BucketExists
@@ -776,8 +612,19 @@ func NewUploadObjectRequestWithBody(server string, bucketName string, params *Up
 	return req, nil
 }
 
-// NewDeleteSingleObjectRequest generates requests for DeleteSingleObject
-func NewDeleteSingleObjectRequest(server string, bucketName string, key string, params *DeleteSingleObjectParams) (*http.Request, error) {
+// NewCopyObjectRequest calls the generic CopyObject builder with application/json body
+func NewCopyObjectRequest(server string, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCopyObjectRequestWithBody(server, bucketName, params, "application/json", bodyReader)
+}
+
+// NewCopyObjectRequestWithBody generates requests for CopyObject with any type of body
+func NewCopyObjectRequestWithBody(server string, bucketName string, params *CopyObjectParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -787,19 +634,12 @@ func NewDeleteSingleObjectRequest(server string, bucketName string, key string, 
 		return nil, err
 	}
 
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
 	serverURL, err := url.Parse(server)
 	if err != nil {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/objects/%s", pathParam0, pathParam1)
+	operationPath := fmt.Sprintf("/buckets/%s/objects/copy", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -817,6 +657,130 @@ func NewDeleteSingleObjectRequest(server string, bucketName string, key string, 
 		// styled parameters, preserving literal commas as delimiters
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewDownloadObjectRequest generates requests for DownloadObject
+func NewDownloadObjectRequest(server string, bucketName string, params *DownloadObjectParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/buckets/%s/objects/download", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewDeleteSingleObjectRequest generates requests for DeleteSingleObject
+func NewDeleteSingleObjectRequest(server string, bucketName string, params *DeleteSingleObjectParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/buckets/%s/objects/object", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
 
 		if params.VersionId != nil {
 
@@ -852,101 +816,6 @@ func NewDeleteSingleObjectRequest(server string, bucketName string, key string, 
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewDownloadObjectRequest generates requests for DownloadObject
-func NewDownloadObjectRequest(server string, bucketName string, key string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/buckets/%s/objects/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewCopyObjectRequest calls the generic CopyObject builder with application/json body
-func NewCopyObjectRequest(server string, bucketName string, key string, body CopyObjectJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCopyObjectRequestWithBody(server, bucketName, key, "application/json", bodyReader)
-}
-
-// NewCopyObjectRequestWithBody generates requests for CopyObject with any type of body
-func NewCopyObjectRequestWithBody(server string, bucketName string, key string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	var pathParam1 string
-
-	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "key", key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/buckets/%s/objects/%s", pathParam0, pathParam1)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1087,17 +956,6 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// ListBucketsWithResponse request
-	ListBucketsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListBucketsResponse, error)
-
-	// CreateBucketWithBodyWithResponse request with any body
-	CreateBucketWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBucketResponse, error)
-
-	CreateBucketWithResponse(ctx context.Context, body CreateBucketJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBucketResponse, error)
-
-	// DeleteBucketWithResponse request
-	DeleteBucketWithResponse(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*DeleteBucketResponse, error)
-
 	// BucketExistsWithResponse request
 	BucketExistsWithResponse(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*BucketExistsResponse, error)
 
@@ -1112,16 +970,16 @@ type ClientWithResponsesInterface interface {
 	// UploadObjectWithBodyWithResponse request with any body
 	UploadObjectWithBodyWithResponse(ctx context.Context, bucketName string, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadObjectResponse, error)
 
-	// DeleteSingleObjectWithResponse request
-	DeleteSingleObjectWithResponse(ctx context.Context, bucketName string, key string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*DeleteSingleObjectResponse, error)
+	// CopyObjectWithBodyWithResponse request with any body
+	CopyObjectWithBodyWithResponse(ctx context.Context, bucketName string, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
+
+	CopyObjectWithResponse(ctx context.Context, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
 
 	// DownloadObjectWithResponse request
-	DownloadObjectWithResponse(ctx context.Context, bucketName string, key string, reqEditors ...RequestEditorFn) (*DownloadObjectResponse, error)
+	DownloadObjectWithResponse(ctx context.Context, bucketName string, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*DownloadObjectResponse, error)
 
-	// CopyObjectWithBodyWithResponse request with any body
-	CopyObjectWithBodyWithResponse(ctx context.Context, bucketName string, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
-
-	CopyObjectWithResponse(ctx context.Context, bucketName string, key string, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
+	// DeleteSingleObjectWithResponse request
+	DeleteSingleObjectWithResponse(ctx context.Context, bucketName string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*DeleteSingleObjectResponse, error)
 
 	// NotifyWithBodyWithResponse request with any body
 	NotifyWithBodyWithResponse(ctx context.Context, params *NotifyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NotifyResponse, error)
@@ -1132,94 +990,6 @@ type ClientWithResponsesInterface interface {
 	RenderMdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
 
 	RenderMdWithResponse(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
-}
-
-type ListBucketsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *[]Bucket
-}
-
-// Status returns HTTPResponse.Status
-func (r ListBucketsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListBucketsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListBucketsResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type CreateBucketResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateBucketResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateBucketResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CreateBucketResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
-type DeleteBucketResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteBucketResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteBucketResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteBucketResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
 }
 
 type BucketExistsResponse struct {
@@ -1339,13 +1109,13 @@ func (r UploadObjectResponse) ContentType() string {
 	return ""
 }
 
-type DeleteSingleObjectResponse struct {
+type CopyObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r DeleteSingleObjectResponse) Status() string {
+func (r CopyObjectResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1353,7 +1123,7 @@ func (r DeleteSingleObjectResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r DeleteSingleObjectResponse) StatusCode() int {
+func (r CopyObjectResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1361,7 +1131,7 @@ func (r DeleteSingleObjectResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r DeleteSingleObjectResponse) ContentType() string {
+func (r CopyObjectResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -1397,13 +1167,13 @@ func (r DownloadObjectResponse) ContentType() string {
 	return ""
 }
 
-type CopyObjectResponse struct {
+type DeleteSingleObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 }
 
 // Status returns HTTPResponse.Status
-func (r CopyObjectResponse) Status() string {
+func (r DeleteSingleObjectResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1411,7 +1181,7 @@ func (r CopyObjectResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CopyObjectResponse) StatusCode() int {
+func (r DeleteSingleObjectResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1419,7 +1189,7 @@ func (r CopyObjectResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r CopyObjectResponse) ContentType() string {
+func (r DeleteSingleObjectResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -1487,41 +1257,6 @@ func (r RenderMdResponse) ContentType() string {
 	return ""
 }
 
-// ListBucketsWithResponse request returning *ListBucketsResponse
-func (c *ClientWithResponses) ListBucketsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListBucketsResponse, error) {
-	rsp, err := c.ListBuckets(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListBucketsResponse(rsp)
-}
-
-// CreateBucketWithBodyWithResponse request with arbitrary body returning *CreateBucketResponse
-func (c *ClientWithResponses) CreateBucketWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBucketResponse, error) {
-	rsp, err := c.CreateBucketWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateBucketResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateBucketWithResponse(ctx context.Context, body CreateBucketJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBucketResponse, error) {
-	rsp, err := c.CreateBucket(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateBucketResponse(rsp)
-}
-
-// DeleteBucketWithResponse request returning *DeleteBucketResponse
-func (c *ClientWithResponses) DeleteBucketWithResponse(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*DeleteBucketResponse, error) {
-	rsp, err := c.DeleteBucket(ctx, bucketName, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteBucketResponse(rsp)
-}
-
 // BucketExistsWithResponse request returning *BucketExistsResponse
 func (c *ClientWithResponses) BucketExistsWithResponse(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*BucketExistsResponse, error) {
 	rsp, err := c.BucketExists(ctx, bucketName, reqEditors...)
@@ -1566,39 +1301,39 @@ func (c *ClientWithResponses) UploadObjectWithBodyWithResponse(ctx context.Conte
 	return ParseUploadObjectResponse(rsp)
 }
 
-// DeleteSingleObjectWithResponse request returning *DeleteSingleObjectResponse
-func (c *ClientWithResponses) DeleteSingleObjectWithResponse(ctx context.Context, bucketName string, key string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*DeleteSingleObjectResponse, error) {
-	rsp, err := c.DeleteSingleObject(ctx, bucketName, key, params, reqEditors...)
+// CopyObjectWithBodyWithResponse request with arbitrary body returning *CopyObjectResponse
+func (c *ClientWithResponses) CopyObjectWithBodyWithResponse(ctx context.Context, bucketName string, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error) {
+	rsp, err := c.CopyObjectWithBody(ctx, bucketName, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseDeleteSingleObjectResponse(rsp)
+	return ParseCopyObjectResponse(rsp)
+}
+
+func (c *ClientWithResponses) CopyObjectWithResponse(ctx context.Context, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error) {
+	rsp, err := c.CopyObject(ctx, bucketName, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCopyObjectResponse(rsp)
 }
 
 // DownloadObjectWithResponse request returning *DownloadObjectResponse
-func (c *ClientWithResponses) DownloadObjectWithResponse(ctx context.Context, bucketName string, key string, reqEditors ...RequestEditorFn) (*DownloadObjectResponse, error) {
-	rsp, err := c.DownloadObject(ctx, bucketName, key, reqEditors...)
+func (c *ClientWithResponses) DownloadObjectWithResponse(ctx context.Context, bucketName string, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*DownloadObjectResponse, error) {
+	rsp, err := c.DownloadObject(ctx, bucketName, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseDownloadObjectResponse(rsp)
 }
 
-// CopyObjectWithBodyWithResponse request with arbitrary body returning *CopyObjectResponse
-func (c *ClientWithResponses) CopyObjectWithBodyWithResponse(ctx context.Context, bucketName string, key string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error) {
-	rsp, err := c.CopyObjectWithBody(ctx, bucketName, key, contentType, body, reqEditors...)
+// DeleteSingleObjectWithResponse request returning *DeleteSingleObjectResponse
+func (c *ClientWithResponses) DeleteSingleObjectWithResponse(ctx context.Context, bucketName string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*DeleteSingleObjectResponse, error) {
+	rsp, err := c.DeleteSingleObject(ctx, bucketName, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCopyObjectResponse(rsp)
-}
-
-func (c *ClientWithResponses) CopyObjectWithResponse(ctx context.Context, bucketName string, key string, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error) {
-	rsp, err := c.CopyObject(ctx, bucketName, key, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCopyObjectResponse(rsp)
+	return ParseDeleteSingleObjectResponse(rsp)
 }
 
 // NotifyWithBodyWithResponse request with arbitrary body returning *NotifyResponse
@@ -1633,64 +1368,6 @@ func (c *ClientWithResponses) RenderMdWithResponse(ctx context.Context, body Ren
 		return nil, err
 	}
 	return ParseRenderMdResponse(rsp)
-}
-
-// ParseListBucketsResponse parses an HTTP response from a ListBucketsWithResponse call
-func ParseListBucketsResponse(rsp *http.Response) (*ListBucketsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListBucketsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Bucket
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateBucketResponse parses an HTTP response from a CreateBucketWithResponse call
-func ParseCreateBucketResponse(rsp *http.Response) (*CreateBucketResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateBucketResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
-}
-
-// ParseDeleteBucketResponse parses an HTTP response from a DeleteBucketWithResponse call
-func ParseDeleteBucketResponse(rsp *http.Response) (*DeleteBucketResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteBucketResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	return response, nil
 }
 
 // ParseBucketExistsResponse parses an HTTP response from a BucketExistsWithResponse call
@@ -1767,15 +1444,15 @@ func ParseUploadObjectResponse(rsp *http.Response) (*UploadObjectResponse, error
 	return response, nil
 }
 
-// ParseDeleteSingleObjectResponse parses an HTTP response from a DeleteSingleObjectWithResponse call
-func ParseDeleteSingleObjectResponse(rsp *http.Response) (*DeleteSingleObjectResponse, error) {
+// ParseCopyObjectResponse parses an HTTP response from a CopyObjectWithResponse call
+func ParseCopyObjectResponse(rsp *http.Response) (*CopyObjectResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &DeleteSingleObjectResponse{
+	response := &CopyObjectResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1799,15 +1476,15 @@ func ParseDownloadObjectResponse(rsp *http.Response) (*DownloadObjectResponse, e
 	return response, nil
 }
 
-// ParseCopyObjectResponse parses an HTTP response from a CopyObjectWithResponse call
-func ParseCopyObjectResponse(rsp *http.Response) (*CopyObjectResponse, error) {
+// ParseDeleteSingleObjectResponse parses an HTTP response from a DeleteSingleObjectWithResponse call
+func ParseDeleteSingleObjectResponse(rsp *http.Response) (*DeleteSingleObjectResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CopyObjectResponse{
+	response := &DeleteSingleObjectResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1861,15 +1538,6 @@ func ParseRenderMdResponse(rsp *http.Response) (*RenderMdResponse, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// List Buckets
-	// (GET /buckets)
-	ListBuckets(w http.ResponseWriter, r *http.Request)
-	// Create Bucket
-	// (POST /buckets)
-	CreateBucket(w http.ResponseWriter, r *http.Request)
-	// Delete Bucket
-	// (DELETE /buckets/{bucketName})
-	DeleteBucket(w http.ResponseWriter, r *http.Request, bucketName string)
 	// Check Bucket Existence
 	// (GET /buckets/{bucketName})
 	BucketExists(w http.ResponseWriter, r *http.Request, bucketName string)
@@ -1882,15 +1550,15 @@ type ServerInterface interface {
 	// Upload Object (Standard or Large)
 	// (POST /buckets/{bucketName}/objects)
 	UploadObject(w http.ResponseWriter, r *http.Request, bucketName string, params UploadObjectParams)
-	// Delete Single Object
-	// (DELETE /buckets/{bucketName}/objects/{key})
-	DeleteSingleObject(w http.ResponseWriter, r *http.Request, bucketName string, key string, params DeleteSingleObjectParams)
-	// Download Object
-	// (GET /buckets/{bucketName}/objects/{key})
-	DownloadObject(w http.ResponseWriter, r *http.Request, bucketName string, key string)
 	// Copy Object
-	// (POST /buckets/{bucketName}/objects/{key})
-	CopyObject(w http.ResponseWriter, r *http.Request, bucketName string, key string)
+	// (POST /buckets/{bucketName}/objects/copy)
+	CopyObject(w http.ResponseWriter, r *http.Request, bucketName string, params CopyObjectParams)
+	// Download Object
+	// (GET /buckets/{bucketName}/objects/download)
+	DownloadObject(w http.ResponseWriter, r *http.Request, bucketName string, params DownloadObjectParams)
+	// Delete Single Object
+	// (DELETE /buckets/{bucketName}/objects/object)
+	DeleteSingleObject(w http.ResponseWriter, r *http.Request, bucketName string, params DeleteSingleObjectParams)
 	// Send a notification to an IoT topic
 	// (POST /notify)
 	Notify(w http.ResponseWriter, r *http.Request, params NotifyParams)
@@ -1907,60 +1575,6 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
-
-// ListBuckets operation middleware
-func (siw *ServerInterfaceWrapper) ListBuckets(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListBuckets(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// CreateBucket operation middleware
-func (siw *ServerInterfaceWrapper) CreateBucket(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateBucket(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// DeleteBucket operation middleware
-func (siw *ServerInterfaceWrapper) DeleteBucket(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteBucket(w, r, bucketName)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
 
 // BucketExists operation middleware
 func (siw *ServerInterfaceWrapper) BucketExists(w http.ResponseWriter, r *http.Request) {
@@ -2098,6 +1712,90 @@ func (siw *ServerInterfaceWrapper) UploadObject(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
+// CopyObject operation middleware
+func (siw *ServerInterfaceWrapper) CopyObject(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "bucketName" -------------
+	var bucketName string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CopyObjectParams
+
+	// ------------- Required query parameter "key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CopyObject(w, r, bucketName, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DownloadObject operation middleware
+func (siw *ServerInterfaceWrapper) DownloadObject(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "bucketName" -------------
+	var bucketName string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DownloadObjectParams
+
+	// ------------- Required query parameter "key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DownloadObject(w, r, bucketName, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // DeleteSingleObject operation middleware
 func (siw *ServerInterfaceWrapper) DeleteSingleObject(w http.ResponseWriter, r *http.Request) {
 
@@ -2113,17 +1811,21 @@ func (siw *ServerInterfaceWrapper) DeleteSingleObject(w http.ResponseWriter, r *
 		return
 	}
 
-	// ------------- Path parameter "key" -------------
-	var key string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "key", mux.Vars(r)["key"], &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
-		return
-	}
-
 	// Parameter object where we will unmarshal all parameters from the context
 	var params DeleteSingleObjectParams
+
+	// ------------- Required query parameter "key" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+		}
+		return
+	}
 
 	// ------------- Optional query parameter "versionId" -------------
 
@@ -2152,77 +1854,7 @@ func (siw *ServerInterfaceWrapper) DeleteSingleObject(w http.ResponseWriter, r *
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DeleteSingleObject(w, r, bucketName, key, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// DownloadObject operation middleware
-func (siw *ServerInterfaceWrapper) DownloadObject(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "key" -------------
-	var key string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "key", mux.Vars(r)["key"], &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.DownloadObject(w, r, bucketName, key)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// CopyObject operation middleware
-func (siw *ServerInterfaceWrapper) CopyObject(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
-		return
-	}
-
-	// ------------- Path parameter "key" -------------
-	var key string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "key", mux.Vars(r)["key"], &key, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CopyObject(w, r, bucketName, key)
+		siw.Handler.DeleteSingleObject(w, r, bucketName, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2404,12 +2036,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	r.HandleFunc(options.BaseURL+"/buckets", wrapper.ListBuckets).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/buckets", wrapper.CreateBucket).Methods(http.MethodPost)
-
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}", wrapper.DeleteBucket).Methods(http.MethodDelete)
-
 	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}", wrapper.BucketExists).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects", wrapper.DeleteObjects).Methods(http.MethodDelete)
@@ -2418,102 +2044,17 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects", wrapper.UploadObject).Methods(http.MethodPost)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/{key}", wrapper.DeleteSingleObject).Methods(http.MethodDelete)
+	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/copy", wrapper.CopyObject).Methods(http.MethodPost)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/{key}", wrapper.DownloadObject).Methods(http.MethodGet)
+	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/download", wrapper.DownloadObject).Methods(http.MethodGet)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/{key}", wrapper.CopyObject).Methods(http.MethodPost)
+	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/object", wrapper.DeleteSingleObject).Methods(http.MethodDelete)
 
 	r.HandleFunc(options.BaseURL+"/notify", wrapper.Notify).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/renderMd", wrapper.RenderMd).Methods(http.MethodPost)
 
 	return r
-}
-
-type ListBucketsRequestObject struct {
-}
-
-type ListBucketsResponseObject interface {
-	VisitListBucketsResponse(w http.ResponseWriter) error
-}
-
-type ListBuckets200JSONResponse []Bucket
-
-func (response ListBuckets200JSONResponse) VisitListBucketsResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type ListBuckets403Response struct {
-}
-
-func (response ListBuckets403Response) VisitListBucketsResponse(w http.ResponseWriter) error {
-	w.WriteHeader(403)
-	return nil
-}
-
-type CreateBucketRequestObject struct {
-	Body *CreateBucketJSONRequestBody
-}
-
-type CreateBucketResponseObject interface {
-	VisitCreateBucketResponse(w http.ResponseWriter) error
-}
-
-type CreateBucket201Response struct {
-}
-
-func (response CreateBucket201Response) VisitCreateBucketResponse(w http.ResponseWriter) error {
-	w.WriteHeader(201)
-	return nil
-}
-
-type CreateBucket409Response struct {
-}
-
-func (response CreateBucket409Response) VisitCreateBucketResponse(w http.ResponseWriter) error {
-	w.WriteHeader(409)
-	return nil
-}
-
-type DeleteBucketRequestObject struct {
-	BucketName string `json:"bucketName"`
-}
-
-type DeleteBucketResponseObject interface {
-	VisitDeleteBucketResponse(w http.ResponseWriter) error
-}
-
-type DeleteBucket204Response struct {
-}
-
-func (response DeleteBucket204Response) VisitDeleteBucketResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
-}
-
-type DeleteBucket404Response struct {
-}
-
-func (response DeleteBucket404Response) VisitDeleteBucketResponse(w http.ResponseWriter) error {
-	w.WriteHeader(404)
-	return nil
-}
-
-type DeleteBucket409Response struct {
-}
-
-func (response DeleteBucket409Response) VisitDeleteBucketResponse(w http.ResponseWriter) error {
-	w.WriteHeader(409)
-	return nil
 }
 
 type BucketExistsRequestObject struct {
@@ -2622,35 +2163,35 @@ func (response UploadObject413Response) VisitUploadObjectResponse(w http.Respons
 	return nil
 }
 
-type DeleteSingleObjectRequestObject struct {
+type CopyObjectRequestObject struct {
 	BucketName string `json:"bucketName"`
-	Key        string `json:"key"`
-	Params     DeleteSingleObjectParams
+	Params     CopyObjectParams
+	Body       *CopyObjectJSONRequestBody
 }
 
-type DeleteSingleObjectResponseObject interface {
-	VisitDeleteSingleObjectResponse(w http.ResponseWriter) error
+type CopyObjectResponseObject interface {
+	VisitCopyObjectResponse(w http.ResponseWriter) error
 }
 
-type DeleteSingleObject204Response struct {
+type CopyObject200Response struct {
 }
 
-func (response DeleteSingleObject204Response) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
+func (response CopyObject200Response) VisitCopyObjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(200)
 	return nil
 }
 
-type DeleteSingleObject403Response struct {
+type CopyObject409Response struct {
 }
 
-func (response DeleteSingleObject403Response) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(403)
+func (response CopyObject409Response) VisitCopyObjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(409)
 	return nil
 }
 
 type DownloadObjectRequestObject struct {
 	BucketName string `json:"bucketName"`
-	Key        string `json:"key"`
+	Params     DownloadObjectParams
 }
 
 type DownloadObjectResponseObject interface {
@@ -2685,29 +2226,28 @@ func (response DownloadObject404Response) VisitDownloadObjectResponse(w http.Res
 	return nil
 }
 
-type CopyObjectRequestObject struct {
+type DeleteSingleObjectRequestObject struct {
 	BucketName string `json:"bucketName"`
-	Key        string `json:"key"`
-	Body       *CopyObjectJSONRequestBody
+	Params     DeleteSingleObjectParams
 }
 
-type CopyObjectResponseObject interface {
-	VisitCopyObjectResponse(w http.ResponseWriter) error
+type DeleteSingleObjectResponseObject interface {
+	VisitDeleteSingleObjectResponse(w http.ResponseWriter) error
 }
 
-type CopyObject200Response struct {
+type DeleteSingleObject204Response struct {
 }
 
-func (response CopyObject200Response) VisitCopyObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(200)
+func (response DeleteSingleObject204Response) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
 	return nil
 }
 
-type CopyObject409Response struct {
+type DeleteSingleObject403Response struct {
 }
 
-func (response CopyObject409Response) VisitCopyObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(409)
+func (response DeleteSingleObject403Response) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
 	return nil
 }
 
@@ -2786,15 +2326,6 @@ func (response RenderMd400Response) VisitRenderMdResponse(w http.ResponseWriter)
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// List Buckets
-	// (GET /buckets)
-	ListBuckets(ctx context.Context, request ListBucketsRequestObject) (ListBucketsResponseObject, error)
-	// Create Bucket
-	// (POST /buckets)
-	CreateBucket(ctx context.Context, request CreateBucketRequestObject) (CreateBucketResponseObject, error)
-	// Delete Bucket
-	// (DELETE /buckets/{bucketName})
-	DeleteBucket(ctx context.Context, request DeleteBucketRequestObject) (DeleteBucketResponseObject, error)
 	// Check Bucket Existence
 	// (GET /buckets/{bucketName})
 	BucketExists(ctx context.Context, request BucketExistsRequestObject) (BucketExistsResponseObject, error)
@@ -2807,15 +2338,15 @@ type StrictServerInterface interface {
 	// Upload Object (Standard or Large)
 	// (POST /buckets/{bucketName}/objects)
 	UploadObject(ctx context.Context, request UploadObjectRequestObject) (UploadObjectResponseObject, error)
-	// Delete Single Object
-	// (DELETE /buckets/{bucketName}/objects/{key})
-	DeleteSingleObject(ctx context.Context, request DeleteSingleObjectRequestObject) (DeleteSingleObjectResponseObject, error)
-	// Download Object
-	// (GET /buckets/{bucketName}/objects/{key})
-	DownloadObject(ctx context.Context, request DownloadObjectRequestObject) (DownloadObjectResponseObject, error)
 	// Copy Object
-	// (POST /buckets/{bucketName}/objects/{key})
+	// (POST /buckets/{bucketName}/objects/copy)
 	CopyObject(ctx context.Context, request CopyObjectRequestObject) (CopyObjectResponseObject, error)
+	// Download Object
+	// (GET /buckets/{bucketName}/objects/download)
+	DownloadObject(ctx context.Context, request DownloadObjectRequestObject) (DownloadObjectResponseObject, error)
+	// Delete Single Object
+	// (DELETE /buckets/{bucketName}/objects/object)
+	DeleteSingleObject(ctx context.Context, request DeleteSingleObjectRequestObject) (DeleteSingleObjectResponseObject, error)
 	// Send a notification to an IoT topic
 	// (POST /notify)
 	Notify(ctx context.Context, request NotifyRequestObject) (NotifyResponseObject, error)
@@ -2851,87 +2382,6 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
-}
-
-// ListBuckets operation middleware
-func (sh *strictHandler) ListBuckets(w http.ResponseWriter, r *http.Request) {
-	var request ListBucketsRequestObject
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListBuckets(ctx, request.(ListBucketsRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListBuckets")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListBucketsResponseObject); ok {
-		if err := validResponse.VisitListBucketsResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// CreateBucket operation middleware
-func (sh *strictHandler) CreateBucket(w http.ResponseWriter, r *http.Request) {
-	var request CreateBucketRequestObject
-
-	var body CreateBucketJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateBucket(ctx, request.(CreateBucketRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateBucket")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(CreateBucketResponseObject); ok {
-		if err := validResponse.VisitCreateBucketResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// DeleteBucket operation middleware
-func (sh *strictHandler) DeleteBucket(w http.ResponseWriter, r *http.Request, bucketName string) {
-	var request DeleteBucketRequestObject
-
-	request.BucketName = bucketName
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteBucket(ctx, request.(DeleteBucketRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteBucket")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DeleteBucketResponseObject); ok {
-		if err := validResponse.VisitDeleteBucketResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
 }
 
 // BucketExists operation middleware
@@ -3054,67 +2504,12 @@ func (sh *strictHandler) UploadObject(w http.ResponseWriter, r *http.Request, bu
 	}
 }
 
-// DeleteSingleObject operation middleware
-func (sh *strictHandler) DeleteSingleObject(w http.ResponseWriter, r *http.Request, bucketName string, key string, params DeleteSingleObjectParams) {
-	var request DeleteSingleObjectRequestObject
-
-	request.BucketName = bucketName
-	request.Key = key
-	request.Params = params
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DeleteSingleObject(ctx, request.(DeleteSingleObjectRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DeleteSingleObject")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DeleteSingleObjectResponseObject); ok {
-		if err := validResponse.VisitDeleteSingleObjectResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// DownloadObject operation middleware
-func (sh *strictHandler) DownloadObject(w http.ResponseWriter, r *http.Request, bucketName string, key string) {
-	var request DownloadObjectRequestObject
-
-	request.BucketName = bucketName
-	request.Key = key
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.DownloadObject(ctx, request.(DownloadObjectRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "DownloadObject")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(DownloadObjectResponseObject); ok {
-		if err := validResponse.VisitDownloadObjectResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // CopyObject operation middleware
-func (sh *strictHandler) CopyObject(w http.ResponseWriter, r *http.Request, bucketName string, key string) {
+func (sh *strictHandler) CopyObject(w http.ResponseWriter, r *http.Request, bucketName string, params CopyObjectParams) {
 	var request CopyObjectRequestObject
 
 	request.BucketName = bucketName
-	request.Key = key
+	request.Params = params
 
 	var body CopyObjectJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -3136,6 +2531,60 @@ func (sh *strictHandler) CopyObject(w http.ResponseWriter, r *http.Request, buck
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(CopyObjectResponseObject); ok {
 		if err := validResponse.VisitCopyObjectResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DownloadObject operation middleware
+func (sh *strictHandler) DownloadObject(w http.ResponseWriter, r *http.Request, bucketName string, params DownloadObjectParams) {
+	var request DownloadObjectRequestObject
+
+	request.BucketName = bucketName
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DownloadObject(ctx, request.(DownloadObjectRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DownloadObject")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DownloadObjectResponseObject); ok {
+		if err := validResponse.VisitDownloadObjectResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteSingleObject operation middleware
+func (sh *strictHandler) DeleteSingleObject(w http.ResponseWriter, r *http.Request, bucketName string, params DeleteSingleObjectParams) {
+	var request DeleteSingleObjectRequestObject
+
+	request.BucketName = bucketName
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteSingleObject(ctx, request.(DeleteSingleObjectRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteSingleObject")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteSingleObjectResponseObject); ok {
+		if err := validResponse.VisitDeleteSingleObjectResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -3212,49 +2661,45 @@ func (sh *strictHandler) RenderMd(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"FYMFa501+ygLMYVuCad98NmM2/8EAAD//w==",
+	"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",
+	"zX8CAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
