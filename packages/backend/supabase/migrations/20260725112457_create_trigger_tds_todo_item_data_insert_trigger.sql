@@ -40,18 +40,14 @@ BEGIN
     LIMIT 1;
 
     IF COALESCE(is_public, FALSE) THEN
-        PERFORM net.http_post(
+        PERFORM public.notify_http_post(
                 notify_url,
                 JSONB_BUILD_OBJECT(
                         'view', 'tds_todos_view',
                         'message', 'new_todo_item_data',
                         'visibility', 'public'
                 ),
-                '{}'::JSONB,
-                JSONB_BUILD_OBJECT(
-                        'Content-Type', 'application/json',
-                        'X-Notify-Secret', notify_secret
-                )
+                notify_secret
                 );
     ELSE
         SELECT COALESCE(ARRAY_AGG(DISTINCT u.clerk_user_id), ARRAY []::TEXT[])
@@ -69,7 +65,7 @@ BEGIN
                                  WHERE ti.todo_item_id = new.todo_item_id
                                  LIMIT 1);
 
-        PERFORM net.http_post(
+        PERFORM public.notify_http_post(
                 notify_url,
                 JSONB_BUILD_OBJECT(
                         'view', 'tds_todos_view',
@@ -77,11 +73,7 @@ BEGIN
                         'visibility', 'private',
                         'recipients', TO_JSONB(recipients)
                 ),
-                '{}'::JSONB,
-                JSONB_BUILD_OBJECT(
-                        'Content-Type', 'application/json',
-                        'X-Notify-Secret', notify_secret
-                )
+                notify_secret
                 );
     END IF;
 

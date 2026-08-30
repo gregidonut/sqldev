@@ -1,3 +1,36 @@
+CREATE OR REPLACE FUNCTION public.notify_http_post(
+    url TEXT,
+    body JSONB,
+    notify_secret TEXT
+)
+    RETURNS VOID
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = ''
+AS
+$$
+DECLARE
+    response RECORD;
+BEGIN
+    SELECT *
+    INTO response
+    FROM extensions.http((
+                          'POST',
+                          url,
+                          ARRAY [
+                              extensions.http_header('Content-Type', 'application/json'),
+                              extensions.http_header('X-Notify-Secret', notify_secret)
+                              ],
+                          'application/json',
+                          body::TEXT
+                          )::extensions.http_request);
+
+    IF response.status >= 400 THEN
+        RAISE WARNING 'notify_http_post failed with status % for url %', response.status, url;
+    END IF;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION notify_ig_posts_view()
     RETURNS TRIGGER
     LANGUAGE plpgsql
@@ -31,18 +64,14 @@ BEGIN
 
     IF
         COALESCE(is_public, FALSE) THEN
-        PERFORM net.http_post(
+        PERFORM public.notify_http_post(
                 notify_ig_posts_view_url,
                 JSONB_BUILD_OBJECT(
                         'view', 'ig_posts_view',
                         'message', 'new_post_content',
                         'visibility', 'public'
                 ),
-                '{}'::JSONB,
-                JSONB_BUILD_OBJECT(
-                        'Content-Type', 'application/json',
-                        'X-Notify-Secret', notify_secret
-                )
+                notify_secret
                 );
     ELSE
         SELECT COALESCE(ARRAY_AGG(DISTINCT u.clerk_user_id), ARRAY []::TEXT[])
@@ -55,21 +84,16 @@ BEGIN
                       ON u.user_id = r.user_id
         WHERE r.post_id = new.post_id;
 
-        PERFORM
-            net.http_post(
-                    notify_ig_posts_view_url,
-                    JSONB_BUILD_OBJECT(
-                            'view', 'ig_posts_view',
-                            'message', 'new_post_content',
-                            'visibility', 'private',
-                            'recipients', TO_JSONB(recipients)
-                    ),
-                    '{}'::JSONB,
-                    JSONB_BUILD_OBJECT(
-                            'Content-Type', 'application/json',
-                            'X-Notify-Secret', notify_secret
-                    )
-            );
+        PERFORM public.notify_http_post(
+                notify_ig_posts_view_url,
+                JSONB_BUILD_OBJECT(
+                        'view', 'ig_posts_view',
+                        'message', 'new_post_content',
+                        'visibility', 'private',
+                        'recipients', TO_JSONB(recipients)
+                ),
+                notify_secret
+                );
     END IF;
 
     RETURN new;

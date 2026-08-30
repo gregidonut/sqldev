@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
+
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated, service_role;
@@ -13,5 +15,3 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO authenticate
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON SEQUENCES TO anon;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO authenticated, service_role;
-
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated, service_role;
