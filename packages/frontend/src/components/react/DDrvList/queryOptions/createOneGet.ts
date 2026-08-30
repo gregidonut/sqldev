@@ -21,7 +21,7 @@ export default function createOneGetQueryOptions<K extends keyof ViewMap>(
         queryFn: async function () {
             const { data } = await axios<ViewMap[K]>({
                 method: "GET",
-                url: `/api/${view}/one/get/${itemId}`,
+                url: `/api/views/${view}/one/get/${itemId}`,
             });
             return data;
         },

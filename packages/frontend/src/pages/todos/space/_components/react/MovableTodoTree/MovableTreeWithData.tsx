@@ -35,7 +35,7 @@ function RACMovableTreeWithData({
         queryFn: async () => {
             const { data } = await axios<TodoItem[]>({
                 method: "get",
-                url: `/api/tdsTodos/${tdsTodoSpaceId}/tree/get`,
+                url: `/api/views/tdsTodos/${tdsTodoSpaceId}/tree/get`,
             });
             return data;
         },

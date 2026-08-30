@@ -33,7 +33,7 @@ function submitIgPostForm(data: FormData) {
 
     return axios<Database["public"]["Functions"][typeof rpcName]["Args"]>({
         method: "PATCH",
-        url: `/api/${view}/one/patch`,
+        url: `/api/views/${view}/one/patch`,
         data,
         headers: { "Content-Type": "multipart/form-data" },
     });

@@ -12,7 +12,7 @@ export default function createListGetQueryOptions<K extends keyof ViewMap>(
         queryFn: async function () {
             const response = await axios<ViewMap[K][]>({
                 method: "GET",
-                url: `/api/${view}/list/get`,
+                url: `/api/views/${view}/list/get`,
             });
             return response.data;
         },

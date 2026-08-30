@@ -24,7 +24,7 @@ async function moveTodoItems({
     }
 
     const { data } = await axios({
-        url: `/api/tdsTodos/${tdsTodoSpaceId}/tree/move/patch`,
+        url: `/api/views/tdsTodos/${tdsTodoSpaceId}/tree/move/patch`,
         method: "PATCH",
         data: formData,
         headers: { "Content-Type": "multipart/form-data" },

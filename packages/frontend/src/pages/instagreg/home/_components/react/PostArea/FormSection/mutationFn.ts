@@ -6,7 +6,7 @@ export function mutationFn(
 ) {
     return axios({
         method: "post",
-        url: "/api/igPosts/new/item",
+        url: "/api/views/igPosts/new/item",
         data,
         headers: { "Content-Type": "multipart/form-data" },
     });
