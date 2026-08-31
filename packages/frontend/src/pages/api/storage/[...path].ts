@@ -1,11 +1,16 @@
 import type { APIRoute } from "astro";
 import { Resource } from "sst";
+import {
+    abortPendingUpload,
+    authorizeDStorage,
+    commitPendingUpload,
+    deleteOrphanedObject,
+} from "@/utils/supabase/authorizeDStorage";
 
-const GO_API_URL = Resource.GoApi.url;
+const GO_API_URL = Resource.GoApi.url.replace(/\/+$/, "");
 
 function resolvePath(path: string | undefined): string | null {
     if (!path) return null;
-    // Astro catch-all may be "a/b" or leave segments joined already.
     const normalized = path.replace(/^\/+/, "").replace(/\/+$/, "");
     if (normalized !== "buckets" && !normalized.startsWith("buckets/")) {
         return null;
@@ -13,7 +18,19 @@ function resolvePath(path: string | undefined): string | null {
     return normalized;
 }
 
-const proxy: APIRoute = async function ({ params, request }) {
+function buildUpstreamUrl(
+    path: string,
+    incomingSearch: string,
+    upstreamQueryParams?: URLSearchParams,
+): string {
+    const search = upstreamQueryParams
+        ? `?${upstreamQueryParams.toString()}`
+        : incomingSearch;
+    return `${GO_API_URL}/${path}${search}`;
+}
+
+const proxy: APIRoute = async function (context) {
+    const { params, request } = context;
     const path = resolvePath(
         Array.isArray(params.path) ? params.path.join("/") : params.path,
     );
@@ -30,13 +47,25 @@ const proxy: APIRoute = async function ({ params, request }) {
         );
     }
 
+    const auth = await authorizeDStorage(context, path);
+    if (auth instanceof Response) {
+        return auth;
+    }
+
     const incomingUrl = new URL(request.url);
-    const upstream = `${GO_API_URL}${path}${incomingUrl.search}`;
+    const upstream = buildUpstreamUrl(
+        path,
+        incomingUrl.search,
+        auth.upstreamQueryParams,
+    );
 
     const headers = new Headers();
     const contentType = request.headers.get("Content-Type");
-    if (contentType) {
+    if (contentType && auth.upstreamBody === undefined) {
         headers.set("Content-Type", contentType);
+    }
+    if (auth.upstreamBody !== undefined) {
+        headers.set("Content-Type", "application/json");
     }
     const accept = request.headers.get("Accept");
     if (accept) {
@@ -48,13 +77,37 @@ const proxy: APIRoute = async function ({ params, request }) {
         headers,
     };
 
-    if (request.method !== "GET" && request.method !== "HEAD") {
+    if (auth.upstreamBody !== undefined) {
+        init.body = auth.upstreamBody;
+    } else if (auth.bufferedBody !== undefined) {
+        init.body = auth.bufferedBody;
+    } else if (request.method !== "GET" && request.method !== "HEAD") {
         init.body = request.body;
-        // Required when streaming a Request body through fetch in Node.
         init.duplex = "half";
     }
 
     const upstreamRes = await fetch(upstream, init);
+
+    if (auth.pendingUpload) {
+        if (upstreamRes.ok) {
+            const commitError = await commitPendingUpload(
+                context,
+                auth.pendingUpload,
+            );
+            if (commitError) {
+                await upstreamRes.body?.cancel();
+                await deleteOrphanedObject(
+                    GO_API_URL,
+                    path,
+                    auth.pendingUpload,
+                );
+                await abortPendingUpload(context, auth.pendingUpload);
+                return commitError;
+            }
+        } else {
+            await abortPendingUpload(context, auth.pendingUpload);
+        }
+    }
 
     const responseHeaders = new Headers();
     const upstreamContentType = upstreamRes.headers.get("Content-Type");

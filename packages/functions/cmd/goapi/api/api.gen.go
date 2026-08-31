@@ -43,6 +43,14 @@ func (e NotifyJSONBodyVisibility) Valid() bool {
 	}
 }
 
+// ObjectKeyRef defines model for ObjectKeyRef.
+type ObjectKeyRef struct {
+	FileName            string             `json:"fileName"`
+	StorageObjectDataId openapi_types.UUID `json:"storageObjectDataId"`
+	StorageObjectId     openapi_types.UUID `json:"storageObjectId"`
+	UserId              openapi_types.UUID `json:"userId"`
+}
+
 // S3Object defines model for S3Object.
 type S3Object struct {
 	ETag         *string    `json:"eTag,omitempty"`
@@ -51,9 +59,21 @@ type S3Object struct {
 	Size         *int       `json:"size,omitempty"`
 }
 
+// FileName defines model for FileName.
+type FileName = string
+
+// StorageObjectDataIdPrefix defines model for StorageObjectDataIdPrefix.
+type StorageObjectDataIdPrefix = openapi_types.UUID
+
+// StorageObjectIdPrefix defines model for StorageObjectIdPrefix.
+type StorageObjectIdPrefix = openapi_types.UUID
+
+// UserIdPrefix defines model for UserIdPrefix.
+type UserIdPrefix = openapi_types.UUID
+
 // DeleteObjectsJSONBody defines parameters for DeleteObjects.
 type DeleteObjectsJSONBody struct {
-	Keys []string `json:"keys"`
+	Keys []ObjectKeyRef `json:"keys"`
 }
 
 // DeleteObjectsParams defines parameters for DeleteObjects.
@@ -69,8 +89,17 @@ type UploadObjectMultipartBody struct {
 
 // UploadObjectParams defines parameters for UploadObject.
 type UploadObjectParams struct {
-	// Key The destination S3 key path.
-	Key string `form:"key" json:"key"`
+	// UserId Owner user UUID prefix segment.
+	UserId UserIdPrefix `form:"userId" json:"userId"`
+
+	// StorageObjectId Storage object UUID prefix segment.
+	StorageObjectId StorageObjectIdPrefix `form:"storageObjectId" json:"storageObjectId"`
+
+	// StorageObjectDataId Storage object data UUID prefix segment.
+	StorageObjectDataId StorageObjectDataIdPrefix `form:"storageObjectDataId" json:"storageObjectDataId"`
+
+	// FileName File name suffix (may include subpaths).
+	FileName FileName `form:"fileName" json:"fileName"`
 }
 
 // CopyObjectJSONBody defines parameters for CopyObject.
@@ -78,28 +107,58 @@ type CopyObjectJSONBody struct {
 	// DestinationBucket Can be identical to sourceBucket for copy-to-folder actions.
 	DestinationBucket string `json:"destinationBucket"`
 
-	// DestinationKey The target object key name or destination folder pattern string.
-	DestinationKey string `json:"destinationKey"`
+	// DestinationFileName Destination file name (may include subpaths).
+	DestinationFileName            string             `json:"destinationFileName"`
+	DestinationStorageObjectDataId openapi_types.UUID `json:"destinationStorageObjectDataId"`
+	DestinationStorageObjectId     openapi_types.UUID `json:"destinationStorageObjectId"`
+	DestinationUserId              openapi_types.UUID `json:"destinationUserId"`
 }
 
 // CopyObjectParams defines parameters for CopyObject.
 type CopyObjectParams struct {
-	// Key The source S3 object key path (may include prefixes/slashes).
-	Key string `form:"key" json:"key"`
+	// UserId Owner user UUID prefix segment.
+	UserId UserIdPrefix `form:"userId" json:"userId"`
+
+	// StorageObjectId Storage object UUID prefix segment.
+	StorageObjectId StorageObjectIdPrefix `form:"storageObjectId" json:"storageObjectId"`
+
+	// StorageObjectDataId Storage object data UUID prefix segment.
+	StorageObjectDataId StorageObjectDataIdPrefix `form:"storageObjectDataId" json:"storageObjectDataId"`
+
+	// FileName File name suffix (may include subpaths).
+	FileName FileName `form:"fileName" json:"fileName"`
 }
 
 // DownloadObjectParams defines parameters for DownloadObject.
 type DownloadObjectParams struct {
-	// Key The S3 object key path (may include prefixes/slashes).
-	Key string `form:"key" json:"key"`
+	// UserId Owner user UUID prefix segment.
+	UserId UserIdPrefix `form:"userId" json:"userId"`
+
+	// StorageObjectId Storage object UUID prefix segment.
+	StorageObjectId StorageObjectIdPrefix `form:"storageObjectId" json:"storageObjectId"`
+
+	// StorageObjectDataId Storage object data UUID prefix segment.
+	StorageObjectDataId StorageObjectDataIdPrefix `form:"storageObjectDataId" json:"storageObjectDataId"`
+
+	// FileName File name suffix (may include subpaths).
+	FileName FileName `form:"fileName" json:"fileName"`
 }
 
 // DeleteSingleObjectParams defines parameters for DeleteSingleObject.
 type DeleteSingleObjectParams struct {
-	// Key The S3 object key path (may include prefixes/slashes).
-	Key              string  `form:"key" json:"key"`
-	VersionId        *string `form:"versionId,omitempty" json:"versionId,omitempty"`
-	BypassGovernance *bool   `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
+	// UserId Owner user UUID prefix segment.
+	UserId UserIdPrefix `form:"userId" json:"userId"`
+
+	// StorageObjectId Storage object UUID prefix segment.
+	StorageObjectId StorageObjectIdPrefix `form:"storageObjectId" json:"storageObjectId"`
+
+	// StorageObjectDataId Storage object data UUID prefix segment.
+	StorageObjectDataId StorageObjectDataIdPrefix `form:"storageObjectDataId" json:"storageObjectDataId"`
+
+	// FileName File name suffix (may include subpaths).
+	FileName         FileName `form:"fileName" json:"fileName"`
+	VersionId        *string  `form:"versionId,omitempty" json:"versionId,omitempty"`
+	BypassGovernance *bool    `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
 }
 
 // NotifyJSONBody defines parameters for Notify.
@@ -588,7 +647,31 @@ func NewUploadObjectRequestWithBody(server string, bucketName string, params *Up
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "userId", params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectId", params.StorageObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectDataId", params.StorageObjectDataId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {
@@ -658,7 +741,31 @@ func NewCopyObjectRequestWithBody(server string, bucketName string, params *Copy
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "userId", params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectId", params.StorageObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectDataId", params.StorageObjectDataId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {
@@ -717,7 +824,31 @@ func NewDownloadObjectRequest(server string, bucketName string, params *Download
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "userId", params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectId", params.StorageObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectDataId", params.StorageObjectDataId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {
@@ -774,7 +905,31 @@ func NewDeleteSingleObjectRequest(server string, bucketName string, params *Dele
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "userId", params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectId", params.StorageObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectDataId", params.StorageObjectDataId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {
@@ -1688,15 +1843,54 @@ func (siw *ServerInterfaceWrapper) UploadObject(w http.ResponseWriter, r *http.R
 	// Parameter object where we will unmarshal all parameters from the context
 	var params UploadObjectParams
 
-	// ------------- Required query parameter "key" -------------
+	// ------------- Required query parameter "userId" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "userId", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "userId"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "storageObjectId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectId", r.URL.Query(), &params.StorageObjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "storageObjectDataId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectDataId", r.URL.Query(), &params.StorageObjectDataId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectDataId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectDataId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "fileName" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
 		}
 		return
 	}
@@ -1730,15 +1924,54 @@ func (siw *ServerInterfaceWrapper) CopyObject(w http.ResponseWriter, r *http.Req
 	// Parameter object where we will unmarshal all parameters from the context
 	var params CopyObjectParams
 
-	// ------------- Required query parameter "key" -------------
+	// ------------- Required query parameter "userId" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "userId", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "userId"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "storageObjectId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectId", r.URL.Query(), &params.StorageObjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "storageObjectDataId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectDataId", r.URL.Query(), &params.StorageObjectDataId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectDataId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectDataId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "fileName" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
 		}
 		return
 	}
@@ -1772,15 +2005,54 @@ func (siw *ServerInterfaceWrapper) DownloadObject(w http.ResponseWriter, r *http
 	// Parameter object where we will unmarshal all parameters from the context
 	var params DownloadObjectParams
 
-	// ------------- Required query parameter "key" -------------
+	// ------------- Required query parameter "userId" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "userId", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "userId"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "storageObjectId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectId", r.URL.Query(), &params.StorageObjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "storageObjectDataId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectDataId", r.URL.Query(), &params.StorageObjectDataId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectDataId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectDataId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "fileName" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
 		}
 		return
 	}
@@ -1814,15 +2086,54 @@ func (siw *ServerInterfaceWrapper) DeleteSingleObject(w http.ResponseWriter, r *
 	// Parameter object where we will unmarshal all parameters from the context
 	var params DeleteSingleObjectParams
 
-	// ------------- Required query parameter "key" -------------
+	// ------------- Required query parameter "userId" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "userId", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "userId"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "storageObjectId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectId", r.URL.Query(), &params.StorageObjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "storageObjectDataId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectDataId", r.URL.Query(), &params.StorageObjectDataId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectDataId"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectDataId", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "fileName" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
 		}
 		return
 	}
@@ -2661,45 +2972,47 @@ func (sh *strictHandler) RenderMd(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"zX8CAAD//w==",
+	"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",
+	"fLWNsuBTqK9w2juf1Fj/LwAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

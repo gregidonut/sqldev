@@ -54,12 +54,10 @@ paths:
           required: true
           schema:
             type: string
-        - name: key
-          in: query
-          required: true
-          description: The destination S3 key path.
-          schema:
-            type: string
+        - $ref: '#/components/parameters/UserIdPrefix'
+        - $ref: '#/components/parameters/StorageObjectIdPrefix'
+        - $ref: '#/components/parameters/StorageObjectDataIdPrefix'
+        - $ref: '#/components/parameters/FileName'
       requestBody:
         required: true
         content:
@@ -107,8 +105,7 @@ paths:
                 keys:
                   type: array
                   items:
-                    type: string
-                  example: [ "image.png", "doc-example-key" ]
+                    $ref: '#/components/schemas/ObjectKeyRef'
       responses:
         '200':
           description: Successfully executed the structural deletion request.
@@ -121,7 +118,7 @@ paths:
       description: >
         Retrieves an object chunked or directly from an S3 location.
         Maps to `DownloadFile` or `DownloadLargeObject` (via manager.Downloader).
-        Key is a query parameter so prefixed S3 keys (e.g. uploads/file.jpg) work
+        Object key components are query parameters so prefixed S3 keys work
         with API Gateway REST and gorilla/mux path routing.
       operationId: downloadObject
       parameters:
@@ -130,12 +127,10 @@ paths:
           required: true
           schema:
             type: string
-        - name: key
-          in: query
-          required: true
-          description: The S3 object key path (may include prefixes/slashes).
-          schema:
-            type: string
+        - $ref: '#/components/parameters/UserIdPrefix'
+        - $ref: '#/components/parameters/StorageObjectIdPrefix'
+        - $ref: '#/components/parameters/StorageObjectDataIdPrefix'
+        - $ref: '#/components/parameters/FileName'
       responses:
         '200':
           description: Object payload successfully fetched.
@@ -159,12 +154,10 @@ paths:
           required: true
           schema:
             type: string
-        - name: key
-          in: query
-          description: The source S3 object key path (may include prefixes/slashes).
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/UserIdPrefix'
+        - $ref: '#/components/parameters/StorageObjectIdPrefix'
+        - $ref: '#/components/parameters/StorageObjectDataIdPrefix'
+        - $ref: '#/components/parameters/FileName'
       requestBody:
         required: true
         content:
@@ -173,14 +166,26 @@ paths:
               type: object
               required:
                 - destinationBucket
-                - destinationKey
+                - destinationUserId
+                - destinationStorageObjectId
+                - destinationStorageObjectDataId
+                - destinationFileName
               properties:
                 destinationBucket:
                   type: string
                   description: Can be identical to sourceBucket for copy-to-folder actions.
-                destinationKey:
+                destinationUserId:
                   type: string
-                  description: The target object key name or destination folder pattern string.
+                  format: uuid
+                destinationStorageObjectId:
+                  type: string
+                  format: uuid
+                destinationStorageObjectDataId:
+                  type: string
+                  format: uuid
+                destinationFileName:
+                  type: string
+                  description: Destination file name (may include subpaths).
       responses:
         '200':
           description: Copy routine execution complete.
@@ -198,12 +203,10 @@ paths:
           required: true
           schema:
             type: string
-        - name: key
-          in: query
-          required: true
-          description: The S3 object key path (may include prefixes/slashes).
-          schema:
-            type: string
+        - $ref: '#/components/parameters/UserIdPrefix'
+        - $ref: '#/components/parameters/StorageObjectIdPrefix'
+        - $ref: '#/components/parameters/StorageObjectDataIdPrefix'
+        - $ref: '#/components/parameters/FileName'
         - name: versionId
           in: query
           required: false
@@ -304,7 +307,58 @@ paths:
         '400':
           description: Invalid request body.
 components:
+  parameters:
+    UserIdPrefix:
+      name: userId
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Owner user UUID prefix segment.
+    StorageObjectIdPrefix:
+      name: storageObjectId
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Storage object UUID prefix segment.
+    StorageObjectDataIdPrefix:
+      name: storageObjectDataId
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Storage object data UUID prefix segment.
+    FileName:
+      name: fileName
+      in: query
+      required: true
+      schema:
+        type: string
+      description: File name suffix (may include subpaths).
   schemas:
+    ObjectKeyRef:
+      type: object
+      required:
+        - userId
+        - storageObjectId
+        - storageObjectDataId
+        - fileName
+      properties:
+        userId:
+          type: string
+          format: uuid
+        storageObjectId:
+          type: string
+          format: uuid
+        storageObjectDataId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
     S3Object:
       type: object
       properties:

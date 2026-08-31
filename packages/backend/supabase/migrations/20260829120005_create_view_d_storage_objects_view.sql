@@ -6,10 +6,11 @@ SELECT so.storage_object_id
      , so.created_at
      , lsd.created_at AS updated_at
      , lsd.s3_object_key
+     , lsd.file_name
      , lsc.public
 FROM public.d_storage_objects AS so
          INNER JOIN LATERAL (
-    SELECT sod.created_at, sod.s3_object_key
+    SELECT sod.created_at, sod.s3_object_key, sod.file_name
     FROM public.d_storage_object_data AS sod
     WHERE sod.storage_object_id = so.storage_object_id
     ORDER BY sod.created_at DESC
