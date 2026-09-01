@@ -7,14 +7,15 @@ import {
     toQueryParams,
     type ObjectKeyParts,
 } from "@/utils/storage/objectKey";
+import { parseObjectsTab, type ObjectsTab } from "@/utils/storage/objectsTab";
 
 type SupabaseBrowserClient = ReturnType<typeof getSupabaseBrowserClient>;
 type StoragePermission =
     Database["public"]["Enums"]["d_storage_objects_permission"];
-type StorageObjectViewRow = Pick<
-    Database["public"]["Views"]["d_storage_objects_view"]["Row"],
-    "storage_object_id" | "s3_object_key" | "public"
->;
+type StorageObjectLookupRow = {
+    storage_object_id: string;
+    public: boolean;
+};
 
 export type PendingUpload = {
     storageObjectId: string;
@@ -117,6 +118,15 @@ function parseKeyOrError(key: string): ObjectKeyParts | Response {
     }
 }
 
+function requiredTab(request: Request): ObjectsTab | Response {
+    try {
+        return parseObjectsTab(new URL(request.url).searchParams.get("tab"));
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Invalid tab";
+        return jsonMessage(message, 400);
+    }
+}
+
 async function readJsonBody(
     request: Request,
 ): Promise<
@@ -135,18 +145,16 @@ async function readJsonBody(
 async function lookupByKey(
     client: SupabaseBrowserClient,
     key: string,
-): Promise<{ row: StorageObjectViewRow | null } | { error: Response }> {
-    const { data, error } = await client
-        .from("d_storage_objects_view")
-        .select("storage_object_id, s3_object_key, public")
-        .eq("s3_object_key", key)
-        .maybeSingle();
+): Promise<{ row: StorageObjectLookupRow | null } | { error: Response }> {
+    const { data, error } = await client.rpc("get_d_storage_object_by_key", {
+        p_s3_object_key: key,
+    });
 
     if (error) {
         return { error: jsonMessage(error.message, 500) };
     }
 
-    return { row: data };
+    return { row: (data as StorageObjectLookupRow[] | null)?.[0] ?? null };
 }
 
 async function authorizePermission(
@@ -224,22 +232,22 @@ async function prepareUpload(
 
 async function listViewKeys(
     client: SupabaseBrowserClient,
+    tab: ObjectsTab,
 ): Promise<Response> {
-    const { data, error } = await client
-        .from("d_storage_objects_view")
-        .select("s3_object_key");
+    const { data, error } = await client.rpc("get_d_storage_objects", {
+        p_tab: tab,
+    });
 
     if (error) {
         return jsonMessage(error.message, 500);
     }
 
     const objects = (data ?? [])
+        .map((row) => row.s3_object_key)
         .filter(
-            (row): row is { s3_object_key: string } =>
-                typeof row.s3_object_key === "string" &&
-                row.s3_object_key.length > 0,
+            (key): key is string => typeof key === "string" && key.length > 0,
         )
-        .map((row) => ({ key: row.s3_object_key }));
+        .map((key) => ({ key }));
 
     return new Response(JSON.stringify(objects), {
         status: 200,
@@ -520,7 +528,11 @@ export async function authorizeDStorage(
     }
 
     if (route.kind === "objects" && method === "GET") {
-        return listViewKeys(client);
+        const tabOrError = requiredTab(context.request);
+        if (tabOrError instanceof Response) {
+            return tabOrError;
+        }
+        return listViewKeys(client, tabOrError);
     }
 
     if (route.kind === "objects" && method === "POST") {

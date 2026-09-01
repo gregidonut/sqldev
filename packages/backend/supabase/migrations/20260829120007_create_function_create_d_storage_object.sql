@@ -27,7 +27,7 @@ BEGIN
 
     SELECT v.storage_object_id
     INTO v_existing_object_id
-    FROM public.d_storage_objects_view AS v
+    FROM public.d_storage_objects_mine_view AS v
     WHERE v.user_id = v_user_id
       AND v.file_name = p_file_name
     LIMIT 1;
