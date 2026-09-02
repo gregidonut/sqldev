@@ -1,25 +1,23 @@
 ---
-import {Show, UserButton} from "@clerk/astro/components";
+import { Show, UserButton } from "@clerk/astro/components";
 import styles from "./header.module.css";
 
-import genTitle from "@/utils/titleGen"
-const {title = "SQLDev"} = Astro.props;
-
+import genTitle from "@/utils/titleGen";
+const { title = "SQLDev" } = Astro.props;
 
 const titleParts = (title === "SQLDev" ? title : genTitle(title)).split(" - ");
 ---
 
-<header
-        class="min-h-9 flex-col-between
-        bg-drac-selection px-2 py-1"
->
+<header class="min-h-9 flex-col-between
+        bg-drac-selection px-2 py-1">
     <main class="flex-row-between">
         <h1 class="text-2xl">
-            <a href="/">{titleParts[0]}</a> {titleParts[1] && <span>- {titleParts[1]}</span>}
+            <a href="/">{titleParts[0]}</a>
+            {titleParts[1] && <span>- {titleParts[1]}</span>}
         </h1>
         <Show when="signed-in">
             <div class={styles.userButtonContainer}>
-                <UserButton/>
+                <UserButton />
             </div>
         </Show>
         <Show when="signed-out">
@@ -28,6 +26,7 @@ const titleParts = (title === "SQLDev" ? title : genTitle(title)).split(" - ");
     </main>
     <nav class="flex-row-end">
         <ul class="flex-row-end gap-3 text-xs">
+            <li><a href="/drive">drive</a></li>
             <li><a href="/todos">todos</a></li>
             <li><a href="/instagreg">instagreg</a></li>
             <li><a href="/components">components demo</a></li>

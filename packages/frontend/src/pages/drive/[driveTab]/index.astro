@@ -1,0 +1,29 @@
+---
+import Main from "@/components/main/Main.astro";
+import Header from "@/components/header/Header.astro";
+import Layout from "@/layouts/Layout.astro";
+
+import PageNav from "../_components/react/PageNav";
+import { parseObjectsTab, type ObjectsTab } from "@/utils/storage/objectsTab";
+
+const { driveTab } = Astro.params;
+
+let tab: ObjectsTab;
+try {
+    tab = parseObjectsTab(driveTab ?? null);
+} catch {
+    return Astro.redirect("/drive/public", 302);
+}
+---
+
+<Layout title="drive">
+    <Header title="drive" />
+    <Main>
+        <div class="flex-row-start items-start gap-2.5">
+            <PageNav client:idle tab={tab} />
+            <section class="flex-col-start-start flex-1">
+                <p>{tab}</p>
+            </section>
+        </div>
+    </Main>
+</Layout>

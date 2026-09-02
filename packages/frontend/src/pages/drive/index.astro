@@ -1,0 +1,12 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import Header from "@/components/header/Header.astro";
+import Main from "@/components/main/Main.astro";
+
+return Astro.redirect("/drive/public", 302);
+---
+
+<Layout title="drive">
+    <Header title="drive" />
+    <Main />
+</Layout>

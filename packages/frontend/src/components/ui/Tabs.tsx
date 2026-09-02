@@ -41,11 +41,11 @@ export function Tabs(props: TabsProps) {
 }
 
 const tabListStyles = tv({
-    base: "flex max-w-full p-1 -m-1 overflow-x-auto overflow-y-clip [scrollbar-width:none]",
+    base: "group/tablist flex max-w-full p-1 -m-1 [scrollbar-width:none]",
     variants: {
         orientation: {
-            horizontal: "flex-row",
-            vertical: "flex-col items-start",
+            horizontal: "flex-row overflow-x-auto overflow-y-clip",
+            vertical: "flex-col items-stretch overflow-y-auto overflow-x-clip",
         },
     },
 });
@@ -67,7 +67,7 @@ const tabProps = tv({
     extend: focusRing,
     base:
         "group relative flex items-center cursor-pointer" +
-        " rounded-top-sm px-3 py-1.5 text-sm font-medium " +
+        " px-3 py-1.5 text-sm font-medium " +
         "transition forced-color-adjust-none [-webkit-tap-highlight-color:transparent]",
     variants: {
         isDisabled: {
@@ -76,6 +76,8 @@ const tabProps = tv({
                 "z-5 " +
                 "bg-drac-comment " +
                 "rounded-t-sm " +
+                "group-data-[orientation=vertical]/tablist:rounded-t-none " +
+                "group-data-[orientation=vertical]/tablist:rounded-l-sm " +
                 // "group-disabled:bg-neutral-400 group-disabled:mix-blend-normal group-disabled:dark:bg-neutral-600 group-disabled:-z-1 " +
                 "motion-safe:transition-[translate,width,height] ",
         },
@@ -103,6 +105,8 @@ export function Tab(props: TabProps) {
                             "z-5 " +
                             "bg-drac-comment " +
                             "rounded-t-sm " +
+                            "group-data-[orientation=vertical]/tablist:rounded-t-none " +
+                            "group-data-[orientation=vertical]/tablist:rounded-l-sm " +
                             // "group-disabled:bg-neutral-400 group-disabled:mix-blend-normal group-disabled:dark:bg-neutral-600 group-disabled:-z-1 " +
                             "motion-safe:transition-[translate,width,height] "
                         }
