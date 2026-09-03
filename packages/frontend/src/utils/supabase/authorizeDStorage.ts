@@ -230,7 +230,7 @@ async function prepareUpload(
     return { row };
 }
 
-async function listViewKeys(
+async function listViewRows(
     client: SupabaseBrowserClient,
     tab: ObjectsTab,
 ): Promise<Response> {
@@ -242,12 +242,11 @@ async function listViewKeys(
         return jsonMessage(error.message, 500);
     }
 
-    const objects = (data ?? [])
-        .map((row) => row.s3_object_key)
-        .filter(
-            (key): key is string => typeof key === "string" && key.length > 0,
-        )
-        .map((key) => ({ key }));
+    const objects = (data ?? []).filter(
+        (row) =>
+            typeof row.s3_object_key === "string" &&
+            row.s3_object_key.length > 0,
+    );
 
     return new Response(JSON.stringify(objects), {
         status: 200,
@@ -532,7 +531,7 @@ export async function authorizeDStorage(
         if (tabOrError instanceof Response) {
             return tabOrError;
         }
-        return listViewKeys(client, tabOrError);
+        return listViewRows(client, tabOrError);
     }
 
     if (route.kind === "objects" && method === "POST") {
