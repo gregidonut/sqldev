@@ -21,15 +21,26 @@ export function getSupabaseEnv(): NodeJS.ProcessEnv {
   };
 }
 
-export function runSupabase(args: string[], cwd = "./supabase") {
+export function runSupabase(args: string[], cwd = "./supabase"): Promise<void> {
   const opts: SpawnOptions = {
     cwd,
     env: getSupabaseEnv(),
     stdio: "inherit",
   };
 
-  const child = spawn("bunx", ["supabase", ...args], opts);
-  child.on("exit", (code) => process.exit(code ?? 0));
+  return new Promise((resolve, reject) => {
+    const child = spawn("bunx", ["supabase", ...args], opts);
+    child.on("error", reject);
+    child.on("exit", (code: number | null) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(
+        new Error(`supabase ${args.join(" ")} exited with code ${code ?? 1}`),
+      );
+    });
+  });
 }
 
 export function getCypressEnv(): NodeJS.ProcessEnv {

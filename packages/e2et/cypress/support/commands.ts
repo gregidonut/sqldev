@@ -40,7 +40,10 @@ Cypress.Commands.add("signInAsUser", function (user: 0 | 1) {
       setupClerkTestingToken(CLERK_FAPI, CLERK_TESTING_TOKEN);
 
       cy.task("createClerkSignInToken", user_id).then((ticket) => {
+        cy.clearAllCookies();
         cy.visit("/");
+        cy.clearAllLocalStorage();
+        cy.clearAllSessionStorage();
 
         cy.window().should((win) => {
           expect(win.Clerk?.loaded).to.eq(true);
@@ -48,6 +51,10 @@ Cypress.Commands.add("signInAsUser", function (user: 0 | 1) {
         });
 
         cy.window().then(async (win) => {
+          if (win.Clerk.user) {
+            await win.Clerk.signOut();
+          }
+
           const signIn = win.Clerk.client?.signIn;
           if (!signIn) {
             throw new Error("Clerk.client.signIn is not available");

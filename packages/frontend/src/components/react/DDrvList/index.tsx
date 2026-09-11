@@ -14,6 +14,7 @@ import {
     viewTableMap,
 } from "@/components/react/DDrvList/viewMap.ts";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
+import { cy } from "@/utils/cy";
 
 const queryClient = new QueryClient();
 
@@ -50,7 +51,7 @@ function List<K extends keyof ViewMap>() {
         );
 
     return (
-        <section className="mt-12 w-full">
+        <section className="mt-12 w-full" {...cy(`${view}_list`)}>
             <header>
                 <h2 className="text-xl font-bold mb-6 text-drac-purple border-b border-drac-comment pb-2">
                     Recent Posts

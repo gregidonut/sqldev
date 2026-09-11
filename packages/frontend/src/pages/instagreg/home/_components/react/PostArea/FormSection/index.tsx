@@ -1,4 +1,5 @@
 import React from "react";
+import { cy } from "@/utils/cy";
 import {
     useMutation,
     QueryClient,
@@ -46,6 +47,7 @@ function PostArea() {
                     fieldState: { invalid, error },
                 }) => (
                     <TextField
+                        {...cy("p_text_content_field")}
                         label={name}
                         name={name}
                         value={value}
@@ -61,7 +63,9 @@ function PostArea() {
                     />
                 )}
             />
-            <Button type="submit">Submit</Button>
+            <Button type="submit" {...cy("create_ig_post_submit")}>
+                Submit
+            </Button>
         </Form>
     );
 }
