@@ -1,0 +1,88 @@
+/// <reference types="cypress" />
+/// <reference path="./index.d.ts" />
+
+import { addClerkCommands } from "@clerk/testing/cypress";
+
+addClerkCommands({ Cypress, cy });
+
+Cypress.on("uncaught:exception", (err) => {
+  if (err.message.includes("reading 'id'")) {
+    return false;
+  }
+});
+
+function setupClerkTestingToken(frontendApiUrl: string, testingToken?: string) {
+  cy.intercept(`https://${frontendApiUrl}/v1/**`, (req) => {
+    if (testingToken) {
+      req.query.__clerk_testing_token = testingToken;
+    }
+    req.continue();
+    req.on("response", (res) => {
+      if (res.body?.response?.captcha_bypass === false) {
+        res.body.response.captcha_bypass = true;
+      }
+      if (res.body?.client?.captcha_bypass === false) {
+        res.body.client.captcha_bypass = true;
+      }
+    });
+  });
+}
+
+Cypress.Commands.add("signInAsUser", function (user: 0 | 1) {
+  cy.env<{
+    test_users: [Cypress.TestUser, Cypress.TestUser];
+    CLERK_FAPI: string;
+    CLERK_TESTING_TOKEN: string | undefined;
+  }>(["test_users", "CLERK_FAPI", "CLERK_TESTING_TOKEN"]).then(
+    ({ test_users, CLERK_FAPI, CLERK_TESTING_TOKEN }) => {
+      const { user_id } = test_users[user];
+
+      setupClerkTestingToken(CLERK_FAPI, CLERK_TESTING_TOKEN);
+
+      cy.task("createClerkSignInToken", user_id).then((ticket) => {
+        cy.visit("/");
+
+        cy.window().should((win) => {
+          expect(win.Clerk?.loaded).to.eq(true);
+          expect(win.Clerk?.client).to.exist;
+        });
+
+        cy.window().then(async (win) => {
+          const signIn = win.Clerk.client?.signIn;
+          if (!signIn) {
+            throw new Error("Clerk.client.signIn is not available");
+          }
+
+          const result = await signIn.create({
+            strategy: "ticket",
+            ticket,
+          });
+
+          if (result.status !== "complete" || !result.createdSessionId) {
+            throw new Error(
+              `Clerk ticket sign-in incomplete (status=${result.status})`,
+            );
+          }
+
+          await win.Clerk.setActive({ session: result.createdSessionId });
+        });
+
+        cy.window().should((win) => {
+          expect(win.Clerk.user).to.not.equal(null);
+        });
+
+        cy.window().then((win) => {
+          const session = win.Clerk.session;
+          if (!session) {
+            throw new Error("Clerk session missing after sign-in");
+          }
+          return session.getToken().then((token) => {
+            cy.wrap(token).as("clerkToken");
+          });
+        });
+      });
+    },
+  );
+});
+
+export {};

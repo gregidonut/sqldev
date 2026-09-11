@@ -7,6 +7,8 @@ const CLERK_FE_DOMAIN = Resource.ClerkFeDomain.value;
 const NOTIFY_SECRET = Resource.NotifySecret.value;
 const NOTIFY_IG_POSTS_VIEW_URL = Resource.GoApi.url + "notify";
 const RENDER_MD_URL = Resource.GoApi.url + "renderMd";
+const CLERK_PUBLISHABLE_KEY = Resource.ClerkPublicKey.value;
+const CLERK_SECRET_KEY = Resource.ClerkSecretKey.value;
 
 export function getSupabaseEnv(): NodeJS.ProcessEnv {
   return {
@@ -27,5 +29,24 @@ export function runSupabase(args: string[], cwd = "./supabase") {
   };
 
   const child = spawn("bunx", ["supabase", ...args], opts);
+  child.on("exit", (code) => process.exit(code ?? 0));
+}
+
+export function getCypressEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    CLERK_PUBLISHABLE_KEY,
+    CLERK_SECRET_KEY,
+  };
+}
+
+export function runCypress(args: string[], cwd = ".") {
+  const opts: SpawnOptions = {
+    cwd,
+    env: getCypressEnv(),
+    stdio: "inherit",
+  };
+
+  const child = spawn("bunx", ["cypress", ...args], opts);
   child.on("exit", (code) => process.exit(code ?? 0));
 }

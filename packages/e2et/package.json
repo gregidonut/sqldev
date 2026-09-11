@@ -1,0 +1,13 @@
+{
+  "name": "@sqldev/e2et",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@sqldev/core": "*",
+    "cypress": "^16.0.0",
+    "sst": "*"
+  },
+  "devDependencies": {
+    "@clerk/testing": "^2.2.33"
+  }
+}
