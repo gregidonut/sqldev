@@ -32,6 +32,41 @@ describe("instagreg", () => {
     );
   });
 
+  it("edit post and update item", () => {
+    cy.signInAsUser(0);
+
+    cy.clerkLoaded();
+    cy.window().should((win) => {
+      expect(win.Clerk.user).to.not.equal(null);
+    });
+
+    cy.intercept("PATCH", "/api/views/igPosts/one/patch").as("updatePost");
+
+    cy.visit("/instagreg");
+
+    cy.contains("[data-cy='igPosts_list'] article", postText, {
+      timeout: 20000,
+    })
+      .find("[data-cy='ig_post_actions']")
+      .click();
+
+    cy.get("[data-cy='ig_post_edit']").click();
+
+    cy.get("[data-cy='edit_p_text_content_field'] textarea")
+      .should("have.value", postText)
+      .clear()
+      .type(`## ${postText}`);
+
+    cy.get("[data-cy='edit_ig_post_submit']").click();
+
+    cy.wait("@updatePost").its("response.statusCode").should("eq", 200);
+
+    cy.get("[data-cy='ig_post_body'] h2", { timeout: 20000 }).should(
+      "contain",
+      postText,
+    );
+  });
+
   it("another user can see public post", () => {
     cy.signInAsUser(1);
 

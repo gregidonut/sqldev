@@ -19,6 +19,7 @@ import type {
     PostsViewRow,
     TodoSpacesViewRow,
 } from "@/utils/supabase/models/aliases.ts";
+import { cy } from "@/utils/cy";
 
 export default function ListItemUI<K extends keyof ViewMap>({
     post,
@@ -87,12 +88,16 @@ export default function ListItemUI<K extends keyof ViewMap>({
                                 className={
                                     "prose prose-invert text-drac-foreground prose-stone"
                                 }
+                                {...cy("ig_post_body")}
                                 dangerouslySetInnerHTML={{
                                     __html: htmlContent,
                                 }}
                             />
                         ) : (
-                            <p className="text-drac-foreground leading-relaxed whitespace-pre-wrap text-lg wrap-break-words">
+                            <p
+                                className="text-drac-foreground leading-relaxed whitespace-pre-wrap text-lg wrap-break-words"
+                                {...cy("ig_post_body")}
+                            >
                                 <Text slot="description">{textContent}</Text>
                             </p>
                         )}

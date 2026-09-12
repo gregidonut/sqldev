@@ -5,6 +5,7 @@ import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
+import { cy } from "@/utils/cy";
 
 export default function MenuButton<K extends keyof ViewMap>({
     postOwnerId,
@@ -21,7 +22,11 @@ export default function MenuButton<K extends keyof ViewMap>({
 
     return (
         <MenuTrigger>
-            <Button aria-label="Actions" variant="secondary">
+            <Button
+                aria-label="Actions"
+                variant="secondary"
+                {...cy("ig_post_actions")}
+            >
                 <MoreHorizontal className="w-5 h-5" />
             </Button>
             <Menu>
@@ -34,6 +39,7 @@ export default function MenuButton<K extends keyof ViewMap>({
                                         Open
                                     </MenuItem>
                                     <MenuItem
+                                        {...cy("ig_post_edit")}
                                         onAction={() => {
                                             setIsEditing(true);
                                             setPostId(postId);

@@ -14,6 +14,7 @@ import {
     type ViewMap,
     viewRPCMap,
 } from "@/components/react/DDrvList/viewMap.ts";
+import { cy } from "@/utils/cy";
 
 export default function ItemEditForm({ postId }: { postId: string }) {
     const { userId } = useStore($authStore);
@@ -109,7 +110,11 @@ export default function ItemEditForm({ postId }: { postId: string }) {
     }
 
     return (
-        <Form onSubmit={handleSubmit(onSubmit)} className="w-full p-4">
+        <Form
+            onSubmit={handleSubmit(onSubmit)}
+            className="w-full p-4"
+            {...cy("edit_ig_post_form")}
+        >
             <Controller
                 control={control}
                 name={(function () {
@@ -137,6 +142,7 @@ export default function ItemEditForm({ postId }: { postId: string }) {
                         isInvalid={invalid}
                         // errorMessage={fieldError?.message}
                         className="flex-col-start-start gap-1"
+                        {...cy("edit_p_text_content_field")}
                     >
                         <Label>{name}</Label>
                         <TextArea
@@ -160,7 +166,9 @@ export default function ItemEditForm({ postId }: { postId: string }) {
                 <Button variant="secondary" onPress={() => setIsEditing(false)}>
                     Cancel
                 </Button>
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit" {...cy("edit_ig_post_submit")}>
+                    Save Changes
+                </Button>
             </div>
         </Form>
     );
