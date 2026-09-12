@@ -1,6 +1,8 @@
 import { defineConfig } from "cypress";
 import { clerkSetup } from "@clerk/testing/cypress";
 import { createClerkSignInToken } from "./cypress/tasks/createClerkSignInToken.js";
+import { createIgPostAsUser } from "./cypress/tasks/createIgPostAsUser.js";
+import type { CreateIgPostAsUserArgs } from "./cypress/tasks/createIgPostAsUser.js";
 import { supabaseDbReset } from "./cypress/tasks/supabaseDbReset.js";
 
 export default defineConfig({
@@ -9,6 +11,9 @@ export default defineConfig({
       on("task", {
         createClerkSignInToken(identifier: string) {
           return createClerkSignInToken(identifier);
+        },
+        createIgPostAsUser(args: CreateIgPostAsUserArgs) {
+          return createIgPostAsUser(args);
         },
         supabaseDbReset() {
           return supabaseDbReset();

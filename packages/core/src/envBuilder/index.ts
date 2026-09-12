@@ -9,6 +9,8 @@ const NOTIFY_IG_POSTS_VIEW_URL = Resource.GoApi.url + "notify";
 const RENDER_MD_URL = Resource.GoApi.url + "renderMd";
 const CLERK_PUBLISHABLE_KEY = Resource.ClerkPublicKey.value;
 const CLERK_SECRET_KEY = Resource.ClerkSecretKey.value;
+const SUPABASE_URL = Resource.SupabaseUrl.value;
+const SUPABASE_KEY = Resource.SupabaseKey.value;
 
 export function getSupabaseEnv(): NodeJS.ProcessEnv {
   return {
@@ -48,6 +50,8 @@ export function getCypressEnv(): NodeJS.ProcessEnv {
     ...process.env,
     CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY,
+    SUPABASE_URL,
+    SUPABASE_KEY,
   };
 }
 

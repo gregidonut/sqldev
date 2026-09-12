@@ -8,6 +8,14 @@ declare namespace Cypress {
   interface Chainable {
     signInAsUser(user: 0 | 1): Chainable<void>;
     task(event: "createClerkSignInToken", identifier: string): Chainable<string>;
+    task(
+      event: "createIgPostAsUser",
+      args: {
+        identifier: string;
+        p_text_content: string;
+        p_public?: boolean;
+      },
+    ): Chainable<{ post_id: string }>;
     task(event: "supabaseDbReset"): Chainable<null>;
   }
 }

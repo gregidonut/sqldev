@@ -47,4 +47,44 @@ describe("instagreg", () => {
       postText,
     );
   });
+
+  it("live-updates another user's list over MQTT", () => {
+    const liveText = `live-${Date.now()}`;
+
+    cy.signInAsUser(1);
+
+    cy.clerkLoaded();
+    cy.window().should((win) => {
+      expect(win.Clerk.user).to.not.equal(null);
+    });
+
+    cy.intercept("GET", "/api/views/igPosts/list/get").as("listGet");
+
+    cy.visit("/instagreg");
+
+    cy.wait("@listGet");
+    cy.get("[data-cy='mqtt_connected']", { timeout: 20000 }).should("exist");
+
+    cy.intercept("GET", "/api/views/igPosts/list/get").as("listRefetch");
+
+    cy.env<{ test_users: [Cypress.TestUser, Cypress.TestUser] }>([
+      "test_users",
+    ]).then(({ test_users }) => {
+      const actor = test_users[0];
+      if (!actor) {
+        throw new Error("test_users[0] is missing");
+      }
+      cy.task("createIgPostAsUser", {
+        identifier: actor.user_id,
+        p_text_content: liveText,
+      });
+    });
+
+    cy.wait("@listRefetch");
+    cy.get("[data-cy='igPosts_list']", { timeout: 20000 }).should(
+      "contain",
+      liveText,
+    );
+    cy.location("pathname").should("include", "instagreg");
+  });
 });

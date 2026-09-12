@@ -18,6 +18,11 @@ import { cy } from "@/utils/cy";
 
 const queryClient = new QueryClient();
 
+const MQTT_MESSAGES: { [K in keyof ViewMap]: string[] } = {
+    igPosts: ["new_post_content"],
+    tdsTodoSpaces: ["new_todo_space_data"],
+};
+
 function List<K extends keyof ViewMap>() {
     const { userId, session } = useStore($authStore);
     const { currentView: view } = useListStore();
@@ -29,18 +34,11 @@ function List<K extends keyof ViewMap>() {
         refetch,
     } = useSuspenseQuery<ViewMap[K][]>(createListGetQueryOptions(userId ?? ""));
 
-    useMqtt({
+    const { connected } = useMqtt({
         session,
         refetch,
         topic: viewTableMap[view as keyof ViewMap],
-        messagesToListenTo: (function (): string[] {
-            switch (view) {
-                case "igPosts":
-                    return ["new_post_content"];
-                case "tdsTodoSpaces":
-                    return ["new_todo_space_data"];
-            }
-        })(),
+        messagesToListenTo: MQTT_MESSAGES[view],
     });
 
     if (error)
@@ -52,6 +50,7 @@ function List<K extends keyof ViewMap>() {
 
     return (
         <section className="mt-12 w-full" {...cy(`${view}_list`)}>
+            {connected && <span hidden {...cy("mqtt_connected")} />}
             <header>
                 <h2 className="text-xl font-bold mb-6 text-drac-purple border-b border-drac-comment pb-2">
                     Recent Posts

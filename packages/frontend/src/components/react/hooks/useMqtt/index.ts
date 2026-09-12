@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { MqttClient } from "mqtt";
 import mqtt from "mqtt";
 import { $authStore } from "@clerk/astro/client";
@@ -29,8 +29,10 @@ export default function index({
         appStage,
         clerkUserId,
     } = useStore(MQTTPropsStore);
+    const [connected, setConnected] = useState(false);
 
     useEffect(() => {
+        setConnected(false);
         if (!session || !clerkUserId) return;
 
         let mqttClient: MqttClient | null = null;
@@ -74,7 +76,21 @@ export default function index({
                     }
                     const userTopic = `${appName}/${appStage}/user/${clerkUserId}/${topic}`;
                     const publicTopic = `${appName}/${appStage}/public/${topic}`;
-                    client.subscribe([userTopic, publicTopic]);
+                    client.subscribe(
+                        [userTopic, publicTopic],
+                        (err, granted) => {
+                            if (isDisposed) return;
+                            if (err) {
+                                console.error("MQTT subscribe error:", err);
+                                setConnected(false);
+                                return;
+                            }
+                            const rejected = (granted ?? []).some(
+                                (grant) => grant.qos === 128,
+                            );
+                            setConnected(!rejected);
+                        },
+                    );
                 });
 
                 client.on("message", (_topic, message) => {
@@ -88,6 +104,7 @@ export default function index({
                 client.on("error", (err) => {
                     if (isDisposed) return;
                     console.error("MQTT error:", err);
+                    setConnected(false);
                     client.end(true);
                     if (mqttClient === client) mqttClient = null;
                     scheduleReconnect();
@@ -95,6 +112,7 @@ export default function index({
 
                 client.on("close", () => {
                     if (isDisposed) return;
+                    setConnected(false);
                     if (mqttClient === client) mqttClient = null;
                     scheduleReconnect();
                 });
@@ -111,6 +129,7 @@ export default function index({
 
         return () => {
             isDisposed = true;
+            setConnected(false);
             if (reconnectTimeout) {
                 clearTimeout(reconnectTimeout);
             }
@@ -129,6 +148,8 @@ export default function index({
         topic,
         messagesToListenTo,
     ]);
+
+    return { connected };
 }
 
 function createConnection(endpoint: string, authorizer: string, token: string) {
