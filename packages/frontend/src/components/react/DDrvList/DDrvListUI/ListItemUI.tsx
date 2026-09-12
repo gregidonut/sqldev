@@ -48,7 +48,10 @@ export default function ListItemUI<K extends keyof ViewMap>({
                     <ItemEditForm postId={currentId} />
                 </div>
             ) : (
-                <article className="flex-col-start-start w-full">
+                <article
+                    className="flex-col-start-start w-full"
+                    {...cy(`${view}_item`)}
+                >
                     <header className="flex-col-start-start mb-3 relative w-full">
                         <main className="flex-row-between w-full">
                             <UserBadge clerk_user_id={post.clerk_user_id!} />

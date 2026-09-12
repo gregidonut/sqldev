@@ -1,0 +1,77 @@
+const spaceName = `space-${Date.now()}`;
+
+describe("todos", () => {
+  before(() => {
+    cy.task("supabaseDbReset");
+  });
+
+  beforeEach(() => {
+    cy.viewport("iphone-6");
+  });
+
+  it("creates a todo space, shows it in the list, and opens the space page", () => {
+    cy.signInAsUser(0);
+
+    cy.clerkLoaded();
+    cy.window().should((win) => {
+      expect(win.Clerk.user).to.not.equal(null);
+    });
+
+    cy.intercept("POST", "/api/views/tdsTodoSpaces/new/item").as("createSpace");
+    cy.intercept("GET", "/api/views/tdsTodoSpaces/list/get").as("listGet");
+
+    cy.visit("/todos");
+
+    cy.wait("@listGet");
+    cy.get("[data-cy='mqtt_connected']", { timeout: 20000 }).should("exist");
+
+    cy.intercept("GET", "/api/views/tdsTodoSpaces/list/get").as("listRefetch");
+
+    cy.get("[data-cy='p_name_field'] > input", { timeout: 20000 }).type(
+      spaceName,
+    );
+    cy.get("[data-cy='create_tds_todo_space_submit']").click();
+
+    cy.wait("@createSpace").then((interception) => {
+      expect(interception.response?.statusCode).to.eq(200);
+      const todoSpaceId = interception.response?.body?.[0]?.todo_space_id as
+        | string
+        | undefined;
+      if (!todoSpaceId) {
+        throw new Error("create_tds_todo_space returned no todo_space_id");
+      }
+      cy.wrap(todoSpaceId).as("todoSpaceId");
+    });
+
+    cy.wait("@listRefetch");
+    cy.get("[data-cy='tdsTodoSpaces_list']", { timeout: 20000 }).should(
+      "contain",
+      spaceName,
+    );
+
+    cy.contains("[data-cy='tdsTodoSpaces_item']", spaceName)
+      .find("[data-cy='ig_post_body']")
+      .click();
+
+    cy.get<string>("@todoSpaceId").then((todoSpaceId) => {
+      cy.location("pathname").should("eq", `/todos/space/${todoSpaceId}`);
+      cy.contains("h2", todoSpaceId).should("exist");
+    });
+  });
+
+  it("another user cannot see a private todo space", () => {
+    cy.signInAsUser(1);
+
+    cy.clerkLoaded();
+    cy.window().should((win) => {
+      expect(win.Clerk.user).to.not.equal(null);
+    });
+
+    cy.intercept("GET", "/api/views/tdsTodoSpaces/list/get").as("listGet");
+
+    cy.visit("/todos");
+
+    cy.wait("@listGet");
+    cy.get("[data-cy='tdsTodoSpaces_list']").should("not.contain", spaceName);
+  });
+});

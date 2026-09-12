@@ -13,7 +13,7 @@ const { userId } = Astro.locals.auth();
 <Layout>
     <Header />
     <Main>
-        <FormSection client:idle />
+        <FormSection client:only="react" />
         <LazyLoadedTodoSpaceList
             client:only="react"
             realtimeEndpoint={Resource.SQLDevRealtimeSST.endpoint}

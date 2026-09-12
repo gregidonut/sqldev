@@ -1,6 +1,5 @@
 import React from "react";
 import {
-    QueryClient,
     QueryClientProvider,
     useSuspenseQuery,
 } from "@tanstack/react-query";
@@ -14,9 +13,8 @@ import {
     viewTableMap,
 } from "@/components/react/DDrvList/viewMap.ts";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
+import { listQueryClient } from "@/components/react/DDrvList/queryClient.ts";
 import { cy } from "@/utils/cy";
-
-const queryClient = new QueryClient();
 
 const MQTT_MESSAGES: { [K in keyof ViewMap]: string[] } = {
     igPosts: ["new_post_content"],
@@ -69,7 +67,7 @@ function List<K extends keyof ViewMap>() {
 
 export default function ListWrapper() {
     return (
-        <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={listQueryClient}>
             <List />
         </QueryClientProvider>
     );
