@@ -16,6 +16,14 @@ declare namespace Cypress {
         p_public?: boolean;
       },
     ): Chainable<{ post_id: string }>;
+    task(
+      event: "createTdsTodoSpaceAsUser",
+      args: {
+        identifier: string;
+        p_name: string;
+        p_public?: boolean;
+      },
+    ): Chainable<{ todo_space_id: string }>;
     task(event: "supabaseDbReset"): Chainable<null>;
   }
 }

@@ -74,4 +74,46 @@ describe("todos", () => {
     cy.wait("@listGet");
     cy.get("[data-cy='tdsTodoSpaces_list']").should("not.contain", spaceName);
   });
+
+  it("another user creates a private todo space → signed-in user's list does not live-update over MQTT", () => {
+    const liveSpace = `space-${Date.now()}`;
+
+    cy.signInAsUser(0);
+
+    cy.clerkLoaded();
+    cy.window().should((win) => {
+      expect(win.Clerk.user).to.not.equal(null);
+    });
+
+    cy.intercept("GET", "/api/views/tdsTodoSpaces/list/get").as("listGet");
+
+    cy.visit("/todos");
+
+    cy.wait("@listGet");
+    cy.get("[data-cy='mqtt_connected']", { timeout: 20000 }).should("exist");
+
+    // Capture only refetches after MQTT is connected; the initial list GET is already waited on.
+    cy.intercept("GET", "/api/views/tdsTodoSpaces/list/get").as("listRefetch");
+
+    cy.env<{ test_users: [Cypress.TestUser, Cypress.TestUser] }>([
+      "test_users",
+    ]).then(({ test_users }) => {
+      const actor = test_users[1];
+      if (!actor) {
+        throw new Error("test_users[1] is missing");
+      }
+      cy.task("createTdsTodoSpaceAsUser", {
+        identifier: actor.user_id,
+        p_name: liveSpace,
+        p_public: false,
+      });
+    });
+
+    cy.get("[data-cy='tdsTodoSpaces_list']").should("not.contain", liveSpace);
+
+    // Bound the "no MQTT refetch" check to the same window cy.wait("@alias") uses.
+    const requestTimeout = Cypress.config("requestTimeout");
+    cy.wait(requestTimeout);
+    cy.get("@listRefetch.all").should("have.length", 0);
+  });
 });
