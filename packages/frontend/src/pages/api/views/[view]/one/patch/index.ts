@@ -39,6 +39,17 @@ export const PATCH: APIRoute = async function (context) {
         });
     }
 
+    if (rpcName === "update_ig_post") {
+        const postId = Array.isArray(data)
+            ? (data[0] as { post_id?: string } | undefined)?.post_id
+            : undefined;
+        if (postId) {
+            await client.rpc("notify_ig_posts_view_for_post", {
+                p_post_id: postId,
+            });
+        }
+    }
+
     return new Response(JSON.stringify(data), {
         status: 200,
         headers: { "Content-Type": "application/json" },

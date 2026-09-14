@@ -2,7 +2,6 @@ import React from "react";
 import { cy } from "@/utils/cy";
 import {
     useMutation,
-    QueryClient,
     QueryClientProvider,
 } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
@@ -12,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { mutationFn } from "./mutationFn.ts";
 import type { Database } from "@/utils/supabase/models";
+import { listQueryClient } from "@/components/react/DDrvList/queryClient.ts";
 
 function PostArea() {
     const { handleSubmit, control, reset } = useForm<
@@ -26,6 +26,9 @@ function PostArea() {
         mutationFn,
         onSuccess: () => {
             reset();
+            void listQueryClient.invalidateQueries({
+                queryKey: ["get", "igPosts", "list"],
+            });
         },
         onError: (error) => console.log(error),
     });
@@ -71,9 +74,8 @@ function PostArea() {
 }
 
 export default function PostAreaWrapper() {
-    const queryClient = new QueryClient();
     return (
-        <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={listQueryClient}>
             <ReactQueryDevtools initialIsOpen={false} />
             <PostArea />
         </QueryClientProvider>

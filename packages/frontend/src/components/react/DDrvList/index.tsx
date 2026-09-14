@@ -1,9 +1,6 @@
 import React from "react";
-import {
-    QueryClientProvider,
-    useSuspenseQuery,
-} from "@tanstack/react-query";
-import { $authStore } from "@clerk/astro/client";
+import { QueryClientProvider, useSuspenseQuery } from "@tanstack/react-query";
+import { $authStore, $userStore } from "@clerk/astro/client";
 import { useStore } from "@nanostores/react";
 import ListUI from "@/components/react/DDrvList/DDrvListUI";
 import useMqtt from "@/components/react/hooks/useMqtt";
@@ -54,7 +51,7 @@ function List<K extends keyof ViewMap>() {
                     Recent Posts
                 </h2>
             </header>
-            {posts && posts.length !== 0 ? (
+            {Array.isArray(posts) && posts.length !== 0 ? (
                 <ListUI<K> posts={posts} />
             ) : (
                 <p className="text-center text-drac-comment py-10 italic">
@@ -66,6 +63,10 @@ function List<K extends keyof ViewMap>() {
 }
 
 export default function ListWrapper() {
+    const user = useStore($userStore);
+    if (user === undefined) {
+        return <p>Loading...</p>;
+    }
     return (
         <QueryClientProvider client={listQueryClient}>
             <List />

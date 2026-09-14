@@ -13,6 +13,7 @@ const postauth = defineMiddleware(async function (_, next) {
 });
 
 const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
+const isApiRoute = createRouteMatcher(["/api(.*)"]);
 
 export const onRequest = sequence(
     preauth,
@@ -22,6 +23,15 @@ export const onRequest = sequence(
             const { isAuthenticated, redirectToSignIn } = auth();
 
             if (!isPublicRoute(context.request) && !isAuthenticated) {
+                if (isApiRoute(context.request)) {
+                    return new Response(
+                        JSON.stringify({ message: "Unauthorized" }),
+                        {
+                            status: 401,
+                            headers: { "Content-Type": "application/json" },
+                        },
+                    );
+                }
                 return redirectToSignIn();
             }
         },

@@ -1,21 +1,16 @@
-import React, { Suspense, lazy, useEffect } from "react";
+import React from "react";
+import List from "@/components/react/DDrvList";
 import {
     MQTTPropsStore,
     type MQTTProps,
 } from "@/components/react/hooks/useMqtt/mqttStore.ts";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 
-const List = lazy(() => import("@/components/react/DDrvList"));
-
 export default function LazyLoadedPostList(props: MQTTProps) {
     MQTTPropsStore.set(props);
-    useEffect(function () {
+    if (useListStore.getState().currentView !== "igPosts") {
         useListStore.getState().setCurrentView("igPosts");
-    }, []);
+    }
 
-    return (
-        <Suspense fallback={<p>Loading...</p>}>
-            <List />
-        </Suspense>
-    );
+    return <List />;
 }

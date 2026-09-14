@@ -10,11 +10,12 @@ export default function createListGetQueryOptions<K extends keyof ViewMap>(
     return queryOptions<ViewMap[K][]>({
         queryKey: ["get", view, "list", { userId }],
         queryFn: async function () {
-            const response = await axios<ViewMap[K][]>({
+            const { data } = await axios<ViewMap[K][]>({
                 method: "GET",
                 url: `/api/views/${view}/list/get`,
+                validateStatus: (status) => status === 200,
             });
-            return response.data;
+            return Array.isArray(data) ? data : [];
         },
     });
 }

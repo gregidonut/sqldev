@@ -19,7 +19,9 @@ export async function createIgPostAsUser({
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_KEY;
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error("SUPABASE_URL and SUPABASE_KEY are required to create a post");
+    throw new Error(
+      "SUPABASE_URL and SUPABASE_KEY are required to create a post",
+    );
   }
 
   const clerk = getClerkClient();
@@ -53,6 +55,10 @@ export async function createIgPostAsUser({
     if (!post_id) {
       throw new Error("create_ig_post returned no post_id");
     }
+
+    await supabase.rpc("notify_ig_posts_view_for_post", {
+      p_post_id: post_id,
+    });
 
     return { post_id };
   } finally {
