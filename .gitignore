@@ -1,3 +1,18 @@
+#
+.agents/
+.claude/
+.cursor/
+AGENTS.md
+agent/
+packages/backend/supabase/seed.sql
+packages/frontend/.agents/
+packages/frontend/.claude/
+packages/frontend/AGENTS.md
+packages/frontend/agent/
+packages/frontend/skills-lock.json
+packages/frontend/src/utils/supabase/models/
+skills-lock.json
+#
 # dependencies
 node_modules
 
@@ -21,3 +36,4 @@ node_modules
 .ai
 
 .venv
+
