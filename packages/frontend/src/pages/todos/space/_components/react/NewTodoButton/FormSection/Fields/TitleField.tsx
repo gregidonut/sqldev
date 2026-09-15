@@ -2,6 +2,7 @@ import React from "react";
 import { Controller } from "react-hook-form";
 import { TextField } from "@/components/ui/TextField.tsx";
 import { useFormSection } from "../FormSectionContext.ts";
+import { cy } from "@/utils/cy";
 
 export default function TitleField() {
     const control = useFormSection();
@@ -20,6 +21,7 @@ export default function TitleField() {
                 fieldState: { invalid, error },
             }) => (
                 <TextField
+                    {...cy("p_title_field")}
                     label={name}
                     name={name}
                     value={value}

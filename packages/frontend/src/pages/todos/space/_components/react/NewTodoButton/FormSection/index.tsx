@@ -12,6 +12,7 @@ import type { Database } from "@/utils/supabase/models";
 import { FormSectionContext } from "./FormSectionContext.ts";
 import TitleField from "./Fields/TitleField.tsx";
 import DescriptionTextArea from "./Fields/DescriptionTextArea.tsx";
+import { cy } from "@/utils/cy";
 
 function FormSection({
     onSuccess,
@@ -56,7 +57,9 @@ function FormSection({
                 <TitleField />
                 <DescriptionTextArea />
             </FormSectionContext.Provider>
-            <Button type="submit">Submit</Button>
+            <Button type="submit" {...cy("create_tds_todo_submit")}>
+                Submit
+            </Button>
         </Form>
     );
 }

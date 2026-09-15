@@ -1,6 +1,7 @@
 import { Tree, TreeItem } from "./Tree";
 import { Collection, type DragAndDropHooks } from "react-aria-components";
 import type { Database } from "@/utils/supabase/models";
+import { cy } from "@/utils/cy";
 
 type TodoRow = Database["public"]["Views"]["tds_todos_view"]["Row"];
 
@@ -19,6 +20,7 @@ export function TodoTree(props: TodoItemTreeProps) {
 
     return (
         <Tree
+            {...cy("tdsTodos_tree")}
             aria-label="Pokemon tree"
             selectionMode="multiple"
             items={items}
@@ -28,6 +30,7 @@ export function TodoTree(props: TodoItemTreeProps) {
             {function renderItem(item: TodoItem) {
                 return (
                     <TreeItem
+                        {...cy("tdsTodos_item")}
                         title={`${item.title}`}
                         textValue={item.title as string}
                     >

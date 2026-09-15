@@ -10,6 +10,11 @@ import { $authStore } from "@clerk/astro/client";
 import axios from "axios";
 import { RACMovableTree } from "./RACMovableTree.tsx";
 import useMqtt from "@/components/react/hooks/useMqtt";
+import { cy } from "@/utils/cy";
+
+// useMqtt keys its effect on this array's identity, so it has to be stable
+// across renders or the client reconnects on every render.
+const MQTT_MESSAGES = ["new_todo_item_data"];
 
 function RACMovableTreeWithData({
     tdsTodoSpaceId,
@@ -41,11 +46,11 @@ function RACMovableTreeWithData({
         },
     });
 
-    useMqtt({
+    const { connected } = useMqtt({
         session,
         refetch,
         topic: "tds_todos_view",
-        messagesToListenTo: ["new_todo_item_data"],
+        messagesToListenTo: MQTT_MESSAGES,
     });
 
     if (error)
@@ -56,10 +61,13 @@ function RACMovableTreeWithData({
         );
 
     return (
-        <RACMovableTree
-            todoItems={todos as TodoItem[]}
-            tdsTodoSpaceId={tdsTodoSpaceId}
-        />
+        <>
+            {connected && <span hidden {...cy("mqtt_connected")} />}
+            <RACMovableTree
+                todoItems={todos as TodoItem[]}
+                tdsTodoSpaceId={tdsTodoSpaceId}
+            />
+        </>
     );
 }
 

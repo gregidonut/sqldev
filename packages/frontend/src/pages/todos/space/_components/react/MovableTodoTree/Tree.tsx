@@ -15,6 +15,7 @@ import {
 import { ChevronRight, GripVertical } from "lucide-react";
 import { Checkbox } from "./Checkbox";
 import { ProgressCircle } from "./ProgressCircle";
+import { cy } from "@/utils/cy";
 import "./Tree.css";
 
 export function Tree<T extends object>(props: TreeProps<T>) {
@@ -35,7 +36,7 @@ export function TreeItemContent(
             }: TreeItemContentRenderProps) => (
                 <>
                     {allowsDragging && (
-                        <Button slot="drag">
+                        <Button slot="drag" {...cy("tree_item_drag_handle")}>
                             <GripVertical size={16} />
                         </Button>
                     )}
@@ -43,7 +44,7 @@ export function TreeItemContent(
                         selectionMode !== "none" && (
                             <Checkbox slot="selection" />
                         )}
-                    <Button slot="chevron">
+                    <Button slot="chevron" {...cy("tree_item_chevron")}>
                         <ChevronRight />
                     </Button>
                     {props.children}

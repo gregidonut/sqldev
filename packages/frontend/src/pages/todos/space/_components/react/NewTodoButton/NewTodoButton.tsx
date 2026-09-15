@@ -4,6 +4,7 @@ import { Modal, type ModalOverlayProps } from "@/components/ui/Modal";
 import { Dialog, Heading } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import FormSection from "./FormSection";
+import { cy } from "@/utils/cy";
 
 type ExtendedModalOverlayProps = ModalOverlayProps & {
     tdsTodoSpaceId: string;
@@ -12,7 +13,7 @@ type ExtendedModalOverlayProps = ModalOverlayProps & {
 export default function NewTodoButton(props: ExtendedModalOverlayProps) {
     return (
         <DialogTrigger>
-            <Button>new</Button>
+            <Button {...cy("new_tds_todo_button")}>new</Button>
             <Modal {...props}>
                 <Dialog>
                     {({ close }) => (
