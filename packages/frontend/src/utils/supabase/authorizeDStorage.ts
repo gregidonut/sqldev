@@ -1,4 +1,5 @@
 import type { APIContext } from "astro";
+import { Resource } from "sst";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browserClient";
 import type { Database } from "@/utils/supabase/models";
 import {
@@ -8,6 +9,10 @@ import {
     type ObjectKeyParts,
 } from "@/utils/storage/objectKey";
 import { parseObjectsTab, type ObjectsTab } from "@/utils/storage/objectsTab";
+import type { PendingUpload } from "@/utils/storage/pendingUpload";
+import { presignPutObject } from "@/utils/storage/presignPut";
+
+export type { PendingUpload };
 
 type SupabaseBrowserClient = ReturnType<typeof getSupabaseBrowserClient>;
 type StoragePermission =
@@ -15,14 +20,6 @@ type StoragePermission =
 type StorageObjectLookupRow = {
     storage_object_id: string;
     public: boolean;
-};
-
-export type PendingUpload = {
-    storageObjectId: string;
-    storageObjectDataId: string;
-    fileName: string;
-    isNewObject: boolean;
-    s3ObjectKey: string;
 };
 
 export type AuthorizeDStorageContinue = {
@@ -38,9 +35,14 @@ export type AuthorizeDStorageResult = Response | AuthorizeDStorageContinue;
 type StorageRoute =
     | { kind: "head" }
     | { kind: "objects" }
+    | { kind: "presign" }
+    | { kind: "commit" }
+    | { kind: "abort" }
     | { kind: "download" }
     | { kind: "copy" }
     | { kind: "object" };
+
+const GO_API_URL = Resource.GoApi.url.replace(/\/+$/, "");
 
 type PrepareUploadRow = {
     user_id: string;
@@ -79,6 +81,15 @@ function matchStorageRoute(path: string): StorageRoute | null {
     }
     if (/^buckets\/[^/]+\/objects\/copy$/.test(path)) {
         return { kind: "copy" };
+    }
+    if (/^buckets\/[^/]+\/objects\/presign$/.test(path)) {
+        return { kind: "presign" };
+    }
+    if (/^buckets\/[^/]+\/objects\/commit$/.test(path)) {
+        return { kind: "commit" };
+    }
+    if (/^buckets\/[^/]+\/objects\/abort$/.test(path)) {
+        return { kind: "abort" };
     }
     if (/^buckets\/[^/]+\/objects\/object$/.test(path)) {
         return { kind: "object" };
@@ -321,14 +332,123 @@ async function authorizeUpload(
 
     return allowProxy({
         upstreamQueryParams,
-        pendingUpload: {
-            storageObjectId: row.storage_object_id,
-            storageObjectDataId: row.storage_object_data_id,
-            fileName: row.file_name,
-            isNewObject: row.is_new_object,
-            s3ObjectKey: row.s3_object_key,
-        },
+        pendingUpload: pendingFromRow(row),
     });
+}
+
+function pendingFromRow(row: PrepareUploadRow): PendingUpload {
+    return {
+        storageObjectId: row.storage_object_id,
+        storageObjectDataId: row.storage_object_data_id,
+        fileName: row.file_name,
+        isNewObject: row.is_new_object,
+        s3ObjectKey: row.s3_object_key,
+    };
+}
+
+function bucketNameFromPath(path: string): string | Response {
+    const match = /^buckets\/([^/]+)/.exec(path);
+    if (!match?.[1]) {
+        return jsonMessage("bucket is required", 400);
+    }
+    if (match[1] !== Resource.SQLDevBucket.name) {
+        return forbidden();
+    }
+    return match[1];
+}
+
+function isPendingUpload(body: unknown): body is PendingUpload {
+    if (typeof body !== "object" || body === null) {
+        return false;
+    }
+    const pending = body as Record<string, unknown>;
+    return (
+        typeof pending.storageObjectId === "string" &&
+        typeof pending.storageObjectDataId === "string" &&
+        typeof pending.fileName === "string" &&
+        typeof pending.isNewObject === "boolean" &&
+        typeof pending.s3ObjectKey === "string"
+    );
+}
+
+async function authorizePresign(
+    client: SupabaseBrowserClient,
+    request: Request,
+    path: string,
+): Promise<Response> {
+    const bucketOrError = bucketNameFromPath(path);
+    if (bucketOrError instanceof Response) {
+        return bucketOrError;
+    }
+
+    const fileNameOrError = requiredFileName(request);
+    if (fileNameOrError instanceof Response) {
+        return fileNameOrError;
+    }
+
+    const prepared = await prepareUpload(client, fileNameOrError);
+    if ("error" in prepared) {
+        return prepared.error;
+    }
+
+    const pendingUpload = pendingFromRow(prepared.row);
+    const url = await presignPutObject(
+        Resource.SQLDevBucket.name,
+        pendingUpload.s3ObjectKey,
+    );
+
+    return new Response(
+        JSON.stringify({
+            url,
+            key: pendingUpload.s3ObjectKey,
+            pendingUpload,
+        }),
+        { status: 200, headers: JSON_HEADERS },
+    );
+}
+
+async function authorizeCommit(
+    context: APIContext,
+    path: string,
+): Promise<Response> {
+    const bucketOrError = bucketNameFromPath(path);
+    if (bucketOrError instanceof Response) {
+        return bucketOrError;
+    }
+
+    const parsed = await readJsonBody(context.request);
+    if (!parsed.ok) {
+        return parsed.response;
+    }
+    if (!isPendingUpload(parsed.body)) {
+        return jsonMessage("pendingUpload is required", 400);
+    }
+
+    const commitError = await commitPendingUpload(context, parsed.body);
+    if (commitError) {
+        await deleteOrphanedObject(
+            GO_API_URL,
+            `buckets/${bucketOrError}/objects`,
+            parsed.body,
+        );
+        await abortPendingUpload(context, parsed.body);
+        return commitError;
+    }
+
+    return new Response(null, { status: 204 });
+}
+
+async function authorizeAbort(context: APIContext): Promise<Response> {
+    const parsed = await readJsonBody(context.request);
+    if (!parsed.ok) {
+        return parsed.response;
+    }
+    if (!isPendingUpload(parsed.body)) {
+        return jsonMessage("pendingUpload is required", 400);
+    }
+
+    await abortPendingUpload(context, parsed.body);
+    return new Response(null, { status: 204 });
 }
 
 async function authorizeSingleDelete(
@@ -536,6 +656,18 @@ export async function authorizeDStorage(
 
     if (route.kind === "objects" && method === "POST") {
         return authorizeUpload(client, userId, context.request);
+    }
+
+    if (route.kind === "presign" && method === "POST") {
+        return authorizePresign(client, context.request, path);
+    }
+
+    if (route.kind === "commit" && method === "POST") {
+        return authorizeCommit(context, path);
+    }
+
+    if (route.kind === "abort" && method === "POST") {
+        return authorizeAbort(context);
     }
 
     if (route.kind === "objects" && method === "DELETE") {

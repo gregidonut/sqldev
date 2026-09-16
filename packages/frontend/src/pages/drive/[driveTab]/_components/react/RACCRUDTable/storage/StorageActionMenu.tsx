@@ -11,6 +11,7 @@ import { Menu, MenuItem, MenuTrigger } from "../Menu.tsx";
 import { toErrorMessage } from "./storageDisplay.tsx";
 import createDownloadGetQueryOptions from "../queryOptions/createDownloadGet.ts";
 import type { StorageRow } from "../queryOptions/types.ts";
+import { cy } from "@/utils/cy";
 
 interface StorageActionMenuProps {
     item: StorageRow;
@@ -78,6 +79,7 @@ export function StorageActionMenu({
             </Button>
             <Menu>
                 <MenuItem
+                    {...cy("dStorage_download")}
                     id="download"
                     isDisabled={isDownloading}
                     onAction={() => void download()}

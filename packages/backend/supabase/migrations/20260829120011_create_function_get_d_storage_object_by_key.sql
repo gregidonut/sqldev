@@ -1,5 +1,6 @@
--- Reads the internal base view on behalf of the caller, exposing only rows the
--- caller may read: public objects, or objects granted through RBAC.
+-- Reads through d_storage_object_data table on behalf of the caller,
+-- exposing only rows the caller may read: public objects, or
+-- objects granted through RBAC.
 CREATE OR REPLACE FUNCTION public.get_d_storage_object_by_key(
     p_s3_object_key TEXT
 )
@@ -16,8 +17,10 @@ AS
 $$
 SELECT b.storage_object_id
      , b.public
-FROM public.d_storage_objects_base_view AS b
-WHERE b.s3_object_key = p_s3_object_key
+FROM public.d_storage_object_data AS sod
+         INNER JOIN public.d_storage_objects_base_view AS b
+                    ON b.storage_object_id = sod.storage_object_id
+WHERE sod.s3_object_key = p_s3_object_key
   AND (b.public = TRUE
     OR public.authorize_d_storage_object(
                (SELECT go.user_id FROM public.get_owner() AS go)

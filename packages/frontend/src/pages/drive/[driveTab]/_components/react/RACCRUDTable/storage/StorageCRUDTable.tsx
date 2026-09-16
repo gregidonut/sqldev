@@ -30,6 +30,7 @@ import createBucketExistsGetQueryOptions from "../queryOptions/createBucketExist
 import createListGetQueryOptions from "../queryOptions/createListGet.ts";
 import createOneDeleteMutationOptions from "../queryOptions/createOneDelete.ts";
 import type { StorageRow } from "../queryOptions/types.ts";
+import { cy } from "@/utils/cy";
 
 export type StorageCRUDTableProps = {
     tab: ObjectsTab;
@@ -273,6 +274,7 @@ export default function StorageCRUDTable({
                     <DialogTrigger>
                         <TooltipTrigger>
                             <Button
+                                {...cy("dStorage_upload")}
                                 aria-label="Upload a file"
                                 variant="secondary"
                                 className="!h-9 !w-9 shrink-0"

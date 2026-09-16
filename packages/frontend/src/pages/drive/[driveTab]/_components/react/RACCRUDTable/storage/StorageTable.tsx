@@ -9,6 +9,7 @@ import { Cell, Column, Row, Table, TableBody, TableHeader } from "../Table.tsx";
 import { StorageActionMenu } from "./StorageActionMenu.tsx";
 import { formatTimestamp, VisibilityBadge } from "./storageDisplay.tsx";
 import type { StorageRow } from "../queryOptions/types.ts";
+import { cy } from "@/utils/cy";
 
 export type StorageColumnId =
     | "file_name"
@@ -154,6 +155,7 @@ export function StorageTable(props: StorageTableProps): React.ReactNode {
 
     return (
         <Table
+            {...cy("dStorage_objects")}
             aria-label="Storage objects"
             selectionMode="multiple"
             selectedKeys={selectedKeys}
@@ -171,7 +173,11 @@ export function StorageTable(props: StorageTableProps): React.ReactNode {
                 renderEmptyState={() => emptyMessage}
             >
                 {(item) => (
-                    <Row id={item.s3_object_key} columns={columns}>
+                    <Row
+                        {...cy("dStorage_item")}
+                        id={item.s3_object_key}
+                        columns={columns}
+                    >
                         {(column) => {
                             switch (column.id) {
                                 case "file_name":

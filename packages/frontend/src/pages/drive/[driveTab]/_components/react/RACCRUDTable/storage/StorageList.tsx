@@ -4,6 +4,7 @@ import { GridList, GridListItem } from "../GridList.tsx";
 import { StorageActionMenu } from "./StorageActionMenu.tsx";
 import { formatTimestamp, VisibilityBadge } from "./storageDisplay.tsx";
 import type { StorageRow } from "../queryOptions/types.ts";
+import { cy } from "@/utils/cy";
 
 interface StorageListProps {
     items: StorageRow[];
@@ -35,6 +36,7 @@ export function StorageList(props: StorageListProps): React.ReactNode {
 
     return (
         <GridList
+            {...cy("dStorage_objects")}
             aria-label="Storage objects"
             selectionMode="multiple"
             selectedKeys={selectedKeys}
@@ -45,6 +47,7 @@ export function StorageList(props: StorageListProps): React.ReactNode {
         >
             {(item) => (
                 <GridListItem
+                    {...cy("dStorage_item")}
                     id={item.s3_object_key}
                     textValue={item.file_name}
                 >

@@ -17,6 +17,7 @@ import { UploadFileField } from "./UploadFileField";
 import { UploadFileRow } from "./UploadFileRow";
 import { useStorageUppy, type StorageUppy } from "./useStorageUppy";
 import type { UploadFormValues } from "./types";
+import { cy } from "@/utils/cy";
 
 type UploadFormProps = {
     bucketName: string;
@@ -177,6 +178,7 @@ function UploadFormBody({
                         Cancel
                     </Button>
                     <Button
+                        {...cy("dStorage_upload_submit")}
                         type="submit"
                         isPending={isUploading}
                         isDisabled={isUploading || fields.length === 0}
