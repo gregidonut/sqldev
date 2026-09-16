@@ -25,6 +25,7 @@ declare namespace Cypress {
         p_public?: boolean;
       },
     ): Chainable<{ todo_space_id: string }>;
+    task(event: "emptyBucket"): Chainable<{ deleted: number }>;
     task(event: "supabaseDbReset"): Chainable<null>;
   }
 }

@@ -5,6 +5,7 @@ import { createIgPostAsUser } from "./cypress/tasks/createIgPostAsUser.js";
 import type { CreateIgPostAsUserArgs } from "./cypress/tasks/createIgPostAsUser.js";
 import { createTdsTodoSpaceAsUser } from "./cypress/tasks/createTdsTodoSpaceAsUser.js";
 import type { CreateTdsTodoSpaceAsUserArgs } from "./cypress/tasks/createTdsTodoSpaceAsUser.js";
+import { emptyBucket } from "./cypress/tasks/emptyBucket.js";
 import { supabaseDbReset } from "./cypress/tasks/supabaseDbReset.js";
 
 export default defineConfig({
@@ -19,6 +20,9 @@ export default defineConfig({
         },
         createTdsTodoSpaceAsUser(args: CreateTdsTodoSpaceAsUserArgs) {
           return createTdsTodoSpaceAsUser(args);
+        },
+        emptyBucket() {
+          return emptyBucket();
         },
         supabaseDbReset() {
           return supabaseDbReset();
