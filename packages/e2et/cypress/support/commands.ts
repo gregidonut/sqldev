@@ -11,20 +11,52 @@ Cypress.on("uncaught:exception", (err) => {
   }
 });
 
-function setupClerkTestingToken(frontendApiUrl: string, testingToken?: string) {
-  cy.intercept(`https://${frontendApiUrl}/v1/**`, (req) => {
+// Cypress 16 removed Cypress.env(). @clerk/testing's setupClerkTestingToken
+// still calls it for CLERK_FAPI / CLERK_TESTING_TOKEN, so we inject the
+// testing token with cy.env() instead of the official helper.
+function setupClerkTestingToken(
+  frontendApi: string,
+  testingToken: string | undefined,
+) {
+  const fapiUrl = frontendApi.replace(/index\./, "");
+
+  // Cypress 16 visit() on http origins follows redirects in Cypress, not the
+  // browser, so this intercept never sees /v1/client/handshake. It still
+  // attaches the token to Clerk JS XHR after the document loads.
+  cy.intercept(`https://${fapiUrl}/v1/**`, (req) => {
     if (testingToken) {
       req.query.__clerk_testing_token = testingToken;
     }
     req.continue();
-    req.on("response", (res) => {
-      if (res.body?.response?.captcha_bypass === false) {
-        res.body.response.captcha_bypass = true;
-      }
-      if (res.body?.client?.captcha_bypass === false) {
-        res.body.client.captcha_bypass = true;
-      }
-    });
+  });
+}
+
+// clerk-js DevBrowser.setup() POSTs /v1/dev_browser and stores body.id in
+// __clerk_db_jwt. Seeding that cookie before visit stops clerkMiddleware
+// from 307ing to handshake (which cy.visit follows until maxRedirects).
+function seedClerkDevBrowser(
+  frontendApi: string,
+  testingToken: string | undefined,
+) {
+  const fapiUrl = frontendApi.replace(/index\./, "");
+
+  cy.request({
+    method: "POST",
+    url: `https://${fapiUrl}/v1/dev_browser`,
+    qs: testingToken ? { __clerk_testing_token: testingToken } : {},
+    failOnStatusCode: false,
+  }).then((res) => {
+    const id =
+      res.body &&
+      typeof res.body === "object" &&
+      "id" in res.body &&
+      typeof res.body.id === "string"
+        ? res.body.id
+        : undefined;
+
+    if (id) {
+      cy.setCookie("__clerk_db_jwt", id, { path: "/", sameSite: "lax" });
+    }
   });
 }
 
@@ -49,16 +81,15 @@ Cypress.Commands.add("signInAsUser", function (user: 0 | 1) {
       const { user_id } = test_users[user];
 
       setupClerkTestingToken(CLERK_FAPI, CLERK_TESTING_TOKEN);
+      seedClerkDevBrowser(CLERK_FAPI, CLERK_TESTING_TOKEN);
 
       cy.task("createClerkSignInToken", user_id).then((ticket) => {
-        cy.clearAllCookies();
         cy.visit("/");
-        cy.clearAllLocalStorage();
-        cy.clearAllSessionStorage();
-
+        // visit() only waits for the document load event. Clerk.loaded stays
+        // false until FAPI /v1/client finishes, which exceeds the 4s default.
+        cy.waitForClerkLoaded();
         cy.window().should((win) => {
-          expect(win.Clerk?.loaded).to.eq(true);
-          expect(win.Clerk?.client).to.exist;
+          expect(win.Clerk.client).to.exist;
         });
 
         cy.window().then(async (win) => {
