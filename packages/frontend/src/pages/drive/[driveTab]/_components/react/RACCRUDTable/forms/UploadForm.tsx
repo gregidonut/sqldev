@@ -162,6 +162,7 @@ function UploadFormBody({
 
                 {uploadError && (
                     <p
+                        {...cy("dStorage_upload_error")}
                         role="alert"
                         className="text-sm text-drac-red forced-colors:text-[Mark]"
                     >
