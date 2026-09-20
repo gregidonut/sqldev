@@ -14,6 +14,9 @@ import TitleField from "./Fields/TitleField.tsx";
 import DescriptionTextArea from "./Fields/DescriptionTextArea.tsx";
 import { cy } from "@/utils/cy";
 
+const submitButtonClassName =
+    "scheme-dark bg-drac-purple hover:bg-drac-pink pressed:bg-drac-comment text-drac-background outline-drac-cyan dark:outline-drac-cyan border-drac-selection dark:border-drac-selection";
+
 function FormSection({
     onSuccess,
     tdsTodoSpaceId,
@@ -52,12 +55,19 @@ function FormSection({
     };
 
     return (
-        <Form onSubmit={handleSubmit(onSubmit)} className="flex-1">
+        <Form
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex-1 scheme-dark text-drac-foreground"
+        >
             <FormSectionContext.Provider value={control}>
                 <TitleField />
                 <DescriptionTextArea />
             </FormSectionContext.Provider>
-            <Button type="submit" {...cy("create_tds_todo_submit")}>
+            <Button
+                type="submit"
+                {...cy("create_tds_todo_submit")}
+                className={submitButtonClassName}
+            >
                 Submit
             </Button>
         </Form>

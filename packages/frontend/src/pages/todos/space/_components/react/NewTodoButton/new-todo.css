@@ -1,0 +1,81 @@
+[data-drac-todo] {
+  color-scheme: dark;
+}
+
+.dark [data-drac-todo].isolate {
+  background-color: color-mix(in oklab, var(--color-drac-background) 50%, black);
+}
+
+.dark [data-drac-todo]:not(.isolate) {
+  background-color: var(--color-drac-background);
+  color: var(--color-drac-foreground);
+  border-color: var(--color-drac-selection);
+}
+
+.dark [data-drac-todo] .new-todo-field label {
+  color: var(--color-drac-foreground);
+}
+
+.dark [data-drac-todo] .new-todo-field input,
+.dark [data-drac-todo] .new-todo-field textarea {
+  background-color: var(--color-drac-background);
+  color: var(--color-drac-foreground);
+  border-color: var(--color-drac-comment);
+}
+
+.dark [data-drac-todo] .new-todo-field input::placeholder,
+.dark [data-drac-todo] .new-todo-field textarea::placeholder {
+  color: var(--color-drac-comment);
+}
+
+.dark [data-drac-todo] .new-todo-field input:focus,
+.dark [data-drac-todo] .new-todo-field input[data-focused],
+.dark [data-drac-todo] .new-todo-field textarea:focus,
+.dark [data-drac-todo] .new-todo-field textarea[data-focused] {
+  outline-color: var(--color-drac-cyan);
+  border-color: var(--color-drac-cyan);
+}
+
+.dark [data-drac-todo] .new-todo-field [role="alert"] {
+  color: var(--color-drac-red);
+}
+
+@media (forced-colors: active) {
+  [data-drac-todo] {
+    color-scheme: dark;
+  }
+
+  [data-drac-todo].isolate {
+    background-color: Canvas;
+  }
+
+  [data-drac-todo]:not(.isolate) {
+    background-color: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+  }
+
+  [data-drac-todo] .new-todo-field label,
+  [data-drac-todo] .new-todo-field input,
+  [data-drac-todo] .new-todo-field textarea {
+    color: FieldText;
+  }
+
+  [data-drac-todo] .new-todo-field input,
+  [data-drac-todo] .new-todo-field textarea {
+    background-color: Field;
+    border-color: ButtonBorder;
+  }
+
+  [data-drac-todo] .new-todo-field input:focus,
+  [data-drac-todo] .new-todo-field input[data-focused],
+  [data-drac-todo] .new-todo-field textarea:focus,
+  [data-drac-todo] .new-todo-field textarea[data-focused] {
+    outline-color: Highlight;
+    border-color: Highlight;
+  }
+
+  [data-drac-todo] .new-todo-field [role="alert"] {
+    color: LinkText;
+  }
+}

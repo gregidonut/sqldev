@@ -22,6 +22,7 @@ export default function TitleField() {
             }) => (
                 <TextField
                     {...cy("p_title_field")}
+                    className="new-todo-field"
                     label={name}
                     name={name}
                     value={value}
