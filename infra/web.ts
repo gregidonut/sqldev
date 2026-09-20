@@ -10,6 +10,8 @@ import {
 } from "./secrets";
 import { Vpc as SupabaseVPC } from "./vpc";
 import { realtime } from "./realtime";
+import { api } from "./api";
+import { bucket } from "./storage";
 
 export const frontend = new sst.aws.Astro("Frontend", {
   path: "packages/frontend",
@@ -23,6 +25,8 @@ export const frontend = new sst.aws.Astro("Frontend", {
     imgproxyUrl,
     clerkJWKSPublicKey,
     realtime,
+    api,
+    bucket,
   ],
   environment: {
     PUBLIC_APP_STAGE: $app.stage,

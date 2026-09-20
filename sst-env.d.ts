@@ -38,9 +38,17 @@ declare module "sst" {
       "type": "sst.aws.ApiGatewayV1"
       "url": string
     }
+    "ImgproxyUrl": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "NotifySecret": {
       "type": "sst.sst.Secret"
       "value": string
+    }
+    "SQLDevBucket": {
+      "name": string
+      "type": "sst.aws.Bucket"
     }
     "SQLDevRealtimeSST": {
       "authorizer": string
@@ -54,10 +62,6 @@ declare module "sst" {
     "SupabaseUrl": {
       "type": "sst.sst.Secret"
       "value": string
-    }
-    "sqldevSupabaseVPC": {
-      "bastion": string
-      "type": "sst.aws.Vpc"
     }
   }
 }

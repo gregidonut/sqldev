@@ -16,8 +16,10 @@ export default $config({
     await import("./infra/realtime");
     await import("./infra/api");
     await import("./infra/web");
-    if (["dev"].includes($app.stage)) {
-      return;
-    }
+
+    const { bucket } = await import("./infra/storage");
+    return {
+      bucket: bucket.name,
+    };
   },
 });

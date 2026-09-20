@@ -1,16 +1,30 @@
 import { NatEip } from "./vpc";
 import { realtime } from "./realtime";
+import { bucket } from "./storage";
 import { notifySecret } from "./secrets";
 
 export const api = new sst.aws.ApiGatewayV1("GoApi", {
   cors: true,
+  transform: {
+    api: {
+      // Required for REST API + Lambda proxy binary download/upload.
+      // Include */* so clients like Postman (Accept: */*) get binary decoding.
+      binaryMediaTypes: [
+        "*/*",
+        "application/octet-stream",
+        "image/jpeg",
+        "image/png",
+        "multipart/form-data",
+      ],
+    },
+  },
 });
 
 function addRoute(route: string) {
   api.route(route, {
     handler: "packages/functions/cmd/goapi/main.go",
     runtime: "go",
-    link: [realtime, notifySecret],
+    link: [realtime, notifySecret, bucket],
     environment: {
       APP_NAME: $app.name,
       APP_STAGE: $app.stage,
