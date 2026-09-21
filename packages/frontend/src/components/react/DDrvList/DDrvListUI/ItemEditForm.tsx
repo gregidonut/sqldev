@@ -1,103 +1,65 @@
-import React, { useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { Form } from "@/components/ui/Form.tsx";
-import { Button } from "@/components/ui/Button.tsx";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import type { Database } from "@/utils/supabase/models";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
-import { FieldError, Label, TextArea, TextField } from "react-aria-components";
+import { Button } from "@/components/ui/Button.tsx";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 import createOneGetQueryOptions from "@/components/react/DDrvList/queryOptions/createOneGet.ts";
-import createOnePatchMutationOptions from "@/components/react/DDrvList/queryOptions/createOnePatch.ts";
 import {
-    type ViewMap,
-    viewRPCMap,
-} from "@/components/react/DDrvList/viewMap.ts";
+    MutationForm,
+    TextAreaField,
+    SubmitButton,
+    createOnePatchMutationOptions,
+} from "@/components/react/MutationForm";
+import type { UpdateIgPostArgs } from "@/utils/supabase/models/aliases.ts";
 import { cy } from "@/utils/cy";
+
+type UpdateIgPostFormValues = Pick<UpdateIgPostArgs, "p_text_content">;
+
+function LoadingFallback() {
+    return (
+        <div className="p-4 border border-drac-comment rounded-lg bg-drac-background/50">
+            <p className="text-drac-comment italic">Loading post content...</p>
+        </div>
+    );
+}
 
 export default function ItemEditForm({ postId }: { postId: string }) {
     const { userId } = useStore($authStore);
     const { currentView: view, setIsEditing } = useListStore();
-    if (!view) return null;
-
-    const updateFunctionName = viewRPCMap[view].update;
-    type UpdateArgs =
-        Database["public"]["Functions"][typeof updateFunctionName]["Args"];
-
-    const { data, isLoading, error } = useQuery<ViewMap[typeof view]>(
-        createOneGetQueryOptions(postId, userId ?? ""),
+    const resolvedUserId = userId ?? "";
+    const oneGetOptions = createOneGetQueryOptions<"igPosts">(
+        postId,
+        resolvedUserId,
     );
+    const { data, isLoading, error } = useQuery({
+        ...oneGetOptions,
+        enabled: view === "igPosts",
+    });
+    const mutationOptions = createOnePatchMutationOptions({
+        view: view ?? "igPosts",
+        userId: resolvedUserId,
+    });
 
-    const { handleSubmit, control, reset } = useForm<UpdateArgs>(
-        (function (): { defaultValues: UpdateArgs } {
-            switch (view) {
-                case "igPosts":
-                    return {
-                        defaultValues: {
-                            p_text_content: "",
-                        },
-                    };
-                case "tdsTodoSpaces":
-                    return {
-                        defaultValues: {
-                            p_name: "",
-                        },
-                    };
-            }
-        })(),
-    );
-
-    useEffect(() => {
-        if (data) {
-            switch (view) {
-                case "igPosts":
-                    reset({
-                        p_text_content:
-                            ((data as ViewMap[typeof view])
-                                .text_content as string) || "",
-                    });
-                    break;
-            }
-        }
-    }, [data, reset, view]);
-
-    const { mutate, isPending } = useMutation(
-        createOnePatchMutationOptions(reset, userId!),
-    );
-
-    async function onSubmit(updateFormData: UpdateArgs) {
+    function toVariables(values: UpdateIgPostFormValues) {
         const formData = new FormData();
-        switch (view) {
-            case "igPosts":
-                formData.append("p_post_id", postId);
-                formData.append(
-                    "p_text_content",
-                    (
-                        updateFormData as Database["public"]["Functions"]["update_ig_post"]["Args"]
-                    ).p_text_content ?? "",
-                );
-                break;
-        }
-        mutate(formData);
+        formData.append("p_post_id", postId);
+        formData.append("p_text_content", values.p_text_content);
+        return formData;
     }
 
-    if (isLoading || isPending) {
-        return (
-            <div className="p-4 border border-drac-comment rounded-lg bg-drac-background/50">
-                <p className="text-drac-comment italic">
-                    Loading post content...
-                </p>
-            </div>
-        );
+    if (view !== "igPosts") {
+        return null;
+    }
+
+    if (isLoading) {
+        return <LoadingFallback />;
     }
 
     if (error) {
         return (
             <div className="p-4 border border-drac-red rounded-lg bg-drac-red/10">
-                <p className="text-drac-red">
-                    Error: {(error as Error).message}
-                </p>
+                <p className="text-drac-red">Error: {error.message}</p>
                 <Button
                     variant="secondary"
                     className="mt-2"
@@ -109,67 +71,42 @@ export default function ItemEditForm({ postId }: { postId: string }) {
         );
     }
 
+    const textContent = data?.text_content ?? "";
+
     return (
-        <Form
-            onSubmit={handleSubmit(onSubmit)}
+        <MutationForm
+            formOptions={{
+                defaultValues: {
+                    p_text_content: "",
+                } satisfies UpdateIgPostFormValues,
+                values: {
+                    p_text_content: textContent,
+                },
+            }}
+            mutationOptions={mutationOptions}
+            toVariables={toVariables}
+            onSuccess={() => setIsEditing(false)}
+            pendingFallback={<LoadingFallback />}
             className="w-full p-4"
             {...cy("edit_ig_post_form")}
         >
-            <Controller
-                control={control}
-                name={(function () {
-                    switch (view) {
-                        case "igPosts":
-                            return "p_text_content";
-                        case "tdsTodoSpaces":
-                            return "p_name";
-                    }
-                })()}
+            <TextAreaField<UpdateIgPostFormValues>
+                name="p_text_content"
                 rules={{ required: "Post content cannot be empty." }}
-                render={({
-                    field: { name, value, onChange, onBlur, ref },
-                    fieldState: { invalid, error: fieldError },
-                }) => (
-                    <TextField
-                        name={name}
-                        value={value}
-                        onChange={onChange}
-                        onBlur={onBlur}
-                        ref={ref}
-                        isRequired
-                        autoFocus
-                        validationBehavior="aria"
-                        isInvalid={invalid}
-                        // errorMessage={fieldError?.message}
-                        className="flex-col-start-start gap-1"
-                        {...cy("edit_p_text_content_field")}
-                    >
-                        <Label>{name}</Label>
-                        <TextArea
-                            rows={4}
-                            className="w-full resize-none rounded-sm border-drac-comment px-3 py-2 bg-drac-background field-sizing-content"
-                            onKeyDown={(e) => {
-                                if (e.key.startsWith("Arrow")) {
-                                    e.stopPropagation();
-                                }
-                            }}
-                        />
-                        {fieldError && (
-                            <FieldError className="text-drac-red">
-                                {fieldError.message}
-                            </FieldError>
-                        )}
-                    </TextField>
-                )}
+                isRequired
+                autoFocus
+                stopArrowKeyPropagation
+                className="flex-col-start-start gap-1"
+                dataCy="edit_p_text_content_field"
             />
             <div className="flex gap-3 mt-4 justify-end">
                 <Button variant="secondary" onPress={() => setIsEditing(false)}>
                     Cancel
                 </Button>
-                <Button type="submit" {...cy("edit_ig_post_submit")}>
+                <SubmitButton dataCy="edit_ig_post_submit">
                     Save Changes
-                </Button>
+                </SubmitButton>
             </div>
-        </Form>
+        </MutationForm>
     );
 }
