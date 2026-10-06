@@ -6,6 +6,9 @@ const supabaseDir = fileURLToPath(
 );
 
 export async function supabaseDbReset(): Promise<null> {
-  await runSupabase(["db", "reset"], supabaseDir);
+  // --local never follows a linked remote project. --no-seed avoids the
+  // gitignored seed.sql that config.toml enables but the repo does not ship.
+  // Supabase CLI 2.117 supports both flags (`supabase db reset --help`).
+  await runSupabase(["db", "reset", "--local", "--no-seed"], supabaseDir);
   return null;
 }

@@ -71,6 +71,44 @@ Cypress.Commands.add("waitForClerkLoaded", function () {
   });
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function clerkIdentityMatches(user: unknown, identifier: string): boolean {
+  if (!isRecord(user)) {
+    return false;
+  }
+  if (user.id === identifier) {
+    return true;
+  }
+  if (!Array.isArray(user.emailAddresses)) {
+    return false;
+  }
+  return user.emailAddresses.some(
+    (address) => isRecord(address) && address.emailAddress === identifier,
+  );
+}
+
+let recordNameSeq = 0;
+
+Cypress.Commands.add("uniqueRecordName", (label: string) => {
+  return cy.env<{ E2E_RUN_ID: string }>(["E2E_RUN_ID"]).then(({ E2E_RUN_ID }) => {
+    if (!E2E_RUN_ID) {
+      throw new Error("E2E_RUN_ID is missing from the Cypress environment");
+    }
+    recordNameSeq += 1;
+    const title = (Cypress.currentTest?.titlePath ?? ["test"]).join("-");
+    const slug = (value: string) =>
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 32);
+    return `${slug(label)}-${E2E_RUN_ID.slice(0, 8)}-${slug(title)}-${recordNameSeq}`;
+  });
+});
+
 Cypress.Commands.add("signInAsUser", function (user: 0 | 1) {
   cy.env<{
     test_users: [Cypress.TestUser, Cypress.TestUser];
@@ -78,58 +116,76 @@ Cypress.Commands.add("signInAsUser", function (user: 0 | 1) {
     CLERK_TESTING_TOKEN: string | undefined;
   }>(["test_users", "CLERK_FAPI", "CLERK_TESTING_TOKEN"]).then(
     ({ test_users, CLERK_FAPI, CLERK_TESTING_TOKEN }) => {
-      const { user_id } = test_users[user];
+      const account = test_users[user];
+      if (!account) {
+        throw new Error(`test_users[${user}] is missing`);
+      }
+      const { user_id } = account;
 
+      // The testing-token intercept is not part of the cached cookie jar, so
+      // register it on every call. The ticket exchange itself is cached.
       setupClerkTestingToken(CLERK_FAPI, CLERK_TESTING_TOKEN);
-      seedClerkDevBrowser(CLERK_FAPI, CLERK_TESTING_TOKEN);
 
-      cy.task("createClerkSignInToken", user_id).then((ticket) => {
-        cy.visit("/");
-        // visit() only waits for the document load event. Clerk.loaded stays
-        // false until FAPI /v1/client finishes, which exceeds the 4s default.
-        cy.waitForClerkLoaded();
-        cy.window().should((win) => {
-          expect(win.Clerk.client).to.exist;
-        });
+      cy.session(
+        ["clerk-user", user_id],
+        () => {
+          seedClerkDevBrowser(CLERK_FAPI, CLERK_TESTING_TOKEN);
 
-        cy.window().then(async (win) => {
-          if (win.Clerk.user) {
-            await win.Clerk.signOut();
-          }
+          cy.task("createClerkSignInToken", user_id).then((ticket) => {
+            cy.visit("/");
+            // visit() only waits for the document load event. Clerk.loaded stays
+            // false until FAPI /v1/client finishes, which exceeds the 4s default.
+            cy.waitForClerkLoaded();
+            cy.window().should((win) => {
+              expect(win.Clerk.client).to.exist;
+            });
 
-          const signIn = win.Clerk.client?.signIn;
-          if (!signIn) {
-            throw new Error("Clerk.client.signIn is not available");
-          }
+            cy.window().then(async (win) => {
+              if (win.Clerk.user) {
+                await win.Clerk.signOut();
+              }
 
-          const result = await signIn.create({
-            strategy: "ticket",
-            ticket,
+              const signIn = win.Clerk.client?.signIn;
+              if (!signIn) {
+                throw new Error("Clerk.client.signIn is not available");
+              }
+
+              const result = await signIn.create({
+                strategy: "ticket",
+                ticket,
+              });
+
+              if (result.status !== "complete" || !result.createdSessionId) {
+                throw new Error(
+                  `Clerk ticket sign-in incomplete (status=${result.status})`,
+                );
+              }
+
+              await win.Clerk.setActive({ session: result.createdSessionId });
+            });
+
+            cy.window().should((win) => {
+              expect(
+                clerkIdentityMatches(win.Clerk.user, user_id),
+                "signed-in Clerk user",
+              ).to.eq(true);
+            });
           });
-
-          if (result.status !== "complete" || !result.createdSessionId) {
-            throw new Error(
-              `Clerk ticket sign-in incomplete (status=${result.status})`,
-            );
-          }
-
-          await win.Clerk.setActive({ session: result.createdSessionId });
-        });
-
-        cy.window().should((win) => {
-          expect(win.Clerk.user).to.not.equal(null);
-        });
-
-        cy.window().then((win) => {
-          const session = win.Clerk.session;
-          if (!session) {
-            throw new Error("Clerk session missing after sign-in");
-          }
-          return session.getToken().then((token) => {
-            cy.wrap(token).as("clerkToken");
-          });
-        });
-      });
+        },
+        {
+          cacheAcrossSpecs: true,
+          validate() {
+            cy.visit("/");
+            cy.waitForClerkLoaded();
+            cy.window().should((win) => {
+              expect(
+                clerkIdentityMatches(win.Clerk.user, user_id),
+                "restored Clerk user",
+              ).to.eq(true);
+            });
+          },
+        },
+      );
     },
   );
 });

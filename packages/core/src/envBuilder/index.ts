@@ -1,4 +1,4 @@
-import { SpawnOptions, spawn } from "node:child_process";
+import { spawn, type SpawnOptions } from "node:child_process";
 import { Resource } from "sst";
 
 //github.com/supabase/cli/issues/2588
@@ -46,12 +46,24 @@ export function runSupabase(args: string[], cwd = "./supabase"): Promise<void> {
 }
 
 export function getCypressEnv(): NodeJS.ProcessEnv {
+  // sst shell sets SST_STAGE from `STAGE=... bun run shell`. Cypress tasks
+  // refuse to touch a database unless this is a local/dev stage.
+  const stage = process.env.STAGE ?? process.env.SST_STAGE;
   return {
     ...process.env,
+    ...(stage
+      ? { STAGE: stage, SST_STAGE: process.env.SST_STAGE ?? stage }
+      : {}),
     CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY,
     SUPABASE_URL,
     SUPABASE_KEY,
+    // config.toml reads these during `supabase status` inside Cypress before:run.
+    // getSupabaseEnv already supplies them for src/sb; the Cypress child did not.
+    CLERK_FE_DOMAIN,
+    NOTIFY_IG_POSTS_VIEW_URL,
+    RENDER_MD_URL,
+    NOTIFY_SECRET,
   };
 }
 

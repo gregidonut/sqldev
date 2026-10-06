@@ -12,11 +12,6 @@ function delayMutation(method: "POST" | "PATCH", url: string, alias: string) {
 
 function signIn() {
   cy.signInAsUser(0);
-
-  cy.clerkLoaded();
-  cy.window().should((win) => {
-    expect(win.Clerk.user).to.not.equal(null);
-  });
 }
 
 function ownerId() {
@@ -32,16 +27,12 @@ function ownerId() {
 }
 
 describe("double submit", () => {
-  before(() => {
-    cy.task("supabaseDbReset");
-  });
-
   beforeEach(() => {
     cy.viewport("iphone-6");
   });
 
   it("presses Enter then Submit on a new post → one create request", () => {
-    const postText = `post-${Date.now()}`;
+    cy.uniqueRecordName("post").then((postText) => {
 
     signIn();
 
@@ -61,12 +52,13 @@ describe("double submit", () => {
     );
     cy.get("[data-cy='create_ig_post_submit']").click({ force: true });
 
-    cy.wait("@createPost").its("response.statusCode").should("eq", 200);
-    cy.get("@createPost.all").should("have.length", 1);
+      cy.wait("@createPost").its("response.statusCode").should("eq", 200);
+      cy.get("@createPost.all").should("have.length", 1);
+    });
   });
 
   it("presses Save twice on an edit post → one patch request", () => {
-    const postText = `post-${Date.now()}`;
+    cy.uniqueRecordName("post").then((postText) => {
 
     signIn();
 
@@ -116,12 +108,13 @@ describe("double submit", () => {
       form.requestSubmit();
     });
 
-    cy.wait("@updatePost").its("response.statusCode").should("eq", 200);
-    cy.get("@updatePost.all").should("have.length", 1);
+      cy.wait("@updatePost").its("response.statusCode").should("eq", 200);
+      cy.get("@updatePost.all").should("have.length", 1);
+    });
   });
 
   it("presses Enter then Submit on a new todo space → one create request", () => {
-    const spaceName = `space-${Date.now()}`;
+    cy.uniqueRecordName("space").then((spaceName) => {
 
     signIn();
 
@@ -144,12 +137,13 @@ describe("double submit", () => {
     );
     cy.get("[data-cy='create_tds_todo_space_submit']").click({ force: true });
 
-    cy.wait("@createSpace").its("response.statusCode").should("eq", 200);
-    cy.get("@createSpace.all").should("have.length", 1);
+      cy.wait("@createSpace").its("response.statusCode").should("eq", 200);
+      cy.get("@createSpace.all").should("have.length", 1);
+    });
   });
 
   it("presses Enter then Submit on a new todo → one create request", () => {
-    const title = `todo-${Date.now()}`;
+    cy.uniqueRecordName("todo").then((title) => {
 
     signIn();
 
@@ -157,7 +151,7 @@ describe("double submit", () => {
       .then((identifier) => {
         return cy.task("createTdsTodoSpaceAsUser", {
           identifier,
-          p_name: `todo-space-${Date.now()}`,
+          p_name: `${title}-space`,
           p_public: false,
         });
       })
@@ -188,7 +182,8 @@ describe("double submit", () => {
     );
     cy.get("[data-cy='create_tds_todo_submit']").click({ force: true });
 
-    cy.wait("@createTodo").its("response.statusCode").should("eq", 200);
-    cy.get("@createTodo.all").should("have.length", 1);
+      cy.wait("@createTodo").its("response.statusCode").should("eq", 200);
+      cy.get("@createTodo.all").should("have.length", 1);
+    });
   });
 });
