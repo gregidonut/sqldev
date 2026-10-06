@@ -93,6 +93,7 @@ describe("drive", () => {
     if (skipRemaining) {
       throw new Error("An earlier test in this spec failed");
     }
+    cy.viewport("iphone-6");
   });
 
   afterEach(function () {

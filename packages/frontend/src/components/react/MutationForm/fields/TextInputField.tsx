@@ -8,6 +8,7 @@ import {
 } from "react-hook-form";
 import { TextField } from "@/components/ui/TextField";
 import { cy } from "@/utils/cy";
+import { useMutationFormState } from "../MutationFormContext.ts";
 import { textValue } from "./textValue.ts";
 
 export interface TextInputFieldProps<TFieldValues extends FieldValues> {
@@ -28,6 +29,7 @@ export function TextInputField<TFieldValues extends FieldValues>({
     dataCy,
 }: TextInputFieldProps<TFieldValues>) {
     const { control } = useFormContext<TFieldValues>();
+    const { isPending } = useMutationFormState();
 
     return (
         <Controller
@@ -47,6 +49,7 @@ export function TextInputField<TFieldValues extends FieldValues>({
                     onBlur={onBlur}
                     ref={ref}
                     isRequired={isRequired}
+                    isDisabled={isPending}
                     validationBehavior="aria"
                     isInvalid={invalid}
                     errorMessage={error?.message}

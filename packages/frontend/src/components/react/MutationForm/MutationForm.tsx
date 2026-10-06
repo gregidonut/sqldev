@@ -45,6 +45,9 @@ export function MutationForm<
 }: MutationFormProps<TFieldValues, TVariables, TData>) {
     const methods = useForm<TFieldValues>(formOptions);
     const { mutate, isPending } = useMutation(mutationOptions);
+    // isPending updates on the next render, so Enter-then-click in the same
+    // turn still reaches onSubmit twice. The ref closes that gap.
+    const inFlightRef = React.useRef(false);
 
     function resolveVariables(values: TFieldValues): TVariables {
         if (toVariables) {
@@ -54,10 +57,17 @@ export function MutationForm<
     }
 
     function onSubmit(values: TFieldValues) {
+        if (inFlightRef.current) {
+            return;
+        }
+        inFlightRef.current = true;
         mutate(resolveVariables(values), {
             onSuccess: () => {
                 methods.reset();
                 onSuccess?.();
+            },
+            onSettled: () => {
+                inFlightRef.current = false;
             },
         });
     }

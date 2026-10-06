@@ -8,6 +8,7 @@ import {
 } from "react-hook-form";
 import { FieldError, Label, TextArea, TextField } from "react-aria-components";
 import { cy } from "@/utils/cy";
+import { useMutationFormState } from "../MutationFormContext.ts";
 import { textValue } from "./textValue.ts";
 
 const defaultTextAreaClassName =
@@ -39,6 +40,7 @@ export function TextAreaField<TFieldValues extends FieldValues>({
     dataCy,
 }: TextAreaFieldProps<TFieldValues>) {
     const { control } = useFormContext<TFieldValues>();
+    const { isPending } = useMutationFormState();
 
     return (
         <Controller
@@ -56,6 +58,7 @@ export function TextAreaField<TFieldValues extends FieldValues>({
                     onBlur={onBlur}
                     ref={ref}
                     isRequired={isRequired}
+                    isDisabled={isPending}
                     autoFocus={autoFocus}
                     validationBehavior="aria"
                     isInvalid={invalid}
