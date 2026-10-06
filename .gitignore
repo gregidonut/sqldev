@@ -2,7 +2,6 @@
 .agents/
 .claude/
 .cursor/
-AGENTS.md
 agent/
 packages/backend/supabase/seed.sql
 packages/frontend/.agents/

@@ -12,6 +12,10 @@
         "typescript": "^5",
       },
     },
+    "packages/agent-skills": {
+      "name": "@sqldev/agent-skills",
+      "version": "0.0.0",
+    },
     "packages/backend": {
       "name": "@sqldev/backend",
       "version": "0.0.0",
@@ -589,6 +593,8 @@
     "@solid-primitives/trigger": ["@solid-primitives/trigger@1.2.4", "", { "dependencies": { "@solid-primitives/utils": "^6.4.1" }, "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-Ju0e+ZOD7hpOp7nptJimvDSZHWFvIvF9iBWMvuwt30smX7c5wmB8Kmc0AdDuv0wOTi06PQ1J5IrP1WJbH2yUBQ=="],
 
     "@solid-primitives/utils": ["@solid-primitives/utils@6.4.1", "", { "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-ISSB5QX1qP2ynrheIpYwc4oKR5Ny4siNuUyf1qZniy+Il+p/PtDB0QK1Dnle8noiHpwRD3gpPdubOC3qI/Zamg=="],
+
+    "@sqldev/agent-skills": ["@sqldev/agent-skills@workspace:packages/agent-skills"],
 
     "@sqldev/backend": ["@sqldev/backend@workspace:packages/backend"],
 
