@@ -1,3 +1,4 @@
+import { requireApiAuth } from "@/utils/clerk/requireAuth";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browserClient";
 import type { APIRoute, APIContext } from "astro";
 import {
@@ -6,6 +7,9 @@ import {
 } from "@/components/react/DDrvList/viewMap.ts";
 
 export const GET: APIRoute = async function (context: APIContext) {
+    const unauthorized = requireApiAuth(context);
+    if (unauthorized) return unauthorized;
+
     const { view } = context.params;
 
     if (!view || !(view in viewTableMap)) {

@@ -1,8 +1,12 @@
 import type { APIRoute } from "astro";
+import { requireApiAuth } from "@/utils/clerk/requireAuth";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browserClient";
 import type { Database } from "@/utils/supabase/models";
 
 export const PATCH: APIRoute = async (context) => {
+    const unauthorized = requireApiAuth(context);
+    if (unauthorized) return unauthorized;
+
     const client = getSupabaseBrowserClient(context);
 
     const formData = await context.request.formData();

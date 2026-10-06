@@ -35,6 +35,7 @@ export const frontend = new sst.aws.Astro("Frontend", {
     PUBLIC_CLERK_PUBLISHABLE_KEY: clerkPublic.value,
     CLERK_SECRET_KEY: clerkSecret.value,
     PUBLIC_CLERK_SIGN_IN_URL: "/sign-in",
+    PUBLIC_CLERK_TELEMETRY_DISABLED: "true",
     SUPABASE_URL: supabaseUrl.value,
     SUPABASE_KEY: supabaseKey.value,
     IMGPROXY_URL: imgproxyUrl.value,

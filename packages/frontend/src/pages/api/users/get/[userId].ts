@@ -1,7 +1,11 @@
 import { clerkClient } from "@clerk/astro/server";
 import type { APIRoute } from "astro";
+import { requireApiAuth } from "@/utils/clerk/requireAuth";
 
 export const GET: APIRoute = async function (context) {
+    const unauthorized = requireApiAuth(context);
+    if (unauthorized) return unauthorized;
+
     const { userId } = context.params;
 
     if (!userId) {

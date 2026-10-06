@@ -1,6 +1,5 @@
-import { defineMiddleware } from "astro:middleware";
-import { clerkMiddleware, createRouteMatcher } from "@clerk/astro/server";
-import { sequence } from "astro:middleware";
+import { defineMiddleware, sequence } from "astro:middleware";
+import { clerkMiddleware } from "@clerk/astro/server";
 
 const preauth = defineMiddleware(async function (_, next) {
     const response = await next();
@@ -12,29 +11,4 @@ const postauth = defineMiddleware(async function (_, next) {
     return response;
 });
 
-const isPublicRoute = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)"]);
-const isApiRoute = createRouteMatcher(["/api(.*)"]);
-
-export const onRequest = sequence(
-    preauth,
-    clerkMiddleware(
-        // @ts-ignore
-        async function (auth, context) {
-            const { isAuthenticated, redirectToSignIn } = auth();
-
-            if (!isPublicRoute(context.request) && !isAuthenticated) {
-                if (isApiRoute(context.request)) {
-                    return new Response(
-                        JSON.stringify({ message: "Unauthorized" }),
-                        {
-                            status: 401,
-                            headers: { "Content-Type": "application/json" },
-                        },
-                    );
-                }
-                return redirectToSignIn();
-            }
-        },
-    ),
-    postauth,
-);
+export const onRequest = sequence(preauth, clerkMiddleware(), postauth);

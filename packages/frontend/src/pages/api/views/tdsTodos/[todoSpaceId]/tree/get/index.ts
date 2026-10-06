@@ -1,7 +1,11 @@
+import { requireApiAuth } from "@/utils/clerk/requireAuth";
 import { getSupabaseBrowserClient } from "@/utils/supabase/browserClient";
 import type { APIRoute } from "astro";
 
 export const GET: APIRoute = async function (context) {
+    const unauthorized = requireApiAuth(context);
+    if (unauthorized) return unauthorized;
+
     const client = getSupabaseBrowserClient(context);
 
     const { todoSpaceId } = context.params;

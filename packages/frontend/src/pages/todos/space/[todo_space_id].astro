@@ -3,9 +3,13 @@ import Layout from "@/layouts/Layout.astro";
 import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
 
+import { requirePageAuth } from "@/utils/clerk/requireAuth";
 import { Resource } from "sst";
 import NewTodoButton from "./_components/react/NewTodoButton";
 import MovableTodoTree from "./_components/react/MovableTodoTree";
+
+const redirect = requirePageAuth(Astro);
+if (redirect) return redirect;
 
 const { todo_space_id } = Astro.params;
 

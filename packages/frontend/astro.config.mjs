@@ -16,6 +16,7 @@ export default defineConfig({
             appearance: {
                 theme: [neobrutalism],
             },
+            telemetry: { disabled: true },
         }),
     ],
     output: "server",

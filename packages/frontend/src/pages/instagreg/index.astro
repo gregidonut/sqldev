@@ -4,6 +4,10 @@ import Header from "@/components/header/Header.astro";
 import Main from "@/components/main/Main.astro";
 
 import PageHeader from "./_components/react/PageHeader";
+import { requirePageAuth } from "@/utils/clerk/requireAuth";
+
+const redirect = requirePageAuth(Astro);
+if (redirect) return redirect;
 
 return Astro.redirect("/instagreg/home", 302);
 ---

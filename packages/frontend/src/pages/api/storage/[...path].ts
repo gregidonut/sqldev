@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { Resource } from "sst";
+import { requireApiAuth } from "@/utils/clerk/requireAuth";
 import {
     abortPendingUpload,
     authorizeDStorage,
@@ -30,6 +31,9 @@ function buildUpstreamUrl(
 }
 
 const proxy: APIRoute = async function (context) {
+    const unauthorized = requireApiAuth(context);
+    if (unauthorized) return unauthorized;
+
     const { params, request } = context;
     const path = resolvePath(
         Array.isArray(params.path) ? params.path.join("/") : params.path,

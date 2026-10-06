@@ -1,6 +1,10 @@
 ---
 import BasicFormSection from "./_components/react/BasicFormSection";
 import ComponentPage from "../_layouts/ComponentPage/index.astro";
+import { requirePageAuth } from "@/utils/clerk/requireAuth";
+
+const redirect = requirePageAuth(Astro);
+if (redirect) return redirect;
 ---
 
 <ComponentPage>

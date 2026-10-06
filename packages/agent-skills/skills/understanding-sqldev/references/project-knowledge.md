@@ -44,7 +44,7 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 - `infra/realtime.ts` defines `sst.aws.Realtime`. Application MQTT is AWS IoT. `packages/backend/supabase/config.toml` sets `[realtime] enabled = false`.
 - `infra/web.ts` attaches the Astro Lambda to `sqldevSupabaseVPC` only outside `dev`. `infra/api.ts` does not attach the Go API Lambda to that VPC.
 - `packages/frontend/astro.config.mjs` sets `output: "server"` and imports `astro-sst`. That package is the `astro-sst` dependency in `packages/frontend/package.json`.
-- Clerk server auth is `@clerk/astro` in `packages/frontend/src/middleware.ts`. Public routes are `/`, `/sign-in`, and `/sign-up`; other pages redirect, and `/api` returns 401.
+- Clerk server auth is `@clerk/astro`. `packages/frontend/src/middleware.ts` only attaches `clerkMiddleware()`. `packages/frontend/src/utils/clerk/requireAuth.ts` redirects unsigned pages to sign-in and returns 401 for API routes. `/` and `/sign-in` stay public; other pages, including `404.astro`, call the page helper, and every `pages/api` handler calls the API helper.
 - `packages/e2et/cypress/tasks/localDbReset.ts` allows database cleanup only for stages `dev`, `local`, and `development`.
 - `packages/functions/cmd/goapi/api/api.gen.go` is oapi-codegen output. No `go:generate` directive is committed.
 - `packages/frontend/src/utils/supabase/models/` is gitignored generated output.

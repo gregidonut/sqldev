@@ -7,7 +7,11 @@ import RACCRUDTable from "./_components/react/RACCRUDTable/index.tsx";
 
 import PageNav from "../_components/react/PageNav";
 import { parseObjectsTab, type ObjectsTab } from "@/utils/storage/objectsTab";
+import { requirePageAuth } from "@/utils/clerk/requireAuth";
 import { Resource } from "sst";
+
+const redirect = requirePageAuth(Astro);
+if (redirect) return redirect;
 
 const { driveTab } = Astro.params;
 
