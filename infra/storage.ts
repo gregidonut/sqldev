@@ -1,3 +1,1 @@
-export const bucket = new sst.aws.Bucket("SQLDevBucket", {
-  access: "public",
-});
+export const bucket = new sst.aws.Bucket("SQLDevBucket");

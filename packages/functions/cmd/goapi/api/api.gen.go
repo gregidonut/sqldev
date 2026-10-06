@@ -25,160 +25,226 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Defines values for NotifyJSONBodyVisibility.
 const (
-	Private NotifyJSONBodyVisibility = "private"
-	Public  NotifyJSONBodyVisibility = "public"
+	ClerkBearerScopes clerkBearerContextKey = "clerkBearer.Scopes"
 )
 
-// Valid indicates whether the value is a known member of the NotifyJSONBodyVisibility enum.
-func (e NotifyJSONBodyVisibility) Valid() bool {
+// Defines values for StorageTab.
+const (
+	StorageTabMine         StorageTab = "mine"
+	StorageTabPublic       StorageTab = "public"
+	StorageTabSharedWithMe StorageTab = "shared_with_me"
+)
+
+// Valid indicates whether the value is a known member of the StorageTab enum.
+func (e StorageTab) Valid() bool {
 	switch e {
-	case Private:
+	case StorageTabMine:
 		return true
-	case Public:
+	case StorageTabPublic:
+		return true
+	case StorageTabSharedWithMe:
 		return true
 	default:
 		return false
 	}
 }
 
-// ObjectKeyRef defines model for ObjectKeyRef.
-type ObjectKeyRef struct {
-	FileName            string             `json:"fileName"`
-	StorageObjectDataId openapi_types.UUID `json:"storageObjectDataId"`
-	StorageObjectId     openapi_types.UUID `json:"storageObjectId"`
-	UserId              openapi_types.UUID `json:"userId"`
+// Defines values for ViewName.
+const (
+	IgPosts       ViewName = "igPosts"
+	TdsTodoSpaces ViewName = "tdsTodoSpaces"
+)
+
+// Valid indicates whether the value is a known member of the ViewName enum.
+func (e ViewName) Valid() bool {
+	switch e {
+	case IgPosts:
+		return true
+	case TdsTodoSpaces:
+		return true
+	default:
+		return false
+	}
 }
 
-// S3Object defines model for S3Object.
-type S3Object struct {
-	ETag         *string    `json:"eTag,omitempty"`
-	Key          *string    `json:"key,omitempty"`
-	LastModified *time.Time `json:"lastModified,omitempty"`
-	Size         *int       `json:"size,omitempty"`
+// Defines values for NotifyJSONBodyVisibility.
+const (
+	NotifyJSONBodyVisibilityPrivate NotifyJSONBodyVisibility = "private"
+	NotifyJSONBodyVisibilityPublic  NotifyJSONBodyVisibility = "public"
+)
+
+// Valid indicates whether the value is a known member of the NotifyJSONBodyVisibility enum.
+func (e NotifyJSONBodyVisibility) Valid() bool {
+	switch e {
+	case NotifyJSONBodyVisibilityPrivate:
+		return true
+	case NotifyJSONBodyVisibilityPublic:
+		return true
+	default:
+		return false
+	}
 }
+
+// ClerkUser defines model for ClerkUser.
+type ClerkUser struct {
+	Id       string  `json:"id"`
+	ImageUrl *string `json:"imageUrl,omitempty"`
+	Username *string `json:"username,omitempty"`
+}
+
+// CopyDestination defines model for CopyDestination.
+type CopyDestination struct {
+	DestinationBucket   string `json:"destinationBucket"`
+	DestinationFileName string `json:"destinationFileName"`
+}
+
+// DeleteKeys defines model for DeleteKeys.
+type DeleteKeys struct {
+	Keys []string `json:"keys"`
+}
+
+// ErrorMessage defines model for ErrorMessage.
+type ErrorMessage struct {
+	Message string `json:"message"`
+}
+
+// FormBody Multipart fields are parsed by the handler.
+type FormBody struct {
+	Payload *openapi_types.File `json:"payload,omitempty"`
+}
+
+// JsonObject defines model for JsonObject.
+type JsonObject map[string]interface{}
+
+// JsonRows defines model for JsonRows.
+type JsonRows = []JsonObject
+
+// PendingUpload defines model for PendingUpload.
+type PendingUpload struct {
+	FileName            string             `json:"fileName"`
+	IsNewObject         bool               `json:"isNewObject"`
+	S3ObjectKey         string             `json:"s3ObjectKey"`
+	StorageObjectDataId openapi_types.UUID `json:"storageObjectDataId"`
+	StorageObjectId     openapi_types.UUID `json:"storageObjectId"`
+}
+
+// PresignResponse defines model for PresignResponse.
+type PresignResponse struct {
+	Key           string        `json:"key"`
+	PendingUpload PendingUpload `json:"pendingUpload"`
+	Url           string        `json:"url"`
+}
+
+// StorageObjectRow defines model for StorageObjectRow.
+type StorageObjectRow struct {
+	ClerkUserId     *string             `json:"clerk_user_id,omitempty"`
+	CreatedAt       *time.Time          `json:"created_at,omitempty"`
+	FileName        *string             `json:"file_name,omitempty"`
+	Public          *bool               `json:"public,omitempty"`
+	S3ObjectKey     *string             `json:"s3_object_key,omitempty"`
+	StorageObjectId *openapi_types.UUID `json:"storage_object_id,omitempty"`
+	UpdatedAt       *time.Time          `json:"updated_at,omitempty"`
+	UserId          *openapi_types.UUID `json:"user_id,omitempty"`
+}
+
+// StorageTab defines model for StorageTab.
+type StorageTab string
+
+// ViewName defines model for ViewName.
+type ViewName string
+
+// BucketName defines model for BucketName.
+type BucketName = string
+
+// ClerkUserId defines model for ClerkUserId.
+type ClerkUserId = string
 
 // FileName defines model for FileName.
 type FileName = string
 
-// StorageObjectDataIdPrefix defines model for StorageObjectDataIdPrefix.
-type StorageObjectDataIdPrefix = openapi_types.UUID
+// ItemId defines model for ItemId.
+type ItemId = openapi_types.UUID
 
-// StorageObjectIdPrefix defines model for StorageObjectIdPrefix.
-type StorageObjectIdPrefix = openapi_types.UUID
+// ObjectKey defines model for ObjectKey.
+type ObjectKey = string
 
-// UserIdPrefix defines model for UserIdPrefix.
-type UserIdPrefix = openapi_types.UUID
+// TodoSpaceId defines model for TodoSpaceId.
+type TodoSpaceId = openapi_types.UUID
 
-// DeleteObjectsJSONBody defines parameters for DeleteObjects.
-type DeleteObjectsJSONBody struct {
-	Keys []ObjectKeyRef `json:"keys"`
-}
+// BadRequest defines model for BadRequest.
+type BadRequest = ErrorMessage
+
+// Conflict defines model for Conflict.
+type Conflict = ErrorMessage
+
+// Forbidden defines model for Forbidden.
+type Forbidden = ErrorMessage
+
+// InternalError defines model for InternalError.
+type InternalError = ErrorMessage
+
+// NotFound defines model for NotFound.
+type NotFound = ErrorMessage
+
+// Unauthorized defines model for Unauthorized.
+type Unauthorized = ErrorMessage
+
+// clerkBearerContextKey is the context key for clerkBearer security scheme
+type clerkBearerContextKey string
 
 // DeleteObjectsParams defines parameters for DeleteObjects.
 type DeleteObjectsParams struct {
 	BypassGovernance *bool `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
 }
 
+// ListStorageObjectsParams defines parameters for ListStorageObjects.
+type ListStorageObjectsParams struct {
+	Tab StorageTab `form:"tab" json:"tab"`
+}
+
 // UploadObjectMultipartBody defines parameters for UploadObject.
 type UploadObjectMultipartBody struct {
-	// File File binary contents payload.
 	File openapi_types.File `json:"file"`
 }
 
 // UploadObjectParams defines parameters for UploadObject.
 type UploadObjectParams struct {
-	// UserId Owner user UUID prefix segment.
-	UserId UserIdPrefix `form:"userId" json:"userId"`
-
-	// StorageObjectId Storage object UUID prefix segment.
-	StorageObjectId StorageObjectIdPrefix `form:"storageObjectId" json:"storageObjectId"`
-
-	// StorageObjectDataId Storage object data UUID prefix segment.
-	StorageObjectDataId StorageObjectDataIdPrefix `form:"storageObjectDataId" json:"storageObjectDataId"`
-
-	// FileName File name suffix (may include subpaths).
 	FileName FileName `form:"fileName" json:"fileName"`
-}
-
-// CopyObjectJSONBody defines parameters for CopyObject.
-type CopyObjectJSONBody struct {
-	// DestinationBucket Can be identical to sourceBucket for copy-to-folder actions.
-	DestinationBucket string `json:"destinationBucket"`
-
-	// DestinationFileName Destination file name (may include subpaths).
-	DestinationFileName            string             `json:"destinationFileName"`
-	DestinationStorageObjectDataId openapi_types.UUID `json:"destinationStorageObjectDataId"`
-	DestinationStorageObjectId     openapi_types.UUID `json:"destinationStorageObjectId"`
-	DestinationUserId              openapi_types.UUID `json:"destinationUserId"`
 }
 
 // CopyObjectParams defines parameters for CopyObject.
 type CopyObjectParams struct {
-	// UserId Owner user UUID prefix segment.
-	UserId UserIdPrefix `form:"userId" json:"userId"`
-
-	// StorageObjectId Storage object UUID prefix segment.
-	StorageObjectId StorageObjectIdPrefix `form:"storageObjectId" json:"storageObjectId"`
-
-	// StorageObjectDataId Storage object data UUID prefix segment.
-	StorageObjectDataId StorageObjectDataIdPrefix `form:"storageObjectDataId" json:"storageObjectDataId"`
-
-	// FileName File name suffix (may include subpaths).
-	FileName FileName `form:"fileName" json:"fileName"`
+	Key ObjectKey `form:"key" json:"key"`
 }
 
 // DownloadObjectParams defines parameters for DownloadObject.
 type DownloadObjectParams struct {
-	// UserId Owner user UUID prefix segment.
-	UserId UserIdPrefix `form:"userId" json:"userId"`
-
-	// StorageObjectId Storage object UUID prefix segment.
-	StorageObjectId StorageObjectIdPrefix `form:"storageObjectId" json:"storageObjectId"`
-
-	// StorageObjectDataId Storage object data UUID prefix segment.
-	StorageObjectDataId StorageObjectDataIdPrefix `form:"storageObjectDataId" json:"storageObjectDataId"`
-
-	// FileName File name suffix (may include subpaths).
-	FileName FileName `form:"fileName" json:"fileName"`
+	Key ObjectKey `form:"key" json:"key"`
 }
 
 // DeleteSingleObjectParams defines parameters for DeleteSingleObject.
 type DeleteSingleObjectParams struct {
-	// UserId Owner user UUID prefix segment.
-	UserId UserIdPrefix `form:"userId" json:"userId"`
+	Key              ObjectKey `form:"key" json:"key"`
+	VersionId        *string   `form:"versionId,omitempty" json:"versionId,omitempty"`
+	BypassGovernance *bool     `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
+}
 
-	// StorageObjectId Storage object UUID prefix segment.
-	StorageObjectId StorageObjectIdPrefix `form:"storageObjectId" json:"storageObjectId"`
-
-	// StorageObjectDataId Storage object data UUID prefix segment.
-	StorageObjectDataId StorageObjectDataIdPrefix `form:"storageObjectDataId" json:"storageObjectDataId"`
-
-	// FileName File name suffix (may include subpaths).
-	FileName         FileName `form:"fileName" json:"fileName"`
-	VersionId        *string  `form:"versionId,omitempty" json:"versionId,omitempty"`
-	BypassGovernance *bool    `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
+// PresignObjectParams defines parameters for PresignObject.
+type PresignObjectParams struct {
+	FileName FileName `form:"fileName" json:"fileName"`
 }
 
 // NotifyJSONBody defines parameters for Notify.
 type NotifyJSONBody struct {
-	// Message The payload message to be published
-	Message string `json:"message"`
-
-	// Recipients Clerk user ids (JWT sub) that should receive the notification. Required when visibility is private; ignored when public.
-	Recipients *[]string `json:"recipients,omitempty"`
-
-	// View The view identifier used to construct the IoT topic
-	View string `json:"view"`
-
-	// Visibility public publishes once to {app}/{stage}/public/{view}. private publishes once per recipient to {app}/{stage}/user/{clerkUserId}/{view}.
+	Message    string                   `json:"message"`
+	Recipients *[]string                `json:"recipients,omitempty"`
+	View       string                   `json:"view"`
 	Visibility NotifyJSONBodyVisibility `json:"visibility"`
 }
 
 // NotifyParams defines parameters for Notify.
 type NotifyParams struct {
-	// XNotifySecret Secret key for authenticating the request
 	XNotifySecret string `json:"x-notify-secret"`
 }
 
@@ -191,13 +257,31 @@ type RenderMdJSONBody struct {
 }
 
 // DeleteObjectsJSONRequestBody defines body for DeleteObjects for application/json ContentType.
-type DeleteObjectsJSONRequestBody DeleteObjectsJSONBody
+type DeleteObjectsJSONRequestBody = DeleteKeys
 
 // UploadObjectMultipartRequestBody defines body for UploadObject for multipart/form-data ContentType.
 type UploadObjectMultipartRequestBody UploadObjectMultipartBody
 
+// AbortObjectJSONRequestBody defines body for AbortObject for application/json ContentType.
+type AbortObjectJSONRequestBody = PendingUpload
+
+// CommitObjectJSONRequestBody defines body for CommitObject for application/json ContentType.
+type CommitObjectJSONRequestBody = PendingUpload
+
 // CopyObjectJSONRequestBody defines body for CopyObject for application/json ContentType.
-type CopyObjectJSONRequestBody CopyObjectJSONBody
+type CopyObjectJSONRequestBody = CopyDestination
+
+// CreateTodoMultipartRequestBody defines body for CreateTodo for multipart/form-data ContentType.
+type CreateTodoMultipartRequestBody = FormBody
+
+// MoveTodoItemsMultipartRequestBody defines body for MoveTodoItems for multipart/form-data ContentType.
+type MoveTodoItemsMultipartRequestBody = FormBody
+
+// CreateViewItemMultipartRequestBody defines body for CreateViewItem for multipart/form-data ContentType.
+type CreateViewItemMultipartRequestBody = FormBody
+
+// UpdateViewItemMultipartRequestBody defines body for UpdateViewItem for multipart/form-data ContentType.
+type UpdateViewItemMultipartRequestBody = FormBody
 
 // NotifyJSONRequestBody defines body for Notify for application/json ContentType.
 type NotifyJSONRequestBody NotifyJSONBody
@@ -279,29 +363,66 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 	// BucketExists request
-	BucketExists(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	BucketExists(ctx context.Context, bucketName BucketName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteObjectsWithBody request with any body
-	DeleteObjectsWithBody(ctx context.Context, bucketName string, params *DeleteObjectsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteObjectsWithBody(ctx context.Context, bucketName BucketName, params *DeleteObjectsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	DeleteObjects(ctx context.Context, bucketName string, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteObjects(ctx context.Context, bucketName BucketName, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListObjects request
-	ListObjects(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// ListStorageObjects request
+	ListStorageObjects(ctx context.Context, bucketName BucketName, params *ListStorageObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UploadObjectWithBody request with any body
-	UploadObjectWithBody(ctx context.Context, bucketName string, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UploadObjectWithBody(ctx context.Context, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// AbortObjectWithBody request with any body
+	AbortObjectWithBody(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	AbortObject(ctx context.Context, bucketName BucketName, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CommitObjectWithBody request with any body
+	CommitObjectWithBody(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CommitObject(ctx context.Context, bucketName BucketName, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CopyObjectWithBody request with any body
-	CopyObjectWithBody(ctx context.Context, bucketName string, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CopyObjectWithBody(ctx context.Context, bucketName BucketName, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CopyObject(ctx context.Context, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CopyObject(ctx context.Context, bucketName BucketName, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DownloadObject request
-	DownloadObject(ctx context.Context, bucketName string, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DownloadObject(ctx context.Context, bucketName BucketName, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteSingleObject request
-	DeleteSingleObject(ctx context.Context, bucketName string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	DeleteSingleObject(ctx context.Context, bucketName BucketName, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PresignObject request
+	PresignObject(ctx context.Context, bucketName BucketName, params *PresignObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetClerkUser request
+	GetClerkUser(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTodoWithBody request with any body
+	CreateTodoWithBody(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTodoTree request
+	GetTodoTree(ctx context.Context, todoSpaceId TodoSpaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// MoveTodoItemsWithBody request with any body
+	MoveTodoItemsWithBody(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListView request
+	ListView(ctx context.Context, view ViewName, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateViewItemWithBody request with any body
+	CreateViewItemWithBody(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetViewItem request
+	GetViewItem(ctx context.Context, view ViewName, itemId ItemId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpdateViewItemWithBody request with any body
+	UpdateViewItemWithBody(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// NotifyWithBody request with any body
 	NotifyWithBody(ctx context.Context, params *NotifyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -314,7 +435,7 @@ type ClientInterface interface {
 	RenderMd(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) BucketExists(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) BucketExists(ctx context.Context, bucketName BucketName, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBucketExistsRequest(c.Server, bucketName)
 	if err != nil {
 		return nil, err
@@ -326,7 +447,7 @@ func (c *Client) BucketExists(ctx context.Context, bucketName string, reqEditors
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteObjectsWithBody(ctx context.Context, bucketName string, params *DeleteObjectsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteObjectsWithBody(ctx context.Context, bucketName BucketName, params *DeleteObjectsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteObjectsRequestWithBody(c.Server, bucketName, params, contentType, body)
 	if err != nil {
 		return nil, err
@@ -338,7 +459,7 @@ func (c *Client) DeleteObjectsWithBody(ctx context.Context, bucketName string, p
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteObjects(ctx context.Context, bucketName string, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteObjects(ctx context.Context, bucketName BucketName, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteObjectsRequest(c.Server, bucketName, params, body)
 	if err != nil {
 		return nil, err
@@ -350,8 +471,8 @@ func (c *Client) DeleteObjects(ctx context.Context, bucketName string, params *D
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListObjects(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListObjectsRequest(c.Server, bucketName)
+func (c *Client) ListStorageObjects(ctx context.Context, bucketName BucketName, params *ListStorageObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStorageObjectsRequest(c.Server, bucketName, params)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +483,7 @@ func (c *Client) ListObjects(ctx context.Context, bucketName string, reqEditors 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UploadObjectWithBody(ctx context.Context, bucketName string, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) UploadObjectWithBody(ctx context.Context, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUploadObjectRequestWithBody(c.Server, bucketName, params, contentType, body)
 	if err != nil {
 		return nil, err
@@ -374,7 +495,55 @@ func (c *Client) UploadObjectWithBody(ctx context.Context, bucketName string, pa
 	return c.Client.Do(req)
 }
 
-func (c *Client) CopyObjectWithBody(ctx context.Context, bucketName string, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) AbortObjectWithBody(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAbortObjectRequestWithBody(c.Server, bucketName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AbortObject(ctx context.Context, bucketName BucketName, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAbortObjectRequest(c.Server, bucketName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CommitObjectWithBody(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCommitObjectRequestWithBody(c.Server, bucketName, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CommitObject(ctx context.Context, bucketName BucketName, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCommitObjectRequest(c.Server, bucketName, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CopyObjectWithBody(ctx context.Context, bucketName BucketName, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCopyObjectRequestWithBody(c.Server, bucketName, params, contentType, body)
 	if err != nil {
 		return nil, err
@@ -386,7 +555,7 @@ func (c *Client) CopyObjectWithBody(ctx context.Context, bucketName string, para
 	return c.Client.Do(req)
 }
 
-func (c *Client) CopyObject(ctx context.Context, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) CopyObject(ctx context.Context, bucketName BucketName, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCopyObjectRequest(c.Server, bucketName, params, body)
 	if err != nil {
 		return nil, err
@@ -398,7 +567,7 @@ func (c *Client) CopyObject(ctx context.Context, bucketName string, params *Copy
 	return c.Client.Do(req)
 }
 
-func (c *Client) DownloadObject(ctx context.Context, bucketName string, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DownloadObject(ctx context.Context, bucketName BucketName, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDownloadObjectRequest(c.Server, bucketName, params)
 	if err != nil {
 		return nil, err
@@ -410,8 +579,116 @@ func (c *Client) DownloadObject(ctx context.Context, bucketName string, params *
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteSingleObject(ctx context.Context, bucketName string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+func (c *Client) DeleteSingleObject(ctx context.Context, bucketName BucketName, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteSingleObjectRequest(c.Server, bucketName, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PresignObject(ctx context.Context, bucketName BucketName, params *PresignObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPresignObjectRequest(c.Server, bucketName, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetClerkUser(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetClerkUserRequest(c.Server, userId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTodoWithBody(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTodoRequestWithBody(c.Server, todoSpaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTodoTree(ctx context.Context, todoSpaceId TodoSpaceId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTodoTreeRequest(c.Server, todoSpaceId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) MoveTodoItemsWithBody(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMoveTodoItemsRequestWithBody(c.Server, todoSpaceId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListView(ctx context.Context, view ViewName, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListViewRequest(c.Server, view)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateViewItemWithBody(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateViewItemRequestWithBody(c.Server, view, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetViewItem(ctx context.Context, view ViewName, itemId ItemId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetViewItemRequest(c.Server, view, itemId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpdateViewItemWithBody(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateViewItemRequestWithBody(c.Server, view, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +748,7 @@ func (c *Client) RenderMd(ctx context.Context, body RenderMdJSONRequestBody, req
 }
 
 // NewBucketExistsRequest generates requests for BucketExists
-func NewBucketExistsRequest(server string, bucketName string) (*http.Request, error) {
+func NewBucketExistsRequest(server string, bucketName BucketName) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -486,7 +763,7 @@ func NewBucketExistsRequest(server string, bucketName string) (*http.Request, er
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s", pathParam0)
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -505,7 +782,7 @@ func NewBucketExistsRequest(server string, bucketName string) (*http.Request, er
 }
 
 // NewDeleteObjectsRequest calls the generic DeleteObjects builder with application/json body
-func NewDeleteObjectsRequest(server string, bucketName string, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody) (*http.Request, error) {
+func NewDeleteObjectsRequest(server string, bucketName BucketName, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
@@ -516,7 +793,7 @@ func NewDeleteObjectsRequest(server string, bucketName string, params *DeleteObj
 }
 
 // NewDeleteObjectsRequestWithBody generates requests for DeleteObjects with any type of body
-func NewDeleteObjectsRequestWithBody(server string, bucketName string, params *DeleteObjectsParams, contentType string, body io.Reader) (*http.Request, error) {
+func NewDeleteObjectsRequestWithBody(server string, bucketName BucketName, params *DeleteObjectsParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -531,7 +808,7 @@ func NewDeleteObjectsRequestWithBody(server string, bucketName string, params *D
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/objects", pathParam0)
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -578,8 +855,8 @@ func NewDeleteObjectsRequestWithBody(server string, bucketName string, params *D
 	return req, nil
 }
 
-// NewListObjectsRequest generates requests for ListObjects
-func NewListObjectsRequest(server string, bucketName string) (*http.Request, error) {
+// NewListStorageObjectsRequest generates requests for ListStorageObjects
+func NewListStorageObjectsRequest(server string, bucketName BucketName, params *ListStorageObjectsParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -594,41 +871,7 @@ func NewListObjectsRequest(server string, bucketName string) (*http.Request, err
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/objects", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUploadObjectRequestWithBody generates requests for UploadObject with any type of body
-func NewUploadObjectRequestWithBody(server string, bucketName string, params *UploadObjectParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/buckets/%s/objects", pathParam0)
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -647,7 +890,7 @@ func NewUploadObjectRequestWithBody(server string, bucketName string, params *Up
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "userId", params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "tab", params.Tab, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {
@@ -655,21 +898,54 @@ func NewUploadObjectRequestWithBody(server string, bucketName string, params *Up
 			}
 		}
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectId", params.StorageObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
 		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectDataId", params.StorageObjectDataId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUploadObjectRequestWithBody generates requests for UploadObject with any type of body
+func NewUploadObjectRequestWithBody(server string, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
 
 		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
@@ -695,19 +971,19 @@ func NewUploadObjectRequestWithBody(server string, bucketName string, params *Up
 	return req, nil
 }
 
-// NewCopyObjectRequest calls the generic CopyObject builder with application/json body
-func NewCopyObjectRequest(server string, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody) (*http.Request, error) {
+// NewAbortObjectRequest calls the generic AbortObject builder with application/json body
+func NewAbortObjectRequest(server string, bucketName BucketName, body AbortObjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCopyObjectRequestWithBody(server, bucketName, params, "application/json", bodyReader)
+	return NewAbortObjectRequestWithBody(server, bucketName, "application/json", bodyReader)
 }
 
-// NewCopyObjectRequestWithBody generates requests for CopyObject with any type of body
-func NewCopyObjectRequestWithBody(server string, bucketName string, params *CopyObjectParams, contentType string, body io.Reader) (*http.Request, error) {
+// NewAbortObjectRequestWithBody generates requests for AbortObject with any type of body
+func NewAbortObjectRequestWithBody(server string, bucketName BucketName, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -722,7 +998,101 @@ func NewCopyObjectRequestWithBody(server string, bucketName string, params *Copy
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/objects/copy", pathParam0)
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects/abort", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCommitObjectRequest calls the generic CommitObject builder with application/json body
+func NewCommitObjectRequest(server string, bucketName BucketName, body CommitObjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCommitObjectRequestWithBody(server, bucketName, "application/json", bodyReader)
+}
+
+// NewCommitObjectRequestWithBody generates requests for CommitObject with any type of body
+func NewCommitObjectRequestWithBody(server string, bucketName BucketName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects/commit", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCopyObjectRequest calls the generic CopyObject builder with application/json body
+func NewCopyObjectRequest(server string, bucketName BucketName, params *CopyObjectParams, body CopyObjectJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCopyObjectRequestWithBody(server, bucketName, params, "application/json", bodyReader)
+}
+
+// NewCopyObjectRequestWithBody generates requests for CopyObject with any type of body
+func NewCopyObjectRequestWithBody(server string, bucketName BucketName, params *CopyObjectParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects/copy", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -741,31 +1111,7 @@ func NewCopyObjectRequestWithBody(server string, bucketName string, params *Copy
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "userId", params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectId", params.StorageObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectDataId", params.StorageObjectDataId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {
@@ -790,7 +1136,7 @@ func NewCopyObjectRequestWithBody(server string, bucketName string, params *Copy
 }
 
 // NewDownloadObjectRequest generates requests for DownloadObject
-func NewDownloadObjectRequest(server string, bucketName string, params *DownloadObjectParams) (*http.Request, error) {
+func NewDownloadObjectRequest(server string, bucketName BucketName, params *DownloadObjectParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -805,7 +1151,7 @@ func NewDownloadObjectRequest(server string, bucketName string, params *Download
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/objects/download", pathParam0)
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects/download", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -824,31 +1170,7 @@ func NewDownloadObjectRequest(server string, bucketName string, params *Download
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "userId", params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectId", params.StorageObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectDataId", params.StorageObjectDataId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {
@@ -871,7 +1193,7 @@ func NewDownloadObjectRequest(server string, bucketName string, params *Download
 }
 
 // NewDeleteSingleObjectRequest generates requests for DeleteSingleObject
-func NewDeleteSingleObjectRequest(server string, bucketName string, params *DeleteSingleObjectParams) (*http.Request, error) {
+func NewDeleteSingleObjectRequest(server string, bucketName BucketName, params *DeleteSingleObjectParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -886,7 +1208,7 @@ func NewDeleteSingleObjectRequest(server string, bucketName string, params *Dele
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/buckets/%s/objects/object", pathParam0)
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects/object", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -905,31 +1227,7 @@ func NewDeleteSingleObjectRequest(server string, bucketName string, params *Dele
 		// per the OpenAPI spec (e.g. "color=blue,black,brown").
 		var rawQueryFragments []string
 
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "userId", params.UserId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectId", params.StorageObjectId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "storageObjectDataId", params.StorageObjectDataId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: "uuid"}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "key", params.Key, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 			return nil, err
 		} else {
 			for _, qp := range strings.Split(queryFrag, "&") {
@@ -971,6 +1269,350 @@ func NewDeleteSingleObjectRequest(server string, bucketName string, params *Dele
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewPresignObjectRequest generates requests for PresignObject
+func NewPresignObjectRequest(server string, bucketName BucketName, params *PresignObjectParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects/presign", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		// queryValues collects non-styled parameters (passthrough, JSON)
+		// that are safe to round-trip through url.Values.Encode().
+		queryValues := queryURL.Query()
+		// rawQueryFragments collects pre-encoded query fragments from
+		// styled parameters, preserving literal commas as delimiters
+		// per the OpenAPI spec (e.g. "color=blue,black,brown").
+		var rawQueryFragments []string
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else {
+			for _, qp := range strings.Split(queryFrag, "&") {
+				rawQueryFragments = append(rawQueryFragments, qp)
+			}
+		}
+
+		if encoded := queryValues.Encode(); encoded != "" {
+			rawQueryFragments = append(rawQueryFragments, encoded)
+		}
+		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetClerkUserRequest generates requests for GetClerkUser
+func NewGetClerkUserRequest(server string, userId ClerkUserId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "userId", userId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/users/get/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateTodoRequestWithBody generates requests for CreateTodo with any type of body
+func NewCreateTodoRequestWithBody(server string, todoSpaceId TodoSpaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "todoSpaceId", todoSpaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/views/tdsTodos/%s/new/post", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetTodoTreeRequest generates requests for GetTodoTree
+func NewGetTodoTreeRequest(server string, todoSpaceId TodoSpaceId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "todoSpaceId", todoSpaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/views/tdsTodos/%s/tree/get", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewMoveTodoItemsRequestWithBody generates requests for MoveTodoItems with any type of body
+func NewMoveTodoItemsRequestWithBody(server string, todoSpaceId TodoSpaceId, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "todoSpaceId", todoSpaceId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/views/tdsTodos/%s/tree/move/patch", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListViewRequest generates requests for ListView
+func NewListViewRequest(server string, view ViewName) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "view", view, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/views/%s/list/get", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateViewItemRequestWithBody generates requests for CreateViewItem with any type of body
+func NewCreateViewItemRequestWithBody(server string, view ViewName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "view", view, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/views/%s/new/item", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetViewItemRequest generates requests for GetViewItem
+func NewGetViewItemRequest(server string, view ViewName, itemId ItemId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "view", view, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "itemId", itemId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/views/%s/one/get/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewUpdateViewItemRequestWithBody generates requests for UpdateViewItem with any type of body
+func NewUpdateViewItemRequestWithBody(server string, view ViewName, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "view", view, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/views/%s/one/patch", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1112,29 +1754,66 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 	// BucketExistsWithResponse request
-	BucketExistsWithResponse(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*BucketExistsResponse, error)
+	BucketExistsWithResponse(ctx context.Context, bucketName BucketName, reqEditors ...RequestEditorFn) (*BucketExistsResponse, error)
 
 	// DeleteObjectsWithBodyWithResponse request with any body
-	DeleteObjectsWithBodyWithResponse(ctx context.Context, bucketName string, params *DeleteObjectsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteObjectsResponse, error)
+	DeleteObjectsWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *DeleteObjectsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteObjectsResponse, error)
 
-	DeleteObjectsWithResponse(ctx context.Context, bucketName string, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteObjectsResponse, error)
+	DeleteObjectsWithResponse(ctx context.Context, bucketName BucketName, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteObjectsResponse, error)
 
-	// ListObjectsWithResponse request
-	ListObjectsWithResponse(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*ListObjectsResponse, error)
+	// ListStorageObjectsWithResponse request
+	ListStorageObjectsWithResponse(ctx context.Context, bucketName BucketName, params *ListStorageObjectsParams, reqEditors ...RequestEditorFn) (*ListStorageObjectsResponse, error)
 
 	// UploadObjectWithBodyWithResponse request with any body
-	UploadObjectWithBodyWithResponse(ctx context.Context, bucketName string, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadObjectResponse, error)
+	UploadObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadObjectResponse, error)
+
+	// AbortObjectWithBodyWithResponse request with any body
+	AbortObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error)
+
+	AbortObjectWithResponse(ctx context.Context, bucketName BucketName, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error)
+
+	// CommitObjectWithBodyWithResponse request with any body
+	CommitObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error)
+
+	CommitObjectWithResponse(ctx context.Context, bucketName BucketName, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error)
 
 	// CopyObjectWithBodyWithResponse request with any body
-	CopyObjectWithBodyWithResponse(ctx context.Context, bucketName string, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
+	CopyObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
 
-	CopyObjectWithResponse(ctx context.Context, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
+	CopyObjectWithResponse(ctx context.Context, bucketName BucketName, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
 
 	// DownloadObjectWithResponse request
-	DownloadObjectWithResponse(ctx context.Context, bucketName string, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*DownloadObjectResponse, error)
+	DownloadObjectWithResponse(ctx context.Context, bucketName BucketName, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*DownloadObjectResponse, error)
 
 	// DeleteSingleObjectWithResponse request
-	DeleteSingleObjectWithResponse(ctx context.Context, bucketName string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*DeleteSingleObjectResponse, error)
+	DeleteSingleObjectWithResponse(ctx context.Context, bucketName BucketName, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*DeleteSingleObjectResponse, error)
+
+	// PresignObjectWithResponse request
+	PresignObjectWithResponse(ctx context.Context, bucketName BucketName, params *PresignObjectParams, reqEditors ...RequestEditorFn) (*PresignObjectResponse, error)
+
+	// GetClerkUserWithResponse request
+	GetClerkUserWithResponse(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*GetClerkUserResponse, error)
+
+	// CreateTodoWithBodyWithResponse request with any body
+	CreateTodoWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
+
+	// GetTodoTreeWithResponse request
+	GetTodoTreeWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, reqEditors ...RequestEditorFn) (*GetTodoTreeResponse, error)
+
+	// MoveTodoItemsWithBodyWithResponse request with any body
+	MoveTodoItemsWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveTodoItemsResponse, error)
+
+	// ListViewWithResponse request
+	ListViewWithResponse(ctx context.Context, view ViewName, reqEditors ...RequestEditorFn) (*ListViewResponse, error)
+
+	// CreateViewItemWithBodyWithResponse request with any body
+	CreateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateViewItemResponse, error)
+
+	// GetViewItemWithResponse request
+	GetViewItemWithResponse(ctx context.Context, view ViewName, itemId ItemId, reqEditors ...RequestEditorFn) (*GetViewItemResponse, error)
+
+	// UpdateViewItemWithBodyWithResponse request with any body
+	UpdateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateViewItemResponse, error)
 
 	// NotifyWithBodyWithResponse request with any body
 	NotifyWithBodyWithResponse(ctx context.Context, params *NotifyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NotifyResponse, error)
@@ -1150,6 +1829,9 @@ type ClientWithResponsesInterface interface {
 type BucketExistsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
 }
 
 // Status returns HTTPResponse.Status
@@ -1179,6 +1861,10 @@ func (r BucketExistsResponse) ContentType() string {
 type DeleteObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
 }
 
 // Status returns HTTPResponse.Status
@@ -1205,14 +1891,18 @@ func (r DeleteObjectsResponse) ContentType() string {
 	return ""
 }
 
-type ListObjectsResponse struct {
+type ListStorageObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]S3Object
+	JSON200      *[]StorageObjectRow
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
 }
 
 // Status returns HTTPResponse.Status
-func (r ListObjectsResponse) Status() string {
+func (r ListStorageObjectsResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1220,7 +1910,7 @@ func (r ListObjectsResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r ListObjectsResponse) StatusCode() int {
+func (r ListStorageObjectsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1228,7 +1918,7 @@ func (r ListObjectsResponse) StatusCode() int {
 }
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r ListObjectsResponse) ContentType() string {
+func (r ListStorageObjectsResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -1238,6 +1928,10 @@ func (r ListObjectsResponse) ContentType() string {
 type UploadObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
 }
 
 // Status returns HTTPResponse.Status
@@ -1264,9 +1958,81 @@ func (r UploadObjectResponse) ContentType() string {
 	return ""
 }
 
+type AbortObjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r AbortObjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AbortObjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r AbortObjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CommitObjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON409      *Conflict
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r CommitObjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CommitObjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CommitObjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type CopyObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON409      *Conflict
+	JSON500      *InternalError
 }
 
 // Status returns HTTPResponse.Status
@@ -1296,6 +2062,10 @@ func (r CopyObjectResponse) ContentType() string {
 type DownloadObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
 }
 
 // Status returns HTTPResponse.Status
@@ -1325,6 +2095,10 @@ func (r DownloadObjectResponse) ContentType() string {
 type DeleteSingleObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
 }
 
 // Status returns HTTPResponse.Status
@@ -1345,6 +2119,308 @@ func (r DeleteSingleObjectResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r DeleteSingleObjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PresignObjectResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PresignResponse
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r PresignObjectResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PresignObjectResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PresignObjectResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetClerkUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ClerkUser
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetClerkUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetClerkUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetClerkUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateTodoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *JsonRows
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTodoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTodoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateTodoResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetTodoTreeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *JsonRows
+	JSON401      *Unauthorized
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTodoTreeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTodoTreeResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetTodoTreeResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type MoveTodoItemsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *JsonRows
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r MoveTodoItemsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r MoveTodoItemsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r MoveTodoItemsResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ListViewResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]JsonObject
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r ListViewResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListViewResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ListViewResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateViewItemResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *JsonRows
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateViewItemResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateViewItemResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateViewItemResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetViewItemResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *JsonObject
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetViewItemResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetViewItemResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetViewItemResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type UpdateViewItemResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *JsonRows
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r UpdateViewItemResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpdateViewItemResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r UpdateViewItemResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -1413,7 +2489,7 @@ func (r RenderMdResponse) ContentType() string {
 }
 
 // BucketExistsWithResponse request returning *BucketExistsResponse
-func (c *ClientWithResponses) BucketExistsWithResponse(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*BucketExistsResponse, error) {
+func (c *ClientWithResponses) BucketExistsWithResponse(ctx context.Context, bucketName BucketName, reqEditors ...RequestEditorFn) (*BucketExistsResponse, error) {
 	rsp, err := c.BucketExists(ctx, bucketName, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1422,7 +2498,7 @@ func (c *ClientWithResponses) BucketExistsWithResponse(ctx context.Context, buck
 }
 
 // DeleteObjectsWithBodyWithResponse request with arbitrary body returning *DeleteObjectsResponse
-func (c *ClientWithResponses) DeleteObjectsWithBodyWithResponse(ctx context.Context, bucketName string, params *DeleteObjectsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteObjectsResponse, error) {
+func (c *ClientWithResponses) DeleteObjectsWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *DeleteObjectsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteObjectsResponse, error) {
 	rsp, err := c.DeleteObjectsWithBody(ctx, bucketName, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1430,7 +2506,7 @@ func (c *ClientWithResponses) DeleteObjectsWithBodyWithResponse(ctx context.Cont
 	return ParseDeleteObjectsResponse(rsp)
 }
 
-func (c *ClientWithResponses) DeleteObjectsWithResponse(ctx context.Context, bucketName string, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteObjectsResponse, error) {
+func (c *ClientWithResponses) DeleteObjectsWithResponse(ctx context.Context, bucketName BucketName, params *DeleteObjectsParams, body DeleteObjectsJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteObjectsResponse, error) {
 	rsp, err := c.DeleteObjects(ctx, bucketName, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1438,17 +2514,17 @@ func (c *ClientWithResponses) DeleteObjectsWithResponse(ctx context.Context, buc
 	return ParseDeleteObjectsResponse(rsp)
 }
 
-// ListObjectsWithResponse request returning *ListObjectsResponse
-func (c *ClientWithResponses) ListObjectsWithResponse(ctx context.Context, bucketName string, reqEditors ...RequestEditorFn) (*ListObjectsResponse, error) {
-	rsp, err := c.ListObjects(ctx, bucketName, reqEditors...)
+// ListStorageObjectsWithResponse request returning *ListStorageObjectsResponse
+func (c *ClientWithResponses) ListStorageObjectsWithResponse(ctx context.Context, bucketName BucketName, params *ListStorageObjectsParams, reqEditors ...RequestEditorFn) (*ListStorageObjectsResponse, error) {
+	rsp, err := c.ListStorageObjects(ctx, bucketName, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseListObjectsResponse(rsp)
+	return ParseListStorageObjectsResponse(rsp)
 }
 
 // UploadObjectWithBodyWithResponse request with arbitrary body returning *UploadObjectResponse
-func (c *ClientWithResponses) UploadObjectWithBodyWithResponse(ctx context.Context, bucketName string, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadObjectResponse, error) {
+func (c *ClientWithResponses) UploadObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadObjectResponse, error) {
 	rsp, err := c.UploadObjectWithBody(ctx, bucketName, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1456,8 +2532,42 @@ func (c *ClientWithResponses) UploadObjectWithBodyWithResponse(ctx context.Conte
 	return ParseUploadObjectResponse(rsp)
 }
 
+// AbortObjectWithBodyWithResponse request with arbitrary body returning *AbortObjectResponse
+func (c *ClientWithResponses) AbortObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error) {
+	rsp, err := c.AbortObjectWithBody(ctx, bucketName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAbortObjectResponse(rsp)
+}
+
+func (c *ClientWithResponses) AbortObjectWithResponse(ctx context.Context, bucketName BucketName, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error) {
+	rsp, err := c.AbortObject(ctx, bucketName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAbortObjectResponse(rsp)
+}
+
+// CommitObjectWithBodyWithResponse request with arbitrary body returning *CommitObjectResponse
+func (c *ClientWithResponses) CommitObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error) {
+	rsp, err := c.CommitObjectWithBody(ctx, bucketName, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCommitObjectResponse(rsp)
+}
+
+func (c *ClientWithResponses) CommitObjectWithResponse(ctx context.Context, bucketName BucketName, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error) {
+	rsp, err := c.CommitObject(ctx, bucketName, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCommitObjectResponse(rsp)
+}
+
 // CopyObjectWithBodyWithResponse request with arbitrary body returning *CopyObjectResponse
-func (c *ClientWithResponses) CopyObjectWithBodyWithResponse(ctx context.Context, bucketName string, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error) {
+func (c *ClientWithResponses) CopyObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error) {
 	rsp, err := c.CopyObjectWithBody(ctx, bucketName, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1465,7 +2575,7 @@ func (c *ClientWithResponses) CopyObjectWithBodyWithResponse(ctx context.Context
 	return ParseCopyObjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) CopyObjectWithResponse(ctx context.Context, bucketName string, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error) {
+func (c *ClientWithResponses) CopyObjectWithResponse(ctx context.Context, bucketName BucketName, params *CopyObjectParams, body CopyObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error) {
 	rsp, err := c.CopyObject(ctx, bucketName, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1474,7 +2584,7 @@ func (c *ClientWithResponses) CopyObjectWithResponse(ctx context.Context, bucket
 }
 
 // DownloadObjectWithResponse request returning *DownloadObjectResponse
-func (c *ClientWithResponses) DownloadObjectWithResponse(ctx context.Context, bucketName string, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*DownloadObjectResponse, error) {
+func (c *ClientWithResponses) DownloadObjectWithResponse(ctx context.Context, bucketName BucketName, params *DownloadObjectParams, reqEditors ...RequestEditorFn) (*DownloadObjectResponse, error) {
 	rsp, err := c.DownloadObject(ctx, bucketName, params, reqEditors...)
 	if err != nil {
 		return nil, err
@@ -1483,12 +2593,93 @@ func (c *ClientWithResponses) DownloadObjectWithResponse(ctx context.Context, bu
 }
 
 // DeleteSingleObjectWithResponse request returning *DeleteSingleObjectResponse
-func (c *ClientWithResponses) DeleteSingleObjectWithResponse(ctx context.Context, bucketName string, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*DeleteSingleObjectResponse, error) {
+func (c *ClientWithResponses) DeleteSingleObjectWithResponse(ctx context.Context, bucketName BucketName, params *DeleteSingleObjectParams, reqEditors ...RequestEditorFn) (*DeleteSingleObjectResponse, error) {
 	rsp, err := c.DeleteSingleObject(ctx, bucketName, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseDeleteSingleObjectResponse(rsp)
+}
+
+// PresignObjectWithResponse request returning *PresignObjectResponse
+func (c *ClientWithResponses) PresignObjectWithResponse(ctx context.Context, bucketName BucketName, params *PresignObjectParams, reqEditors ...RequestEditorFn) (*PresignObjectResponse, error) {
+	rsp, err := c.PresignObject(ctx, bucketName, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePresignObjectResponse(rsp)
+}
+
+// GetClerkUserWithResponse request returning *GetClerkUserResponse
+func (c *ClientWithResponses) GetClerkUserWithResponse(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*GetClerkUserResponse, error) {
+	rsp, err := c.GetClerkUser(ctx, userId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetClerkUserResponse(rsp)
+}
+
+// CreateTodoWithBodyWithResponse request with arbitrary body returning *CreateTodoResponse
+func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
+	rsp, err := c.CreateTodoWithBody(ctx, todoSpaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTodoResponse(rsp)
+}
+
+// GetTodoTreeWithResponse request returning *GetTodoTreeResponse
+func (c *ClientWithResponses) GetTodoTreeWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, reqEditors ...RequestEditorFn) (*GetTodoTreeResponse, error) {
+	rsp, err := c.GetTodoTree(ctx, todoSpaceId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTodoTreeResponse(rsp)
+}
+
+// MoveTodoItemsWithBodyWithResponse request with arbitrary body returning *MoveTodoItemsResponse
+func (c *ClientWithResponses) MoveTodoItemsWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveTodoItemsResponse, error) {
+	rsp, err := c.MoveTodoItemsWithBody(ctx, todoSpaceId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseMoveTodoItemsResponse(rsp)
+}
+
+// ListViewWithResponse request returning *ListViewResponse
+func (c *ClientWithResponses) ListViewWithResponse(ctx context.Context, view ViewName, reqEditors ...RequestEditorFn) (*ListViewResponse, error) {
+	rsp, err := c.ListView(ctx, view, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListViewResponse(rsp)
+}
+
+// CreateViewItemWithBodyWithResponse request with arbitrary body returning *CreateViewItemResponse
+func (c *ClientWithResponses) CreateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateViewItemResponse, error) {
+	rsp, err := c.CreateViewItemWithBody(ctx, view, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateViewItemResponse(rsp)
+}
+
+// GetViewItemWithResponse request returning *GetViewItemResponse
+func (c *ClientWithResponses) GetViewItemWithResponse(ctx context.Context, view ViewName, itemId ItemId, reqEditors ...RequestEditorFn) (*GetViewItemResponse, error) {
+	rsp, err := c.GetViewItem(ctx, view, itemId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetViewItemResponse(rsp)
+}
+
+// UpdateViewItemWithBodyWithResponse request with arbitrary body returning *UpdateViewItemResponse
+func (c *ClientWithResponses) UpdateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateViewItemResponse, error) {
+	rsp, err := c.UpdateViewItemWithBody(ctx, view, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpdateViewItemResponse(rsp)
 }
 
 // NotifyWithBodyWithResponse request with arbitrary body returning *NotifyResponse
@@ -1538,6 +2729,30 @@ func ParseBucketExistsResponse(rsp *http.Response) (*BucketExistsResponse, error
 		HTTPResponse: rsp,
 	}
 
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
 	return response, nil
 }
 
@@ -1554,29 +2769,88 @@ func ParseDeleteObjectsResponse(rsp *http.Response) (*DeleteObjectsResponse, err
 		HTTPResponse: rsp,
 	}
 
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
 	return response, nil
 }
 
-// ParseListObjectsResponse parses an HTTP response from a ListObjectsWithResponse call
-func ParseListObjectsResponse(rsp *http.Response) (*ListObjectsResponse, error) {
+// ParseListStorageObjectsResponse parses an HTTP response from a ListStorageObjectsWithResponse call
+func ParseListStorageObjectsResponse(rsp *http.Response) (*ListStorageObjectsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &ListObjectsResponse{
+	response := &ListStorageObjectsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []S3Object
+		var dest []StorageObjectRow
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 
@@ -1596,6 +2870,138 @@ func ParseUploadObjectResponse(rsp *http.Response) (*UploadObjectResponse, error
 		HTTPResponse: rsp,
 	}
 
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseAbortObjectResponse parses an HTTP response from a AbortObjectWithResponse call
+func ParseAbortObjectResponse(rsp *http.Response) (*AbortObjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AbortObjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCommitObjectResponse parses an HTTP response from a CommitObjectWithResponse call
+func ParseCommitObjectResponse(rsp *http.Response) (*CommitObjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CommitObjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
 	return response, nil
 }
 
@@ -1610,6 +3016,44 @@ func ParseCopyObjectResponse(rsp *http.Response) (*CopyObjectResponse, error) {
 	response := &CopyObjectResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
 	}
 
 	return response, nil
@@ -1628,6 +3072,37 @@ func ParseDownloadObjectResponse(rsp *http.Response) (*DownloadObjectResponse, e
 		HTTPResponse: rsp,
 	}
 
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
 	return response, nil
 }
 
@@ -1642,6 +3117,495 @@ func ParseDeleteSingleObjectResponse(rsp *http.Response) (*DeleteSingleObjectRes
 	response := &DeleteSingleObjectResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePresignObjectResponse parses an HTTP response from a PresignObjectWithResponse call
+func ParsePresignObjectResponse(rsp *http.Response) (*PresignObjectResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PresignObjectResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PresignResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetClerkUserResponse parses an HTTP response from a GetClerkUserWithResponse call
+func ParseGetClerkUserResponse(rsp *http.Response) (*GetClerkUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetClerkUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ClerkUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTodoResponse parses an HTTP response from a CreateTodoWithResponse call
+func ParseCreateTodoResponse(rsp *http.Response) (*CreateTodoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTodoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest JsonRows
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTodoTreeResponse parses an HTTP response from a GetTodoTreeWithResponse call
+func ParseGetTodoTreeResponse(rsp *http.Response) (*GetTodoTreeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTodoTreeResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest JsonRows
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseMoveTodoItemsResponse parses an HTTP response from a MoveTodoItemsWithResponse call
+func ParseMoveTodoItemsResponse(rsp *http.Response) (*MoveTodoItemsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &MoveTodoItemsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest JsonRows
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListViewResponse parses an HTTP response from a ListViewWithResponse call
+func ParseListViewResponse(rsp *http.Response) (*ListViewResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListViewResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []JsonObject
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateViewItemResponse parses an HTTP response from a CreateViewItemWithResponse call
+func ParseCreateViewItemResponse(rsp *http.Response) (*CreateViewItemResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateViewItemResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest JsonRows
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetViewItemResponse parses an HTTP response from a GetViewItemWithResponse call
+func ParseGetViewItemResponse(rsp *http.Response) (*GetViewItemResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetViewItemResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest JsonObject
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseUpdateViewItemResponse parses an HTTP response from a UpdateViewItemWithResponse call
+func ParseUpdateViewItemResponse(rsp *http.Response) (*UpdateViewItemResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpdateViewItemResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest JsonRows
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
 	}
 
 	return response, nil
@@ -1693,28 +3657,61 @@ func ParseRenderMdResponse(rsp *http.Response) (*RenderMdResponse, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Check Bucket Existence
-	// (GET /buckets/{bucketName})
-	BucketExists(w http.ResponseWriter, r *http.Request, bucketName string)
-	// Batch Delete Objects
-	// (DELETE /buckets/{bucketName}/objects)
-	DeleteObjects(w http.ResponseWriter, r *http.Request, bucketName string, params DeleteObjectsParams)
-	// List Objects in a Bucket
-	// (GET /buckets/{bucketName}/objects)
-	ListObjects(w http.ResponseWriter, r *http.Request, bucketName string)
-	// Upload Object (Standard or Large)
-	// (POST /buckets/{bucketName}/objects)
-	UploadObject(w http.ResponseWriter, r *http.Request, bucketName string, params UploadObjectParams)
-	// Copy Object
-	// (POST /buckets/{bucketName}/objects/copy)
-	CopyObject(w http.ResponseWriter, r *http.Request, bucketName string, params CopyObjectParams)
-	// Download Object
-	// (GET /buckets/{bucketName}/objects/download)
-	DownloadObject(w http.ResponseWriter, r *http.Request, bucketName string, params DownloadObjectParams)
-	// Delete Single Object
-	// (DELETE /buckets/{bucketName}/objects/object)
-	DeleteSingleObject(w http.ResponseWriter, r *http.Request, bucketName string, params DeleteSingleObjectParams)
-	// Send a notification to an IoT topic
+	// Check the linked bucket
+	// (GET /api/storage/buckets/{bucketName})
+	BucketExists(w http.ResponseWriter, r *http.Request, bucketName BucketName)
+	// Delete objects
+	// (DELETE /api/storage/buckets/{bucketName}/objects)
+	DeleteObjects(w http.ResponseWriter, r *http.Request, bucketName BucketName, params DeleteObjectsParams)
+	// List storage objects for a tab
+	// (GET /api/storage/buckets/{bucketName}/objects)
+	ListStorageObjects(w http.ResponseWriter, r *http.Request, bucketName BucketName, params ListStorageObjectsParams)
+	// Upload an object through the API
+	// (POST /api/storage/buckets/{bucketName}/objects)
+	UploadObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params UploadObjectParams)
+	// Abort a prepared upload
+	// (POST /api/storage/buckets/{bucketName}/objects/abort)
+	AbortObject(w http.ResponseWriter, r *http.Request, bucketName BucketName)
+	// Commit a prepared upload after the object exists
+	// (POST /api/storage/buckets/{bucketName}/objects/commit)
+	CommitObject(w http.ResponseWriter, r *http.Request, bucketName BucketName)
+	// Copy an object
+	// (POST /api/storage/buckets/{bucketName}/objects/copy)
+	CopyObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params CopyObjectParams)
+	// Download an object
+	// (GET /api/storage/buckets/{bucketName}/objects/download)
+	DownloadObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params DownloadObjectParams)
+	// Delete one object
+	// (DELETE /api/storage/buckets/{bucketName}/objects/object)
+	DeleteSingleObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params DeleteSingleObjectParams)
+	// Prepare an upload and return a presigned PUT URL
+	// (POST /api/storage/buckets/{bucketName}/objects/presign)
+	PresignObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params PresignObjectParams)
+	// Get a Clerk user profile
+	// (GET /api/users/get/{userId})
+	GetClerkUser(w http.ResponseWriter, r *http.Request, userId ClerkUserId)
+	// Create a todo item
+	// (POST /api/views/tdsTodos/{todoSpaceId}/new/post)
+	CreateTodo(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId)
+	// Get a todo tree
+	// (GET /api/views/tdsTodos/{todoSpaceId}/tree/get)
+	GetTodoTree(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId)
+	// Move todo items
+	// (PATCH /api/views/tdsTodos/{todoSpaceId}/tree/move/patch)
+	MoveTodoItems(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId)
+	// List rows in a view
+	// (GET /api/views/{view}/list/get)
+	ListView(w http.ResponseWriter, r *http.Request, view ViewName)
+	// Create a view item
+	// (POST /api/views/{view}/new/item)
+	CreateViewItem(w http.ResponseWriter, r *http.Request, view ViewName)
+	// Get one view row
+	// (GET /api/views/{view}/one/get/{itemId})
+	GetViewItem(w http.ResponseWriter, r *http.Request, view ViewName, itemId ItemId)
+	// Update a view item
+	// (PATCH /api/views/{view}/one/patch)
+	UpdateViewItem(w http.ResponseWriter, r *http.Request, view ViewName)
+	// Publish a notification to an IoT topic
 	// (POST /notify)
 	Notify(w http.ResponseWriter, r *http.Request, params NotifyParams)
 	// Render Markdown to HTML
@@ -1738,13 +3735,19 @@ func (siw *ServerInterfaceWrapper) BucketExists(w http.ResponseWriter, r *http.R
 	_ = err
 
 	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
+	var bucketName BucketName
 
 	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.BucketExists(w, r, bucketName)
@@ -1764,13 +3767,19 @@ func (siw *ServerInterfaceWrapper) DeleteObjects(w http.ResponseWriter, r *http.
 	_ = err
 
 	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
+	var bucketName BucketName
 
 	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
 		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
 		return
 	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params DeleteObjectsParams
@@ -1799,14 +3808,14 @@ func (siw *ServerInterfaceWrapper) DeleteObjects(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
-// ListObjects operation middleware
-func (siw *ServerInterfaceWrapper) ListObjects(w http.ResponseWriter, r *http.Request) {
+// ListStorageObjects operation middleware
+func (siw *ServerInterfaceWrapper) ListStorageObjects(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
 
 	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
+	var bucketName BucketName
 
 	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
@@ -1814,8 +3823,30 @@ func (siw *ServerInterfaceWrapper) ListObjects(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListStorageObjectsParams
+
+	// ------------- Required query parameter "tab" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "tab", r.URL.Query(), &params.Tab, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "tab"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "tab", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListObjects(w, r, bucketName)
+		siw.Handler.ListStorageObjects(w, r, bucketName, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1832,7 +3863,7 @@ func (siw *ServerInterfaceWrapper) UploadObject(w http.ResponseWriter, r *http.R
 	_ = err
 
 	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
+	var bucketName BucketName
 
 	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
@@ -1840,47 +3871,14 @@ func (siw *ServerInterfaceWrapper) UploadObject(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	// Parameter object where we will unmarshal all parameters from the context
 	var params UploadObjectParams
-
-	// ------------- Required query parameter "userId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "userId", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "userId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "storageObjectId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectId", r.URL.Query(), &params.StorageObjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "storageObjectDataId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectDataId", r.URL.Query(), &params.StorageObjectDataId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectDataId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectDataId", Err: err})
-		}
-		return
-	}
 
 	// ------------- Required query parameter "fileName" -------------
 
@@ -1906,14 +3904,14 @@ func (siw *ServerInterfaceWrapper) UploadObject(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r)
 }
 
-// CopyObject operation middleware
-func (siw *ServerInterfaceWrapper) CopyObject(w http.ResponseWriter, r *http.Request) {
+// AbortObject operation middleware
+func (siw *ServerInterfaceWrapper) AbortObject(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	_ = err
 
 	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
+	var bucketName BucketName
 
 	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
@@ -1921,57 +3919,88 @@ func (siw *ServerInterfaceWrapper) CopyObject(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AbortObject(w, r, bucketName)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CommitObject operation middleware
+func (siw *ServerInterfaceWrapper) CommitObject(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "bucketName" -------------
+	var bucketName BucketName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CommitObject(w, r, bucketName)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CopyObject operation middleware
+func (siw *ServerInterfaceWrapper) CopyObject(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "bucketName" -------------
+	var bucketName BucketName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	// Parameter object where we will unmarshal all parameters from the context
 	var params CopyObjectParams
 
-	// ------------- Required query parameter "userId" -------------
+	// ------------- Required query parameter "key" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "userId", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "userId"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "storageObjectId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectId", r.URL.Query(), &params.StorageObjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "storageObjectDataId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectDataId", r.URL.Query(), &params.StorageObjectDataId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectDataId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectDataId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "fileName" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
 		}
 		return
 	}
@@ -1994,7 +4023,7 @@ func (siw *ServerInterfaceWrapper) DownloadObject(w http.ResponseWriter, r *http
 	_ = err
 
 	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
+	var bucketName BucketName
 
 	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
@@ -2002,57 +4031,24 @@ func (siw *ServerInterfaceWrapper) DownloadObject(w http.ResponseWriter, r *http
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	// Parameter object where we will unmarshal all parameters from the context
 	var params DownloadObjectParams
 
-	// ------------- Required query parameter "userId" -------------
+	// ------------- Required query parameter "key" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "userId", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "userId"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "storageObjectId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectId", r.URL.Query(), &params.StorageObjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "storageObjectDataId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectDataId", r.URL.Query(), &params.StorageObjectDataId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectDataId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectDataId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "fileName" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
 		}
 		return
 	}
@@ -2075,7 +4071,7 @@ func (siw *ServerInterfaceWrapper) DeleteSingleObject(w http.ResponseWriter, r *
 	_ = err
 
 	// ------------- Path parameter "bucketName" -------------
-	var bucketName string
+	var bucketName BucketName
 
 	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
 	if err != nil {
@@ -2083,57 +4079,24 @@ func (siw *ServerInterfaceWrapper) DeleteSingleObject(w http.ResponseWriter, r *
 		return
 	}
 
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
 	// Parameter object where we will unmarshal all parameters from the context
 	var params DeleteSingleObjectParams
 
-	// ------------- Required query parameter "userId" -------------
+	// ------------- Required query parameter "key" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "userId", r.URL.Query(), &params.UserId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "key", r.URL.Query(), &params.Key, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
 	if err != nil {
 		var requiredError *runtime.RequiredParameterError
 		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "userId"})
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "key"})
 		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "storageObjectId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectId", r.URL.Query(), &params.StorageObjectId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "storageObjectDataId" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "storageObjectDataId", r.URL.Query(), &params.StorageObjectDataId, runtime.BindQueryParameterOptions{Type: "string", Format: "uuid"})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "storageObjectDataId"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "storageObjectDataId", Err: err})
-		}
-		return
-	}
-
-	// ------------- Required query parameter "fileName" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
 		}
 		return
 	}
@@ -2166,6 +4129,319 @@ func (siw *ServerInterfaceWrapper) DeleteSingleObject(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteSingleObject(w, r, bucketName, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PresignObject operation middleware
+func (siw *ServerInterfaceWrapper) PresignObject(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "bucketName" -------------
+	var bucketName BucketName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PresignObjectParams
+
+	// ------------- Required query parameter "fileName" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PresignObject(w, r, bucketName, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetClerkUser operation middleware
+func (siw *ServerInterfaceWrapper) GetClerkUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "userId" -------------
+	var userId ClerkUserId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", mux.Vars(r)["userId"], &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "userId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetClerkUser(w, r, userId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateTodo operation middleware
+func (siw *ServerInterfaceWrapper) CreateTodo(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "todoSpaceId" -------------
+	var todoSpaceId TodoSpaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "todoSpaceId", mux.Vars(r)["todoSpaceId"], &todoSpaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "todoSpaceId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateTodo(w, r, todoSpaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetTodoTree operation middleware
+func (siw *ServerInterfaceWrapper) GetTodoTree(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "todoSpaceId" -------------
+	var todoSpaceId TodoSpaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "todoSpaceId", mux.Vars(r)["todoSpaceId"], &todoSpaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "todoSpaceId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetTodoTree(w, r, todoSpaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// MoveTodoItems operation middleware
+func (siw *ServerInterfaceWrapper) MoveTodoItems(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "todoSpaceId" -------------
+	var todoSpaceId TodoSpaceId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "todoSpaceId", mux.Vars(r)["todoSpaceId"], &todoSpaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "todoSpaceId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.MoveTodoItems(w, r, todoSpaceId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListView operation middleware
+func (siw *ServerInterfaceWrapper) ListView(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "view" -------------
+	var view ViewName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "view", mux.Vars(r)["view"], &view, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "view", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListView(w, r, view)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateViewItem operation middleware
+func (siw *ServerInterfaceWrapper) CreateViewItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "view" -------------
+	var view ViewName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "view", mux.Vars(r)["view"], &view, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "view", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateViewItem(w, r, view)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetViewItem operation middleware
+func (siw *ServerInterfaceWrapper) GetViewItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "view" -------------
+	var view ViewName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "view", mux.Vars(r)["view"], &view, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "view", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "itemId" -------------
+	var itemId ItemId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "itemId", mux.Vars(r)["itemId"], &itemId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "itemId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetViewItem(w, r, view, itemId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateViewItem operation middleware
+func (siw *ServerInterfaceWrapper) UpdateViewItem(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "view" -------------
+	var view ViewName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "view", mux.Vars(r)["view"], &view, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "view", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateViewItem(w, r, view)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2347,19 +4623,41 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}", wrapper.BucketExists).Methods(http.MethodGet)
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}", wrapper.BucketExists).Methods(http.MethodGet)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects", wrapper.DeleteObjects).Methods(http.MethodDelete)
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects", wrapper.DeleteObjects).Methods(http.MethodDelete)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects", wrapper.ListObjects).Methods(http.MethodGet)
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects", wrapper.ListStorageObjects).Methods(http.MethodGet)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects", wrapper.UploadObject).Methods(http.MethodPost)
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects", wrapper.UploadObject).Methods(http.MethodPost)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/copy", wrapper.CopyObject).Methods(http.MethodPost)
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/abort", wrapper.AbortObject).Methods(http.MethodPost)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/download", wrapper.DownloadObject).Methods(http.MethodGet)
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/commit", wrapper.CommitObject).Methods(http.MethodPost)
 
-	r.HandleFunc(options.BaseURL+"/buckets/{bucketName}/objects/object", wrapper.DeleteSingleObject).Methods(http.MethodDelete)
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/copy", wrapper.CopyObject).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/download", wrapper.DownloadObject).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/object", wrapper.DeleteSingleObject).Methods(http.MethodDelete)
+
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/presign", wrapper.PresignObject).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/api/users/get/{userId}", wrapper.GetClerkUser).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/views/tdsTodos/{todoSpaceId}/new/post", wrapper.CreateTodo).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/api/views/tdsTodos/{todoSpaceId}/tree/get", wrapper.GetTodoTree).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/views/tdsTodos/{todoSpaceId}/tree/move/patch", wrapper.MoveTodoItems).Methods(http.MethodPatch)
+
+	r.HandleFunc(options.BaseURL+"/api/views/{view}/list/get", wrapper.ListView).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/views/{view}/new/item", wrapper.CreateViewItem).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/api/views/{view}/one/get/{itemId}", wrapper.GetViewItem).Methods(http.MethodGet)
+
+	r.HandleFunc(options.BaseURL+"/api/views/{view}/one/patch", wrapper.UpdateViewItem).Methods(http.MethodPatch)
 
 	r.HandleFunc(options.BaseURL+"/notify", wrapper.Notify).Methods(http.MethodPost)
 
@@ -2368,8 +4666,20 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	return r
 }
 
+type BadRequestJSONResponse ErrorMessage
+
+type ConflictJSONResponse ErrorMessage
+
+type ForbiddenJSONResponse ErrorMessage
+
+type InternalErrorJSONResponse ErrorMessage
+
+type NotFoundJSONResponse ErrorMessage
+
+type UnauthorizedJSONResponse ErrorMessage
+
 type BucketExistsRequestObject struct {
-	BucketName string `json:"bucketName"`
+	BucketName BucketName `json:"bucketName"`
 }
 
 type BucketExistsResponseObject interface {
@@ -2384,6 +4694,34 @@ func (response BucketExists200Response) VisitBucketExistsResponse(w http.Respons
 	return nil
 }
 
+type BucketExists401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response BucketExists401JSONResponse) VisitBucketExistsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type BucketExists403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response BucketExists403JSONResponse) VisitBucketExistsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type BucketExists404Response struct {
 }
 
@@ -2392,8 +4730,22 @@ func (response BucketExists404Response) VisitBucketExistsResponse(w http.Respons
 	return nil
 }
 
+type BucketExists500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response BucketExists500JSONResponse) VisitBucketExistsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DeleteObjectsRequestObject struct {
-	BucketName string `json:"bucketName"`
+	BucketName BucketName `json:"bucketName"`
 	Params     DeleteObjectsParams
 	Body       *DeleteObjectsJSONRequestBody
 }
@@ -2410,25 +4762,74 @@ func (response DeleteObjects200Response) VisitDeleteObjectsResponse(w http.Respo
 	return nil
 }
 
-type DeleteObjects404Response struct {
+type DeleteObjects400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response DeleteObjects400JSONResponse) VisitDeleteObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
-func (response DeleteObjects404Response) VisitDeleteObjectsResponse(w http.ResponseWriter) error {
-	w.WriteHeader(404)
-	return nil
+type DeleteObjects401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteObjects401JSONResponse) VisitDeleteObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
-type ListObjectsRequestObject struct {
-	BucketName string `json:"bucketName"`
+type DeleteObjects403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteObjects403JSONResponse) VisitDeleteObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
-type ListObjectsResponseObject interface {
-	VisitListObjectsResponse(w http.ResponseWriter) error
+type DeleteObjects500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response DeleteObjects500JSONResponse) VisitDeleteObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
-type ListObjects200JSONResponse []S3Object
+type ListStorageObjectsRequestObject struct {
+	BucketName BucketName `json:"bucketName"`
+	Params     ListStorageObjectsParams
+}
 
-func (response ListObjects200JSONResponse) VisitListObjectsResponse(w http.ResponseWriter) error {
+type ListStorageObjectsResponseObject interface {
+	VisitListStorageObjectsResponse(w http.ResponseWriter) error
+}
+
+type ListStorageObjects200JSONResponse []StorageObjectRow
+
+func (response ListStorageObjects200JSONResponse) VisitListStorageObjectsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -2440,16 +4841,64 @@ func (response ListObjects200JSONResponse) VisitListObjectsResponse(w http.Respo
 	return err
 }
 
-type ListObjects404Response struct {
+type ListStorageObjects400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListStorageObjects400JSONResponse) VisitListStorageObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
-func (response ListObjects404Response) VisitListObjectsResponse(w http.ResponseWriter) error {
-	w.WriteHeader(404)
-	return nil
+type ListStorageObjects401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListStorageObjects401JSONResponse) VisitListStorageObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStorageObjects403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response ListStorageObjects403JSONResponse) VisitListStorageObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListStorageObjects500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ListStorageObjects500JSONResponse) VisitListStorageObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type UploadObjectRequestObject struct {
-	BucketName string `json:"bucketName"`
+	BucketName BucketName `json:"bucketName"`
 	Params     UploadObjectParams
 	Body       *multipart.Reader
 }
@@ -2466,6 +4915,48 @@ func (response UploadObject200Response) VisitUploadObjectResponse(w http.Respons
 	return nil
 }
 
+type UploadObject400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UploadObject400JSONResponse) VisitUploadObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadObject401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UploadObject401JSONResponse) VisitUploadObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UploadObject403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UploadObject403JSONResponse) VisitUploadObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type UploadObject413Response struct {
 }
 
@@ -2474,8 +4965,182 @@ func (response UploadObject413Response) VisitUploadObjectResponse(w http.Respons
 	return nil
 }
 
+type UploadObject500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response UploadObject500JSONResponse) VisitUploadObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AbortObjectRequestObject struct {
+	BucketName BucketName `json:"bucketName"`
+	Body       *AbortObjectJSONRequestBody
+}
+
+type AbortObjectResponseObject interface {
+	VisitAbortObjectResponse(w http.ResponseWriter) error
+}
+
+type AbortObject204Response struct {
+}
+
+func (response AbortObject204Response) VisitAbortObjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type AbortObject400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response AbortObject400JSONResponse) VisitAbortObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AbortObject401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response AbortObject401JSONResponse) VisitAbortObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AbortObject403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response AbortObject403JSONResponse) VisitAbortObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type AbortObject500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response AbortObject500JSONResponse) VisitAbortObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CommitObjectRequestObject struct {
+	BucketName BucketName `json:"bucketName"`
+	Body       *CommitObjectJSONRequestBody
+}
+
+type CommitObjectResponseObject interface {
+	VisitCommitObjectResponse(w http.ResponseWriter) error
+}
+
+type CommitObject204Response struct {
+}
+
+func (response CommitObject204Response) VisitCommitObjectResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type CommitObject400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CommitObject400JSONResponse) VisitCommitObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CommitObject401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CommitObject401JSONResponse) VisitCommitObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CommitObject403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CommitObject403JSONResponse) VisitCommitObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CommitObject409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CommitObject409JSONResponse) VisitCommitObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CommitObject500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CommitObject500JSONResponse) VisitCommitObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type CopyObjectRequestObject struct {
-	BucketName string `json:"bucketName"`
+	BucketName BucketName `json:"bucketName"`
 	Params     CopyObjectParams
 	Body       *CopyObjectJSONRequestBody
 }
@@ -2492,16 +5157,78 @@ func (response CopyObject200Response) VisitCopyObjectResponse(w http.ResponseWri
 	return nil
 }
 
-type CopyObject409Response struct {
+type CopyObject400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CopyObject400JSONResponse) VisitCopyObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
-func (response CopyObject409Response) VisitCopyObjectResponse(w http.ResponseWriter) error {
+type CopyObject401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CopyObject401JSONResponse) VisitCopyObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CopyObject403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CopyObject403JSONResponse) VisitCopyObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CopyObject409JSONResponse struct{ ConflictJSONResponse }
+
+func (response CopyObject409JSONResponse) VisitCopyObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
-	return nil
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CopyObject500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CopyObject500JSONResponse) VisitCopyObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type DownloadObjectRequestObject struct {
-	BucketName string `json:"bucketName"`
+	BucketName BucketName `json:"bucketName"`
 	Params     DownloadObjectParams
 }
 
@@ -2529,6 +5256,48 @@ func (response DownloadObject200ApplicationoctetStreamResponse) VisitDownloadObj
 	return err
 }
 
+type DownloadObject400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response DownloadObject400JSONResponse) VisitDownloadObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DownloadObject401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DownloadObject401JSONResponse) VisitDownloadObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DownloadObject403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DownloadObject403JSONResponse) VisitDownloadObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DownloadObject404Response struct {
 }
 
@@ -2537,8 +5306,22 @@ func (response DownloadObject404Response) VisitDownloadObjectResponse(w http.Res
 	return nil
 }
 
+type DownloadObject500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response DownloadObject500JSONResponse) VisitDownloadObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type DeleteSingleObjectRequestObject struct {
-	BucketName string `json:"bucketName"`
+	BucketName BucketName `json:"bucketName"`
 	Params     DeleteSingleObjectParams
 }
 
@@ -2554,12 +5337,712 @@ func (response DeleteSingleObject204Response) VisitDeleteSingleObjectResponse(w 
 	return nil
 }
 
-type DeleteSingleObject403Response struct {
+type DeleteSingleObject400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response DeleteSingleObject400JSONResponse) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
-func (response DeleteSingleObject403Response) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
+type DeleteSingleObject401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response DeleteSingleObject401JSONResponse) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSingleObject403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response DeleteSingleObject403JSONResponse) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(403)
-	return nil
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSingleObject500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response DeleteSingleObject500JSONResponse) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignObjectRequestObject struct {
+	BucketName BucketName `json:"bucketName"`
+	Params     PresignObjectParams
+}
+
+type PresignObjectResponseObject interface {
+	VisitPresignObjectResponse(w http.ResponseWriter) error
+}
+
+type PresignObject200JSONResponse PresignResponse
+
+func (response PresignObject200JSONResponse) VisitPresignObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignObject400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response PresignObject400JSONResponse) VisitPresignObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignObject401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response PresignObject401JSONResponse) VisitPresignObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignObject403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response PresignObject403JSONResponse) VisitPresignObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PresignObject500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response PresignObject500JSONResponse) VisitPresignObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetClerkUserRequestObject struct {
+	UserId ClerkUserId `json:"userId"`
+}
+
+type GetClerkUserResponseObject interface {
+	VisitGetClerkUserResponse(w http.ResponseWriter) error
+}
+
+type GetClerkUser200JSONResponse ClerkUser
+
+func (response GetClerkUser200JSONResponse) VisitGetClerkUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetClerkUser401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetClerkUser401JSONResponse) VisitGetClerkUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetClerkUser404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetClerkUser404JSONResponse) VisitGetClerkUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetClerkUser500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetClerkUser500JSONResponse) VisitGetClerkUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTodoRequestObject struct {
+	TodoSpaceId TodoSpaceId `json:"todoSpaceId"`
+	Body        *multipart.Reader
+}
+
+type CreateTodoResponseObject interface {
+	VisitCreateTodoResponse(w http.ResponseWriter) error
+}
+
+type CreateTodo200JSONResponse JsonRows
+
+func (response CreateTodo200JSONResponse) VisitCreateTodoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTodo400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateTodo400JSONResponse) VisitCreateTodoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTodo401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateTodo401JSONResponse) VisitCreateTodoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTodo403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateTodo403JSONResponse) VisitCreateTodoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateTodo500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CreateTodo500JSONResponse) VisitCreateTodoResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTodoTreeRequestObject struct {
+	TodoSpaceId TodoSpaceId `json:"todoSpaceId"`
+}
+
+type GetTodoTreeResponseObject interface {
+	VisitGetTodoTreeResponse(w http.ResponseWriter) error
+}
+
+type GetTodoTree200JSONResponse JsonRows
+
+func (response GetTodoTree200JSONResponse) VisitGetTodoTreeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTodoTree401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetTodoTree401JSONResponse) VisitGetTodoTreeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetTodoTree500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetTodoTree500JSONResponse) VisitGetTodoTreeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveTodoItemsRequestObject struct {
+	TodoSpaceId TodoSpaceId `json:"todoSpaceId"`
+	Body        *multipart.Reader
+}
+
+type MoveTodoItemsResponseObject interface {
+	VisitMoveTodoItemsResponse(w http.ResponseWriter) error
+}
+
+type MoveTodoItems200JSONResponse JsonRows
+
+func (response MoveTodoItems200JSONResponse) VisitMoveTodoItemsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveTodoItems400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response MoveTodoItems400JSONResponse) VisitMoveTodoItemsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveTodoItems401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response MoveTodoItems401JSONResponse) VisitMoveTodoItemsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveTodoItems403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response MoveTodoItems403JSONResponse) VisitMoveTodoItemsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type MoveTodoItems500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response MoveTodoItems500JSONResponse) VisitMoveTodoItemsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListViewRequestObject struct {
+	View ViewName `json:"view"`
+}
+
+type ListViewResponseObject interface {
+	VisitListViewResponse(w http.ResponseWriter) error
+}
+
+type ListView200JSONResponse []JsonObject
+
+func (response ListView200JSONResponse) VisitListViewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListView400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ListView400JSONResponse) VisitListViewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListView401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ListView401JSONResponse) VisitListViewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListView500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ListView500JSONResponse) VisitListViewResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateViewItemRequestObject struct {
+	View ViewName `json:"view"`
+	Body *multipart.Reader
+}
+
+type CreateViewItemResponseObject interface {
+	VisitCreateViewItemResponse(w http.ResponseWriter) error
+}
+
+type CreateViewItem200JSONResponse JsonRows
+
+func (response CreateViewItem200JSONResponse) VisitCreateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateViewItem400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response CreateViewItem400JSONResponse) VisitCreateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateViewItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response CreateViewItem401JSONResponse) VisitCreateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateViewItem403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response CreateViewItem403JSONResponse) VisitCreateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateViewItem500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response CreateViewItem500JSONResponse) VisitCreateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetViewItemRequestObject struct {
+	View   ViewName `json:"view"`
+	ItemId ItemId   `json:"itemId"`
+}
+
+type GetViewItemResponseObject interface {
+	VisitGetViewItemResponse(w http.ResponseWriter) error
+}
+
+type GetViewItem200JSONResponse JsonObject
+
+func (response GetViewItem200JSONResponse) VisitGetViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetViewItem400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response GetViewItem400JSONResponse) VisitGetViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetViewItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetViewItem401JSONResponse) VisitGetViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetViewItem404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetViewItem404JSONResponse) VisitGetViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetViewItem500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetViewItem500JSONResponse) VisitGetViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateViewItemRequestObject struct {
+	View ViewName `json:"view"`
+	Body *multipart.Reader
+}
+
+type UpdateViewItemResponseObject interface {
+	VisitUpdateViewItemResponse(w http.ResponseWriter) error
+}
+
+type UpdateViewItem200JSONResponse JsonRows
+
+func (response UpdateViewItem200JSONResponse) VisitUpdateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateViewItem400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response UpdateViewItem400JSONResponse) VisitUpdateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateViewItem401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response UpdateViewItem401JSONResponse) VisitUpdateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateViewItem403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response UpdateViewItem403JSONResponse) VisitUpdateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateViewItem500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response UpdateViewItem500JSONResponse) VisitUpdateViewItemResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type NotifyRequestObject struct {
@@ -2637,28 +6120,61 @@ func (response RenderMd400Response) VisitRenderMdResponse(w http.ResponseWriter)
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Check Bucket Existence
-	// (GET /buckets/{bucketName})
+	// Check the linked bucket
+	// (GET /api/storage/buckets/{bucketName})
 	BucketExists(ctx context.Context, request BucketExistsRequestObject) (BucketExistsResponseObject, error)
-	// Batch Delete Objects
-	// (DELETE /buckets/{bucketName}/objects)
+	// Delete objects
+	// (DELETE /api/storage/buckets/{bucketName}/objects)
 	DeleteObjects(ctx context.Context, request DeleteObjectsRequestObject) (DeleteObjectsResponseObject, error)
-	// List Objects in a Bucket
-	// (GET /buckets/{bucketName}/objects)
-	ListObjects(ctx context.Context, request ListObjectsRequestObject) (ListObjectsResponseObject, error)
-	// Upload Object (Standard or Large)
-	// (POST /buckets/{bucketName}/objects)
+	// List storage objects for a tab
+	// (GET /api/storage/buckets/{bucketName}/objects)
+	ListStorageObjects(ctx context.Context, request ListStorageObjectsRequestObject) (ListStorageObjectsResponseObject, error)
+	// Upload an object through the API
+	// (POST /api/storage/buckets/{bucketName}/objects)
 	UploadObject(ctx context.Context, request UploadObjectRequestObject) (UploadObjectResponseObject, error)
-	// Copy Object
-	// (POST /buckets/{bucketName}/objects/copy)
+	// Abort a prepared upload
+	// (POST /api/storage/buckets/{bucketName}/objects/abort)
+	AbortObject(ctx context.Context, request AbortObjectRequestObject) (AbortObjectResponseObject, error)
+	// Commit a prepared upload after the object exists
+	// (POST /api/storage/buckets/{bucketName}/objects/commit)
+	CommitObject(ctx context.Context, request CommitObjectRequestObject) (CommitObjectResponseObject, error)
+	// Copy an object
+	// (POST /api/storage/buckets/{bucketName}/objects/copy)
 	CopyObject(ctx context.Context, request CopyObjectRequestObject) (CopyObjectResponseObject, error)
-	// Download Object
-	// (GET /buckets/{bucketName}/objects/download)
+	// Download an object
+	// (GET /api/storage/buckets/{bucketName}/objects/download)
 	DownloadObject(ctx context.Context, request DownloadObjectRequestObject) (DownloadObjectResponseObject, error)
-	// Delete Single Object
-	// (DELETE /buckets/{bucketName}/objects/object)
+	// Delete one object
+	// (DELETE /api/storage/buckets/{bucketName}/objects/object)
 	DeleteSingleObject(ctx context.Context, request DeleteSingleObjectRequestObject) (DeleteSingleObjectResponseObject, error)
-	// Send a notification to an IoT topic
+	// Prepare an upload and return a presigned PUT URL
+	// (POST /api/storage/buckets/{bucketName}/objects/presign)
+	PresignObject(ctx context.Context, request PresignObjectRequestObject) (PresignObjectResponseObject, error)
+	// Get a Clerk user profile
+	// (GET /api/users/get/{userId})
+	GetClerkUser(ctx context.Context, request GetClerkUserRequestObject) (GetClerkUserResponseObject, error)
+	// Create a todo item
+	// (POST /api/views/tdsTodos/{todoSpaceId}/new/post)
+	CreateTodo(ctx context.Context, request CreateTodoRequestObject) (CreateTodoResponseObject, error)
+	// Get a todo tree
+	// (GET /api/views/tdsTodos/{todoSpaceId}/tree/get)
+	GetTodoTree(ctx context.Context, request GetTodoTreeRequestObject) (GetTodoTreeResponseObject, error)
+	// Move todo items
+	// (PATCH /api/views/tdsTodos/{todoSpaceId}/tree/move/patch)
+	MoveTodoItems(ctx context.Context, request MoveTodoItemsRequestObject) (MoveTodoItemsResponseObject, error)
+	// List rows in a view
+	// (GET /api/views/{view}/list/get)
+	ListView(ctx context.Context, request ListViewRequestObject) (ListViewResponseObject, error)
+	// Create a view item
+	// (POST /api/views/{view}/new/item)
+	CreateViewItem(ctx context.Context, request CreateViewItemRequestObject) (CreateViewItemResponseObject, error)
+	// Get one view row
+	// (GET /api/views/{view}/one/get/{itemId})
+	GetViewItem(ctx context.Context, request GetViewItemRequestObject) (GetViewItemResponseObject, error)
+	// Update a view item
+	// (PATCH /api/views/{view}/one/patch)
+	UpdateViewItem(ctx context.Context, request UpdateViewItemRequestObject) (UpdateViewItemResponseObject, error)
+	// Publish a notification to an IoT topic
 	// (POST /notify)
 	Notify(ctx context.Context, request NotifyRequestObject) (NotifyResponseObject, error)
 	// Render Markdown to HTML
@@ -2696,7 +6212,7 @@ type strictHandler struct {
 }
 
 // BucketExists operation middleware
-func (sh *strictHandler) BucketExists(w http.ResponseWriter, r *http.Request, bucketName string) {
+func (sh *strictHandler) BucketExists(w http.ResponseWriter, r *http.Request, bucketName BucketName) {
 	var request BucketExistsRequestObject
 
 	request.BucketName = bucketName
@@ -2722,7 +6238,7 @@ func (sh *strictHandler) BucketExists(w http.ResponseWriter, r *http.Request, bu
 }
 
 // DeleteObjects operation middleware
-func (sh *strictHandler) DeleteObjects(w http.ResponseWriter, r *http.Request, bucketName string, params DeleteObjectsParams) {
+func (sh *strictHandler) DeleteObjects(w http.ResponseWriter, r *http.Request, bucketName BucketName, params DeleteObjectsParams) {
 	var request DeleteObjectsRequestObject
 
 	request.BucketName = bucketName
@@ -2755,25 +6271,26 @@ func (sh *strictHandler) DeleteObjects(w http.ResponseWriter, r *http.Request, b
 	}
 }
 
-// ListObjects operation middleware
-func (sh *strictHandler) ListObjects(w http.ResponseWriter, r *http.Request, bucketName string) {
-	var request ListObjectsRequestObject
+// ListStorageObjects operation middleware
+func (sh *strictHandler) ListStorageObjects(w http.ResponseWriter, r *http.Request, bucketName BucketName, params ListStorageObjectsParams) {
+	var request ListStorageObjectsRequestObject
 
 	request.BucketName = bucketName
+	request.Params = params
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.ListObjects(ctx, request.(ListObjectsRequestObject))
+		return sh.ssi.ListStorageObjects(ctx, request.(ListStorageObjectsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "ListObjects")
+		handler = middleware(handler, "ListStorageObjects")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(ListObjectsResponseObject); ok {
-		if err := validResponse.VisitListObjectsResponse(w); err != nil {
+	} else if validResponse, ok := response.(ListStorageObjectsResponseObject); ok {
+		if err := validResponse.VisitListStorageObjectsResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2782,7 +6299,7 @@ func (sh *strictHandler) ListObjects(w http.ResponseWriter, r *http.Request, buc
 }
 
 // UploadObject operation middleware
-func (sh *strictHandler) UploadObject(w http.ResponseWriter, r *http.Request, bucketName string, params UploadObjectParams) {
+func (sh *strictHandler) UploadObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params UploadObjectParams) {
 	var request UploadObjectRequestObject
 
 	request.BucketName = bucketName
@@ -2815,8 +6332,74 @@ func (sh *strictHandler) UploadObject(w http.ResponseWriter, r *http.Request, bu
 	}
 }
 
+// AbortObject operation middleware
+func (sh *strictHandler) AbortObject(w http.ResponseWriter, r *http.Request, bucketName BucketName) {
+	var request AbortObjectRequestObject
+
+	request.BucketName = bucketName
+
+	var body AbortObjectJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.AbortObject(ctx, request.(AbortObjectRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "AbortObject")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(AbortObjectResponseObject); ok {
+		if err := validResponse.VisitAbortObjectResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CommitObject operation middleware
+func (sh *strictHandler) CommitObject(w http.ResponseWriter, r *http.Request, bucketName BucketName) {
+	var request CommitObjectRequestObject
+
+	request.BucketName = bucketName
+
+	var body CommitObjectJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CommitObject(ctx, request.(CommitObjectRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CommitObject")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CommitObjectResponseObject); ok {
+		if err := validResponse.VisitCommitObjectResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // CopyObject operation middleware
-func (sh *strictHandler) CopyObject(w http.ResponseWriter, r *http.Request, bucketName string, params CopyObjectParams) {
+func (sh *strictHandler) CopyObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params CopyObjectParams) {
 	var request CopyObjectRequestObject
 
 	request.BucketName = bucketName
@@ -2850,7 +6433,7 @@ func (sh *strictHandler) CopyObject(w http.ResponseWriter, r *http.Request, buck
 }
 
 // DownloadObject operation middleware
-func (sh *strictHandler) DownloadObject(w http.ResponseWriter, r *http.Request, bucketName string, params DownloadObjectParams) {
+func (sh *strictHandler) DownloadObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params DownloadObjectParams) {
 	var request DownloadObjectRequestObject
 
 	request.BucketName = bucketName
@@ -2877,7 +6460,7 @@ func (sh *strictHandler) DownloadObject(w http.ResponseWriter, r *http.Request, 
 }
 
 // DeleteSingleObject operation middleware
-func (sh *strictHandler) DeleteSingleObject(w http.ResponseWriter, r *http.Request, bucketName string, params DeleteSingleObjectParams) {
+func (sh *strictHandler) DeleteSingleObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params DeleteSingleObjectParams) {
 	var request DeleteSingleObjectRequestObject
 
 	request.BucketName = bucketName
@@ -2896,6 +6479,270 @@ func (sh *strictHandler) DeleteSingleObject(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(DeleteSingleObjectResponseObject); ok {
 		if err := validResponse.VisitDeleteSingleObjectResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PresignObject operation middleware
+func (sh *strictHandler) PresignObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params PresignObjectParams) {
+	var request PresignObjectRequestObject
+
+	request.BucketName = bucketName
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PresignObject(ctx, request.(PresignObjectRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PresignObject")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PresignObjectResponseObject); ok {
+		if err := validResponse.VisitPresignObjectResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetClerkUser operation middleware
+func (sh *strictHandler) GetClerkUser(w http.ResponseWriter, r *http.Request, userId ClerkUserId) {
+	var request GetClerkUserRequestObject
+
+	request.UserId = userId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetClerkUser(ctx, request.(GetClerkUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetClerkUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetClerkUserResponseObject); ok {
+		if err := validResponse.VisitGetClerkUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateTodo operation middleware
+func (sh *strictHandler) CreateTodo(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId) {
+	var request CreateTodoRequestObject
+
+	request.TodoSpaceId = todoSpaceId
+
+	if reader, err := r.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
+		return
+	} else {
+		request.Body = reader
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateTodo(ctx, request.(CreateTodoRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateTodo")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateTodoResponseObject); ok {
+		if err := validResponse.VisitCreateTodoResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetTodoTree operation middleware
+func (sh *strictHandler) GetTodoTree(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId) {
+	var request GetTodoTreeRequestObject
+
+	request.TodoSpaceId = todoSpaceId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetTodoTree(ctx, request.(GetTodoTreeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetTodoTree")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetTodoTreeResponseObject); ok {
+		if err := validResponse.VisitGetTodoTreeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// MoveTodoItems operation middleware
+func (sh *strictHandler) MoveTodoItems(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId) {
+	var request MoveTodoItemsRequestObject
+
+	request.TodoSpaceId = todoSpaceId
+
+	if reader, err := r.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
+		return
+	} else {
+		request.Body = reader
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.MoveTodoItems(ctx, request.(MoveTodoItemsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "MoveTodoItems")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(MoveTodoItemsResponseObject); ok {
+		if err := validResponse.VisitMoveTodoItemsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListView operation middleware
+func (sh *strictHandler) ListView(w http.ResponseWriter, r *http.Request, view ViewName) {
+	var request ListViewRequestObject
+
+	request.View = view
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ListView(ctx, request.(ListViewRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListView")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListViewResponseObject); ok {
+		if err := validResponse.VisitListViewResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateViewItem operation middleware
+func (sh *strictHandler) CreateViewItem(w http.ResponseWriter, r *http.Request, view ViewName) {
+	var request CreateViewItemRequestObject
+
+	request.View = view
+
+	if reader, err := r.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
+		return
+	} else {
+		request.Body = reader
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateViewItem(ctx, request.(CreateViewItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateViewItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateViewItemResponseObject); ok {
+		if err := validResponse.VisitCreateViewItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetViewItem operation middleware
+func (sh *strictHandler) GetViewItem(w http.ResponseWriter, r *http.Request, view ViewName, itemId ItemId) {
+	var request GetViewItemRequestObject
+
+	request.View = view
+	request.ItemId = itemId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetViewItem(ctx, request.(GetViewItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetViewItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetViewItemResponseObject); ok {
+		if err := validResponse.VisitGetViewItemResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateViewItem operation middleware
+func (sh *strictHandler) UpdateViewItem(w http.ResponseWriter, r *http.Request, view ViewName) {
+	var request UpdateViewItemRequestObject
+
+	request.View = view
+
+	if reader, err := r.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
+		return
+	} else {
+		request.Body = reader
+	}
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateViewItem(ctx, request.(UpdateViewItemRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateViewItem")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateViewItemResponseObject); ok {
+		if err := validResponse.VisitUpdateViewItemResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -2972,47 +6819,45 @@ func (sh *strictHandler) RenderMd(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"7Flbb9s40/4rA+0HbAs4dg7db/fNe9U2PWS3hyBOtxfbAqHFkc2GIlWScuIG/u8vhqRkyZKaQ1vsTa/i",
-	"mORwOPPMMwdfJ6nOC61QOZscXicFMyxHh8b/91xIfMNypM8cbWpE4YRWyaFfAcVyBFtmmbiCBzlbgVCp",
-	"LDl9NyuYW9iH42SUCNr/uUSzSkaJ8tKSrBI8Sgx+LoVBnhw6U+IosekCc0Y3ulVBe60zQs2T9XqUTJ02",
-	"bI5vZ58wdUfMsWN+YjATV10F41bQfi9w5hi8e3d8BIU/ABbnOSo3pKDt3vRVXTNtcuaSw6QsBe28Qfdb",
-	"631flb9Z3XcWzbCWby8VGigtmrtoWHqZ36TYutrs8Rne+heuTjHz6DW6QOME+tWsgd4tOaNeB998/6hj",
-	"5ducie++ld03pvlnY6+ua/vxWb/4Yy064Ii0mB6E3V1D4Rmb+79XLC8knfqQ/L6LuPf7wR+z/5/t7+F+",
-	"+gd7dJAdsN/YbBcRf9/7kPS99AJXbUGZlhzNxJaz+IlUHH8q5n2nJbPuteYiE9i2FmcOd5zwfNH1iPiC",
-	"rUv3dvcf1fuEcjhH4227ZRL6SqhMd+F9+mx6Bo9PjsEWmIpMpIwWIGdFIdQcUPFCC+UscGEwdXIFToNb",
-	"ILzQMD36C/7eh8c5+6IVTA8g6gVZqVISYyk8nHDePvHAcp92vjesKNDQzckoWaKxQZ298e54l56qC1Ss",
-	"EMlhcuC/GiWeZukBk1mZXqCzk+vwgWCwpoU5uu4Dny4wvbBwuUC3QAMMwiHAK2GdBaH8a9LSGFQOWJrq",
-	"kv4qDiKDlS5hwZYIBZpcWOvfBK9ZYckM50+8qGde0jlM4NwePJWCaOElMh5Wz8kGBEFvWIqNpHnMP2yT",
-	"iP65DnRCj92wyeadd8oiH2mzLbSyAfz7u7td+zxpmYPeTY/WlwqEG5MnHu0+GjzFNVpQOh4HbUBYYEsm",
-	"JJtJHHso2jLPmVlVroB41D8fVYp+U69PJwG+Nlwv0fVk5xOj54blOXMiZVKuIGy0kJfSCQJjBDZyuMCV",
-	"hczoHBhYoeYSKzCkWjm8cg3XHnkxgUa2fNte6rq3tf4j/Tu67s09s1XBrH2hl2gUIwM3ZXDMWCldcpgx",
-	"abEmipnWEpmqQPO5ROueaO4pzhtH+dBiRSEjRUw+WXLAdUN2m2rJ2vRXOMz9h/8zlLqSXyabOmwSM9yk",
-	"ld42/MWMYatOsvCSP/aSXNt469sEwLRMU7Q2Kwk9eIVp6ZB7UrDOlKkrDZMBVUSM0TbDkXHGzBxdBSyK",
-	"jUyXim/HwhPm0gUEqECFlfWon8Ne+dgklWJEVHwlV0DpETlcCrcQioBdwz2o0MA0ielFdGPh7/0eRDfW",
-	"/wW+ujX+boW0ujboomw92q79orUlURUH20DKHalx2/1k0crt4P0WjpHUQtseDLwrpGbcAgOqKyI1QsFW",
-	"9DW5d3owhhOjSUO0YHMmpd9qYSkYnJTRg0TSC6Y4LaSLUl0gJ/oLgEpXkGkDkjBsYKa5wGa+CzpQQ3RO",
-	"YuL/r2h3EH4OD+iynCk2RzMO62gediEVlqIrfixH9qFhc9+kVf7fYn9/d3PXg62W7haH6/706wQdsh4z",
-	"bkIV5Q71gl/jaMLHQMc7E4qZFUTZtkIaebIuVsOeG4t7f8t34+sI4zJgi/uSZYkmcB6h7z0TDk1PtO4d",
-	"dKU9U044Kmp1QP12oAacxlCFB1PHFGeGE/w97h/eXL5MUl14P/UH9lNdCKTKq2qEI5X7DMRyhNBOgC1Y",
-	"inSvwUCCaEE4oDQPQjkNDLiwTqjUAUf6EEp510xIjWB+qovVmX7uhYdwDt8Mlq20PBSwWzmQVNelSesC",
-	"i4K47pV/BvbdA/sulVfD+zGrdEHHFMwQBEflC2dCRPBYTF+UBgi3O07vRACyRk+33Zk2rhyepB01UJnV",
-	"U7XhcdrXbpnec6gxJOLux9/dc9TR9U6f2K9qeqMl+h3y3SiYmACMLp1QGEtm8ikBnOrZWBv9p6fWDqSg",
-	"TcVKkfJSrTIxLwPZABqjDTzA8XwMQhHslghOoAEpMkxXqUR/QorUPew0maRbVeLdSM1cXyoi+MHxwSk6",
-	"I3DZIuiqbNJmMxUJbaWfgkgd4rTZTcZrNqVT9c1w8VTtoPKpyj8XuIINjQAzCL75gw2hgNVxRomctPFN",
-	"76U2Fz6v+FHPC+bwkq3Az34ofc61EVKySV5eAYVf9O18/EF1u9uo1s/S7Z4Mf+sGR6cO3Y51Blnepvub",
-	"C7CBVqbuF5rFEWTo0gXy4ZbmjaYDCw+/MCjajroKFbePPF1PaIdGO6eY63bgxTlhgz98GvETSjRjeCyl",
-	"vrSgvQQ/DQrd8EqoOTA4j+eP+XmEfTUi8WWu0RKsY660kEk2twPToOFh0OAsaOqHTT8j5u4RMzDiqh2Z",
-	"/DvzsVYMPxrsUXJmKE9QLVUPkHS7M4nzyir4ejqUx34zHKES2BkjxQFSAFgr+JR2Imu1HW1kvgnrN1Ty",
-	"U0wNhrxDr2ClW4SKkdKDb1FiyVrV9gukjLUx9tVOUGTHekl3nwfdryBmnItAAieN0jj6tF0t52gtm/fw",
-	"D3UxFV/GTUQGM4SinElhF9hbIhpMRSGqX5m3CieJ5iL8mCi4hQd/vj+jkvchuAVzYBe6lBwMpugrngWC",
-	"N56o6onTaDq4XKCCpbBiJiS1r8JCYcSSOfwviLnS9R6vaRryeD0e66jcnoONkqXAy3570ErsGjIRfhf1",
-	"w6dUqzAt9Vof6zNwuhBpn302anevCOrW9rWgiZydhmtWFOvJtXVsjutJ2Da5Jm3W4+rp28cKpF45OqMr",
-	"hLwwuU7JI4EV15VAby1UZU7leriL4iTc0qiiBwp8b71RjavWi3/M1LrGYxczgVb6fvdh3OMJrRsDufbP",
-	"6ds3Nd6FBaGWTAoeJg4Rd5vI8bWn/0lMzeMlez1DS0WMoY34gjzc8usWIfwKgTHoxijO/4ykUm2otPay",
-	"f+t7wDHlfMUkTNEs0cAz6hrG8JwJGTDpHzKdnoHB0NraETx+P203GyO6Ldqvxm503TbZTlFxYC370j1M",
-	"NQDvudeg4mhe8+Ghzxm7IBv6DEE9CAQs+bLEoCuNspFdSRJyeHn2+lW3vDitLvpeowOHV679s/Yv8BKl",
-	"1PBeG3lzc+vPfwPI76n2wuVy62f9cnf3IF3s+b/YeEJYmFQrvS/q0b7tvteV22r/9Pw20IvZEFPRWTDT",
-	"fLWNsuBTqK9w2juf1Fj/LwAA//8=",
+	"7FtLc9s4Ev4rKO5W7UUOPZPsYX2bTB7rjO14/Zg5pFIuiGhJGJMAA4BSuC79960GwJf4kGTZcmbtU2Kx",
+	"ATS6P3R/jcddEMkklQKE0cHRXZBSRRMwoOxfb7PoFswZTQD/4iI4ClJqZsEoEPa3YFwJjAIF3zKugAVH",
+	"RmUwCnQ0g4RiS5OnKK2N4mIaLJej4NcY1O21BnXMerrO3Mftuv3AY2io+y0DlVedTorv23V7bCDpVZS7",
+	"j0M9TqRKqMFJZRwl2yN8Hv8JkfkN8j7NbyHfUukryeRlSiPo1dzUJHZT/3cOiwGYzDksBkf4u4JJcBT8",
+	"LazQGLqvOiz7XuJICnQqhQaHT8ou4FsG2uBfkRQGhP0vTdOYR9RwKcI/tRT422ajvVdKqlPQmk79iAx0",
+	"pHiKfQVHwdUMiHJjEq4JF3Mac/YqQExLMYl5tF9dtJGKToFICyBUSUhDFFCWEyNJJJOEGyIViWSaWzU/",
+	"SDXmjIHYq54RjWNQJKIC9UtBIaiImXFNaIRyVrdjYUAJGtsen8SnE8pjcP48k+aDzAR7Cj2AEQWRVIws",
+	"qHPpBFWxel0LmpmZVPy/sF/dbNAmGrTmUiDUEq41F1OElwLEn7XcsljZdo2Wkd6mFyVTUIa75ctZR+Qa",
+	"BTyhU7hWMX4UWRzTcQxFyGgJY5oQPvKsEV7WI9AXHP1rKeOWj1vFaf4OtOGCuqmvas2qjy4/dk6iJlVP",
+	"SsMqtbvu7qhL73cQg4HfINdtlW/9r5iqdKe6/geqFM1batnmXWM2QNMaNak+DE+7EOwa4oNUyVvJcm/5",
+	"GiJPs9jwlCpDJhxipglVQFKqNDAyzomZAZlRwWJQr4LRimopzWNJWSO5jbmgNuO2lW1p9UlL4VK2XXWM",
+	"cVSKxue1URoYbDa9kIumP4ZWZm2slqNGwTkIxsX0Oi3m05zopB97o4DrM1hU0/Dfx1LGQAUK6NcNXtLq",
+	"wCcfJ/SOGnrMNuALK+02arOCmNUOulUZ1flefbLNmXXB7lyB5lNx4dlG55LqNEm66o8h1zadh9HMRb3h",
+	"yaPQyBPC5nBdM7msG+ZCLtpTiTBC32AgvemJyJECaoDdUNNwFaMGDgy35m21QdPfiD7opdk45lEf6m6c",
+	"+je3w7grxPhmqMtStvUsalZZj9A+21/RMXYAIkvQf37uoyDhAgfVM6qA3Sy4md00gnulRp1fF93w6bnU",
+	"RqMmTJdkX3e0R4tBlClu8ktEXs3tb4Eql5rH9n8fikl++uMq8HncusfJlV3PjEkdTeBiItvB+a2SCw3q",
+	"YEIjJAi/nB+/IudKGssRCKLPZjRNPLBtuHYc8R96hWh8+uMKI7jhBlN7cPmfk3cwxy6DUTAHpd2IP786",
+	"fHWItpIpCJry4Ch4bX8a2WLETjmkKQ89eEJXu+rwripilyg0dRm91BHjk6+E33/nzuL1MvlL9xqvRMJa",
+	"Gb38ulLC/Hx42LYekq2Yi1vMZLYtATuypX9vDn/qiytlz2GDI9pGr9c3qioD2+LNJooxCY6fWg2tgv90",
+	"Uxoeq8n06xC1Fm2A88tXNJvOkgQT9FHw6wyiW4uYhi62l7UuDt3y9FQOOVPb245LffaCu7h71F3Nj/OU",
+	"av1RztEGIoKgXgwzmNAsNsHRhMa6ohBlhHQYsmVCwYwepASoMchlM+cglVluAlxvMuIMyzxeN4BDrZLf",
+	"H8QfHajOoqRA3HLUHVxOuDaNNP0omDN0fO89mFoiW/aFsI0xuBHrbdGWdpHSqlEL9M255uMYiBQ2SFQl",
+	"taHj5w5JxNrKppEmE6kIRetYaiZ1B0Ydwyz5807oXCNdlrnDgS4p6r8QmdkBo4Y2cdauhDat9+ps27Zr",
+	"E+udAiTJrDWBESqY36P78cPlm59etyf0XhhucmKkJDFVU9gPA3BoJFQU+55mpmQ2ndn1jsxwKyoQ0rFU",
+	"FlPd2P8FPz8A9B8pb69UkZsgs4Pa+V48NIk1yUsGt64nlKQKUqzSvHm2xJdb4f0A+9V+/39HmF+0f5lw",
+	"d/iv9S3KM5+91D3uMKeFRkInBpSNfT4cunJxa5Sm+RBG03wv6b/amHssOK9u8e+YzCOZ8r9aKv8BsZ3m",
+	"VT7fErlMLkSx39pZYb3zAk8C4I1LJRkZMAfaKKBJE83rSWtPMUTGuQH9w6PxTe/iah59Pn7F7oFybyjK",
+	"8jhleHPpkotpDPvGY8/WgN9FdQcp/VdKHm0vax1z8Fh42VVq7CoJuB9EU3e21Z/q/eHXUxT7O2wrDRLY",
+	"leO8jnjpRUpS9dxRdu44JgbCgmUKRhSYTAlHQb25zq+vyPXFSQXCTKNjp2DCO3eJr/9Y5SOY6n7ItkCr",
+	"3yF8VPRUKnbgxp1VpUpOeAzFVYSsdglhoqwObJfDmzfrG5W3lfYBjo+AZYibOvq4mH8FgjmHhQ79yaQO",
+	"72p3DZehgEVYhJ6easOeOGPbrWFRv/e44w7iECjKiymbVw8PAsby/kgXFt05PUFjE85AGD7hoJ57KHNm",
+	"IdTbxUCyIU6NAgh94OqLX9juSgE8AE6fADFn/mAEDYOzvX+Q2lPMKTXdxoWJnEOYUhPN3OUv/5+mL0/l",
+	"3AacY3s89RJ1NsYQGo7ZZVWLOfq5Bx20ShVw9Cpc7/CfZRhzbQYjzAnX5nd3fX47QFbX5vdyXjt0S7EN",
+	"GYRSeUxrZO32z15hs5/TVoWT5Uia7TuIbiAgJbKZaQ0lQrdihNoVD8+OEym5eAlPHZwI4dfJiTwwpQBX",
+	"y7l3ToO13AOAc/2OgX+M9eiU6XPtpH/wnYZc7BlMP2I1KAU4KCm5GEDSOhJ2be/ovgS5LYOcM9tLkGtd",
+	"E2GdQU5IwycDZ51n7nsLfXb7ewaU2d0qv//9/cB1d6AhUvbJzuavNHc44Ox+dOK32Td9iIPDRzzlxfPf",
+	"TR8IjdyTzi5By+p4bP3Tcec9VXxODXTfUq/fu/JvRgvdGx0/2HUs62hvY2J11LPmAUNT/tg99ySi1q5e",
+	"Mg/07tBRfydXLoCBVuVzxGVjb9ZpSmhDESTSVJBjeUWMTHnksK5AMFCnrB/tF4XE/cHYxJuB72b9MxYr",
+	"tYMn76nczCQ9b2w6FFmpWqyhgJF/X52erAdJ8aR0LFm+6kHXFTml6pbJhXUddoqjLv8XAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

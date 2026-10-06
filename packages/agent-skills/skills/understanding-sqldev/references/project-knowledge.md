@@ -15,12 +15,12 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 | Local database | `packages/backend/supabase/config.toml` and `packages/backend/supabase/migrations/` |
 | Browser tests | `packages/e2et/cypress.config.ts`, `packages/e2et/cypress/e2e/`, `packages/e2et/cypress/tasks/` |
 | Go module | `packages/functions/go.mod` |
-| HTTP contract | `packages/functions/cmd/goapi/api.yaml` and `config.yaml`; handlers are in `api/impl.go` and adjacent files |
+| HTTP contract | `packages/functions/cmd/goapi/api.yaml` and `config.yaml`; handlers are beside `api/api.gen.go`. Regenerate with `go generate` in `packages/functions/cmd/goapi` |
 | Realtime authorizer | `packages/functions/cmd/realtimeAuthorizer/main.go`, wired by `infra/realtime.ts` |
 | Frontend config | `packages/frontend/astro.config.mjs`, `packages/frontend/package.json` |
 | Auth middleware | `packages/frontend/src/middleware.ts` |
 | Theme tokens | `packages/frontend/src/styles/global.css` |
-| Upload flow | `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/forms/useStorageUppy.ts` and `packages/frontend/src/pages/api/storage/[...path].ts` |
+| Upload flow | `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/forms/useStorageUppy.ts`. Astro `src/fetch.ts` forwards `/api/**` to the Go API |
 | MQTT client | `packages/frontend/src/components/react/hooks/useMqtt/index.ts` |
 | Client store | `packages/frontend/src/components/react/DDrvList/store/store.ts` |
 
@@ -40,13 +40,15 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 
 ## Boundaries verified from source
 
-- `infra/api.ts` defines `sst.aws.ApiGatewayV1` named `GoApi`. The Lambda receives `events.APIGatewayProxyRequest`. Older "API Gateway v2" wording does not describe the current resource.
+- `infra/api.ts` defines `sst.aws.ApiGatewayV1` named `GoApi`. The Lambda receives `events.APIGatewayProxyRequest`. Outside `dev` it is attached to `sqldevSupabaseVPC` and linked to the Supabase URL, Supabase key, and Clerk secret. Older "API Gateway v2" wording does not describe the current resource.
+- `packages/frontend/src/fetch.ts` is the Astro 7 advanced-routing entrypoint. Non-API requests use `astro()`. `/api/**` requests run Clerk middleware, require a signed-in user, and forward the native Clerk session JWT to Go. Browser API URLs are unchanged.
+- Go calls Supabase with that Clerk JWT as the bearer token and the publishable key as `apikey`, so `auth.jwt()`, RLS, and the storage RPCs stay user-scoped. It does not use the service role for those calls. `infra/storage.ts` keeps `SQLDevBucket` private.
 - `infra/realtime.ts` defines `sst.aws.Realtime`. Application MQTT is AWS IoT. `packages/backend/supabase/config.toml` sets `[realtime] enabled = false`.
 - `infra/web.ts` attaches the Astro Lambda to `sqldevSupabaseVPC` only outside `dev`. `infra/api.ts` does not attach the Go API Lambda to that VPC.
 - `packages/frontend/astro.config.mjs` sets `output: "server"` and imports `astro-sst`. That package is the `astro-sst` dependency in `packages/frontend/package.json`.
-- Clerk server auth is `@clerk/astro`. `packages/frontend/src/middleware.ts` only attaches `clerkMiddleware()`. `packages/frontend/src/utils/clerk/requireAuth.ts` redirects unsigned pages to sign-in and returns 401 for API routes. `/` and `/sign-in` stay public; other pages, including `404.astro`, call the page helper, and every `pages/api` handler calls the API helper.
+- Clerk server auth is `@clerk/astro`. `packages/frontend/src/middleware.ts` only attaches `clerkMiddleware()`. `packages/frontend/src/utils/clerk/requireAuth.ts` redirects unsigned pages to sign-in. `/` and `/sign-in` stay public; other pages, including `404.astro`, call the page helper. API authentication is enforced in `packages/frontend/src/fetch.ts`.
 - `packages/e2et/cypress/tasks/localDbReset.ts` allows database cleanup only for stages `dev`, `local`, and `development`.
-- `packages/functions/cmd/goapi/api/api.gen.go` is oapi-codegen output. No `go:generate` directive is committed.
+- `packages/functions/cmd/goapi/api/api.gen.go` is oapi-codegen output. `packages/functions/cmd/goapi/generate.go` pins the generator command.
 - `packages/frontend/src/utils/supabase/models/` is gitignored generated output.
 
 ## Authorization entry points

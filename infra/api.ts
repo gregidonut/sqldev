@@ -1,7 +1,7 @@
-import { NatEip } from "./vpc";
+import { NatEip, Vpc as SupabaseVPC } from "./vpc";
 import { realtime } from "./realtime";
 import { bucket } from "./storage";
-import { notifySecret } from "./secrets";
+import { clerkSecret, notifySecret, supabaseKey, supabaseUrl } from "./secrets";
 
 export const api = new sst.aws.ApiGatewayV1("GoApi", {
   cors: true,
@@ -24,7 +24,8 @@ function addRoute(route: string) {
   api.route(route, {
     handler: "packages/functions/cmd/goapi/main.go",
     runtime: "go",
-    link: [realtime, notifySecret, bucket],
+    vpc: ["dev"].includes($app.stage) || !SupabaseVPC ? undefined : SupabaseVPC,
+    link: [realtime, notifySecret, bucket, supabaseUrl, supabaseKey, clerkSecret],
     environment: {
       APP_NAME: $app.name,
       APP_STAGE: $app.stage,

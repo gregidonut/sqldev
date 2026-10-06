@@ -65,7 +65,7 @@ Edit a table, function, or policy in the migration that defines it while that hi
 
 The frontend-facing Go service is API Gateway REST v1, `sst.aws.ApiGatewayV1` in `infra/api.ts`. `packages/functions/cmd/goapi/main.go` adapts `APIGatewayProxyRequest` through `aws-lambda-go-api-proxy` and base64-encodes binary responses. Do not replace it with HTTP API v2 unless the task asks for that migration.
 
-`api.yaml` is the contract. `config.yaml` configures oapi-codegen. Implementations live beside the generated file. No generate script is committed, so confirm the oapi-codegen command before regenerating; do not invent one and do not edit `api.gen.go`.
+`api.yaml` is the contract. `config.yaml` configures oapi-codegen. Implementations live beside the generated file. Regenerate with `go generate` in `packages/functions/cmd/goapi` (`oapi-codegen` v2.7.0). Do not edit `api.gen.go`.
 
 Before changing Go code, follow `golang-how-to` together with `golang-design-patterns`, `golang-documentation`, and `golang-error-handling`.
 

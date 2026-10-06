@@ -1,92 +1,309 @@
 openapi: 3.0.0
 info:
-  title: Go SDK v2 S3 Wrapper API
-  description: REST API specification mapping endpoints directly to the Go SDK V2 Amazon S3 example functions.
-  version: 1.0.0
+  title: SQLDev API
+  description: Browser-facing API. Protected operations require the caller's Clerk session JWT.
+  version: 2.0.0
 paths:
-  /buckets/{bucketName}:
+  /api/users/get/{userId}:
     get:
-      summary: Check Bucket Existence
-      description: Checks whether a bucket exists in the current account and if you have permissions. Maps to `BucketExists` / `s3Client.HeadBucket`.
-      operationId: bucketExists
+      operationId: getClerkUser
+      summary: Get a Clerk user profile
+      security:
+        - clerkBearer: []
       parameters:
-        - name: bucketName
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/ClerkUserId"
       responses:
-        '200':
-          description: Bucket exists and you own it.
-        '404':
-          description: Bucket does not exist or is available.
+        "200":
+          description: Clerk profile fields used by the frontend.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClerkUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
-  /buckets/{bucketName}/objects:
+  /api/views/{view}/list/get:
     get:
-      summary: List Objects in a Bucket
-      description: Lists the objects currently stored within a specified bucket. Maps to `ListObjects` / `s3Client.ListObjectsV2`.
-      operationId: listObjects
+      operationId: listView
+      summary: List rows in a view
+      security:
+        - clerkBearer: []
       parameters:
-        - name: bucketName
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/ViewName"
       responses:
-        '200':
-          description: Objects listed successfully.
+        "200":
+          description: Rows visible to the caller.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/S3Object'
-        '404':
-          description: Bucket does not exist.
+                  $ref: "#/components/schemas/JsonObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
-    post:
-      summary: Upload Object (Standard or Large)
-      description: Uploads a file/object payload to S3. Processes small files via PutObject or handles chunked concurrency for larger bodies. Maps to `UploadFile` or `UploadLargeObject` (via manager.Uploader).
-      operationId: uploadObject
+  /api/views/{view}/one/get/{itemId}:
+    get:
+      operationId: getViewItem
+      summary: Get one view row
+      security:
+        - clerkBearer: []
       parameters:
-        - name: bucketName
-          in: path
+        - $ref: "#/components/parameters/ViewName"
+        - $ref: "#/components/parameters/ItemId"
+      responses:
+        "200":
+          description: The requested row.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonObject"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/views/{view}/new/item:
+    post:
+      operationId: createViewItem
+      summary: Create a view item
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/ViewName"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FormBody"
+      responses:
+        "200":
+          description: Created row identifiers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonRows"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/views/{view}/one/patch:
+    patch:
+      operationId: updateViewItem
+      summary: Update a view item
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/ViewName"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FormBody"
+      responses:
+        "200":
+          description: Updated row identifiers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonRows"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/views/tdsTodos/{todoSpaceId}/tree/get:
+    get:
+      operationId: getTodoTree
+      summary: Get a todo tree
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TodoSpaceId"
+      responses:
+        "200":
+          description: Nested todo tree.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonRows"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/views/tdsTodos/{todoSpaceId}/tree/move/patch:
+    patch:
+      operationId: moveTodoItems
+      summary: Move todo items
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TodoSpaceId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FormBody"
+      responses:
+        "200":
+          description: Moved item identifiers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonRows"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/views/tdsTodos/{todoSpaceId}/new/post:
+    post:
+      operationId: createTodo
+      summary: Create a todo item
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/TodoSpaceId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/FormBody"
+      responses:
+        "200":
+          description: Created todo identifier.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonRows"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/storage/buckets/{bucketName}:
+    get:
+      operationId: bucketExists
+      summary: Check the linked bucket
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/BucketName"
+      responses:
+        "200":
+          description: The linked bucket exists.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: The linked bucket does not exist.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/storage/buckets/{bucketName}/objects:
+    get:
+      operationId: listStorageObjects
+      summary: List storage objects for a tab
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/BucketName"
+        - name: tab
+          in: query
           required: true
           schema:
-            type: string
-        - $ref: '#/components/parameters/UserIdPrefix'
-        - $ref: '#/components/parameters/StorageObjectIdPrefix'
-        - $ref: '#/components/parameters/StorageObjectDataIdPrefix'
-        - $ref: '#/components/parameters/FileName'
+            $ref: "#/components/schemas/StorageTab"
+      responses:
+        "200":
+          description: Objects visible on the requested tab.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StorageObjectRow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      operationId: uploadObject
+      summary: Upload an object through the API
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/FileName"
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
-              required:
-                - file
+              required: [file]
               properties:
                 file:
                   type: string
                   format: binary
-                  description: File binary contents payload.
       responses:
-        '200':
-          description: Object uploaded and verified via Waiter successfully.
-        '413':
+        "200":
+          description: Object uploaded and committed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
           description: Entity too large.
-
+        "500":
+          $ref: "#/components/responses/InternalError"
     delete:
-      summary: Batch Delete Objects
-      description: Programmatically deletes multiple specified keys from a single bucket context. Maps to `DeleteObjects` / `s3Client.DeleteObjects`.
       operationId: deleteObjects
+      summary: Delete objects
+      security:
+        - clerkBearer: []
       parameters:
-        - name: bucketName
-          in: path
-          required: true
-          schema:
-            type: string
+        - $ref: "#/components/parameters/BucketName"
         - name: bypassGovernance
           in: query
           required: false
@@ -98,115 +315,164 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - keys
-              properties:
-                keys:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/ObjectKeyRef'
+              $ref: "#/components/schemas/DeleteKeys"
       responses:
-        '200':
-          description: Successfully executed the structural deletion request.
-        '404':
-          description: Target bucket not found.
+        "200":
+          description: Objects deleted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
-  /buckets/{bucketName}/objects/download:
-    get:
-      summary: Download Object
-      description: >
-        Retrieves an object chunked or directly from an S3 location.
-        Maps to `DownloadFile` or `DownloadLargeObject` (via manager.Downloader).
-        Object key components are query parameters so prefixed S3 keys work
-        with API Gateway REST and gorilla/mux path routing.
-      operationId: downloadObject
-      parameters:
-        - name: bucketName
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/UserIdPrefix'
-        - $ref: '#/components/parameters/StorageObjectIdPrefix'
-        - $ref: '#/components/parameters/StorageObjectDataIdPrefix'
-        - $ref: '#/components/parameters/FileName'
-      responses:
-        '200':
-          description: Object payload successfully fetched.
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-        '404':
-          description: No such key exists.
-
-  /buckets/{bucketName}/objects/copy:
+  /api/storage/buckets/{bucketName}/objects/presign:
     post:
-      summary: Copy Object
-      description: Copies an object within the same folder space or replicates it over into a distinct destination target bucket. Maps to `CopyToFolder` or `CopyToBucket`.
-      operationId: copyObject
+      operationId: presignObject
+      summary: Prepare an upload and return a presigned PUT URL
+      security:
+        - clerkBearer: []
       parameters:
-        - name: bucketName
-          in: path
-          description: The source bucket name.
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/UserIdPrefix'
-        - $ref: '#/components/parameters/StorageObjectIdPrefix'
-        - $ref: '#/components/parameters/StorageObjectDataIdPrefix'
-        - $ref: '#/components/parameters/FileName'
+        - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/FileName"
+      responses:
+        "200":
+          description: Presigned upload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PresignResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/storage/buckets/{bucketName}/objects/commit:
+    post:
+      operationId: commitObject
+      summary: Commit a prepared upload after the object exists
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/BucketName"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - destinationBucket
-                - destinationUserId
-                - destinationStorageObjectId
-                - destinationStorageObjectDataId
-                - destinationFileName
-              properties:
-                destinationBucket:
-                  type: string
-                  description: Can be identical to sourceBucket for copy-to-folder actions.
-                destinationUserId:
-                  type: string
-                  format: uuid
-                destinationStorageObjectId:
-                  type: string
-                  format: uuid
-                destinationStorageObjectDataId:
-                  type: string
-                  format: uuid
-                destinationFileName:
-                  type: string
-                  description: Destination file name (may include subpaths).
+              $ref: "#/components/schemas/PendingUpload"
       responses:
-        '200':
-          description: Copy routine execution complete.
-        '409':
-          description: Source or target object configuration error (e.g. inactive tier lifecycle conflict).
+        "204":
+          description: Upload committed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
-  /buckets/{bucketName}/objects/object:
-    delete:
-      summary: Delete Single Object
-      description: Removes an object version or target file pointer. Allows optionally specifying a `versionId` and governance control status flags. Maps to `DeleteObject` / `s3Client.DeleteObject`.
-      operationId: deleteSingleObject
+  /api/storage/buckets/{bucketName}/objects/abort:
+    post:
+      operationId: abortObject
+      summary: Abort a prepared upload
+      security:
+        - clerkBearer: []
       parameters:
-        - name: bucketName
-          in: path
-          required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/UserIdPrefix'
-        - $ref: '#/components/parameters/StorageObjectIdPrefix'
-        - $ref: '#/components/parameters/StorageObjectDataIdPrefix'
-        - $ref: '#/components/parameters/FileName'
+        - $ref: "#/components/parameters/BucketName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PendingUpload"
+      responses:
+        "204":
+          description: Pending upload aborted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/storage/buckets/{bucketName}/objects/download:
+    get:
+      operationId: downloadObject
+      summary: Download an object
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/ObjectKey"
+      responses:
+        "200":
+          description: Object bytes.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Object not found.
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/storage/buckets/{bucketName}/objects/copy:
+    post:
+      operationId: copyObject
+      summary: Copy an object
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/ObjectKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CopyDestination"
+      responses:
+        "200":
+          description: Object copied and committed.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/storage/buckets/{bucketName}/objects/object:
+    delete:
+      operationId: deleteSingleObject
+      summary: Delete one object
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/ObjectKey"
         - name: versionId
           in: query
           required: false
@@ -219,83 +485,74 @@ paths:
             type: boolean
             default: false
       responses:
-        '204':
-          description: Object marked for deletion or successfully deleted.
-        '403':
-          description: Access Denied.
+        "204":
+          description: Object deleted.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /notify:
     post:
-      summary: Send a notification to an IoT topic
       operationId: Notify
+      summary: Publish a notification to an IoT topic
       parameters:
         - in: header
           name: x-notify-secret
           required: true
           schema:
             type: string
-          description: Secret key for authenticating the request
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - view
-                - message
-                - visibility
+              required: [view, message, visibility]
               additionalProperties: false
               properties:
                 view:
                   type: string
-                  description: The view identifier used to construct the IoT topic
                 message:
                   type: string
-                  description: The payload message to be published
                 visibility:
                   type: string
-                  enum:
-                    - public
-                    - private
-                  description: >
-                    public publishes once to {app}/{stage}/public/{view}.
-                    private publishes once per recipient to {app}/{stage}/user/{clerkUserId}/{view}.
+                  enum: [public, private]
                 recipients:
                   type: array
                   items:
                     type: string
-                  description: >
-                    Clerk user ids (JWT sub) that should receive the notification.
-                    Required when visibility is private; ignored when public.
       responses:
-        '200':
-          description: Successfully published the notification.
-        '400':
-          description: Bad Request. The JSON payload is invalid or required properties are missing.
-        '401':
-          description: Unauthorized. The 'x-notify-secret' header is missing or incorrect.
-        '500':
-          description: Internal Server Error. Failed to load SST resources, AWS configuration, or publish the IoT message.
+        "200":
+          description: Notification published.
+        "400":
+          description: Invalid notification.
+        "401":
+          description: Notification secret rejected.
+        "500":
+          description: Notification failed.
+
   /renderMd:
     post:
-      summary: Render Markdown to HTML
-      description: Takes a markdown string and returns the rendered HTML.
       operationId: renderMd
+      summary: Render Markdown to HTML
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - text
+              required: [text]
               properties:
                 text:
                   type: string
-                  example: "# Hello World"
       responses:
-        '200':
-          description: Markdown rendered successfully.
+        "200":
+          description: Rendered HTML.
           content:
             application/json:
               schema:
@@ -303,54 +560,161 @@ paths:
                 properties:
                   html:
                     type: string
-                    example: "<h1>Hello World</h1>"
-        '400':
+        "400":
           description: Invalid request body.
+
 components:
+  securitySchemes:
+    clerkBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   parameters:
-    UserIdPrefix:
+    ClerkUserId:
       name: userId
-      in: query
+      in: path
+      required: true
+      schema:
+        type: string
+    ViewName:
+      name: view
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/ViewName"
+    ItemId:
+      name: itemId
+      in: path
       required: true
       schema:
         type: string
         format: uuid
-      description: Owner user UUID prefix segment.
-    StorageObjectIdPrefix:
-      name: storageObjectId
-      in: query
+    TodoSpaceId:
+      name: todoSpaceId
+      in: path
       required: true
       schema:
         type: string
         format: uuid
-      description: Storage object UUID prefix segment.
-    StorageObjectDataIdPrefix:
-      name: storageObjectDataId
-      in: query
+    BucketName:
+      name: bucketName
+      in: path
       required: true
       schema:
         type: string
-        format: uuid
-      description: Storage object data UUID prefix segment.
     FileName:
       name: fileName
       in: query
       required: true
       schema:
         type: string
-      description: File name suffix (may include subpaths).
+    ObjectKey:
+      name: key
+      in: query
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: The request is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    Unauthorized:
+      description: The Clerk session is missing or rejected.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    Forbidden:
+      description: The caller cannot perform this action.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    NotFound:
+      description: The requested record was not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    Conflict:
+      description: The storage object is not ready to commit or copy.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
+    InternalError:
+      description: The request failed.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorMessage"
   schemas:
-    ObjectKeyRef:
+    ErrorMessage:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    JsonObject:
+      type: object
+      additionalProperties: true
+    JsonRows:
+      type: array
+      items:
+        $ref: "#/components/schemas/JsonObject"
+    ViewName:
+      type: string
+      enum: [igPosts, tdsTodoSpaces]
+    StorageTab:
+      type: string
+      enum: [public, mine, shared_with_me]
+    ClerkUser:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+    StorageObjectRow:
+      type: object
+      properties:
+        storage_object_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        clerk_user_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        s3_object_key:
+          type: string
+        file_name:
+          type: string
+        public:
+          type: boolean
+    PendingUpload:
       type: object
       required:
-        - userId
         - storageObjectId
         - storageObjectDataId
         - fileName
+        - isNewObject
+        - s3ObjectKey
       properties:
-        userId:
-          type: string
-          format: uuid
         storageObjectId:
           type: string
           format: uuid
@@ -359,18 +723,40 @@ components:
           format: uuid
         fileName:
           type: string
-    S3Object:
+        isNewObject:
+          type: boolean
+        s3ObjectKey:
+          type: string
+    PresignResponse:
       type: object
+      required: [url, key, pendingUpload]
       properties:
+        url:
+          type: string
         key:
           type: string
-          example: folder/subfolder/file.jpg
-        size:
-          type: integer
-          example: 1024
-        lastModified:
+        pendingUpload:
+          $ref: "#/components/schemas/PendingUpload"
+    DeleteKeys:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items:
+            type: string
+    CopyDestination:
+      type: object
+      required: [destinationBucket, destinationFileName]
+      properties:
+        destinationBucket:
           type: string
-          format: date-time
-        eTag:
+        destinationFileName:
           type: string
-          example: "\"70ee1738b6b21e2c8a43f3a5ab0eee71\""
+    FormBody:
+      type: object
+      description: Multipart fields are parsed by the handler.
+      properties:
+        payload:
+          type: string
+          format: binary

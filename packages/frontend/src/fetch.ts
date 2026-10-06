@@ -1,0 +1,87 @@
+import type { Fetchable } from "astro";
+import { astro, FetchState, middleware } from "astro/fetch";
+import { Resource } from "sst";
+
+const goApiURL = Resource.GoApi.url.replace(/\/+$/, "");
+
+function isApiPath(pathname: string): boolean {
+    return pathname === "/api" || pathname.startsWith("/api/");
+}
+
+function jsonMessage(message: string, status: number): Response {
+    return new Response(JSON.stringify({ message }), {
+        status,
+        headers: { "Content-Type": "application/json" },
+    });
+}
+
+async function proxyToGo(request: Request, token: string): Promise<Response> {
+    const incoming = new URL(request.url);
+    const headers = new Headers();
+    const contentType = request.headers.get("Content-Type");
+    if (contentType) {
+        headers.set("Content-Type", contentType);
+    }
+    const accept = request.headers.get("Accept");
+    if (accept) {
+        headers.set("Accept", accept);
+    }
+    headers.set("Authorization", `Bearer ${token}`);
+
+    const init: RequestInit & { duplex?: "half" } = {
+        method: request.method,
+        headers,
+    };
+    if (request.method !== "GET" && request.method !== "HEAD") {
+        init.body = request.body;
+        init.duplex = "half";
+    }
+
+    let upstream: Response;
+    try {
+        upstream = await fetch(
+            `${goApiURL}${incoming.pathname}${incoming.search}`,
+            init,
+        );
+    } catch {
+        return jsonMessage("upstream unavailable", 502);
+    }
+
+    const responseHeaders = new Headers();
+    for (const name of [
+        "content-type",
+        "content-disposition",
+        "content-length",
+    ]) {
+        const value = upstream.headers.get(name);
+        if (value) {
+            responseHeaders.set(name, value);
+        }
+    }
+    return new Response(upstream.body, {
+        status: upstream.status,
+        headers: responseHeaders,
+    });
+}
+
+export default {
+    async fetch(request: Request): Promise<Response> {
+        const state = new FetchState(request);
+        const pathname = new URL(request.url).pathname;
+        if (!isApiPath(pathname)) {
+            return astro(state);
+        }
+
+        return middleware(state, async (current) => {
+            const { userId, getToken } = current.locals.auth();
+            if (!userId) {
+                return jsonMessage("Unauthorized", 401);
+            }
+            const token = await getToken();
+            if (!token) {
+                return jsonMessage("Unauthorized", 401);
+            }
+            return proxyToGo(current.request, token);
+        });
+    },
+} satisfies Fetchable;

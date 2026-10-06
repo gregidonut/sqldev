@@ -27,6 +27,27 @@ func BuildObjectKey(parts ObjectKeyParts) (string, error) {
 	), nil
 }
 
+func ParseObjectKey(key string) (ObjectKeyParts, error) {
+	trimmed := strings.TrimSpace(key)
+	if trimmed == "" {
+		return ObjectKeyParts{}, errors.New("object key is required")
+	}
+	parts := strings.SplitN(trimmed, "/", 4)
+	if len(parts) < 4 {
+		return ObjectKeyParts{}, errors.New("object key must contain userId, storageObjectId, storageObjectDataId, and fileName segments")
+	}
+	parsed := ObjectKeyParts{
+		UserID:              parts[0],
+		StorageObjectID:     parts[1],
+		StorageObjectDataID: parts[2],
+		FileName:            parts[3],
+	}
+	if err := validateObjectKeyParts(parsed); err != nil {
+		return ObjectKeyParts{}, err
+	}
+	return parsed, nil
+}
+
 func validateObjectKeyParts(parts ObjectKeyParts) error {
 	if _, err := uuid.Parse(parts.UserID); err != nil {
 		return errors.New("userId must be a valid UUID")

@@ -63,10 +63,6 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
-    "sqldevSupabaseVPC": {
-      "bastion": string
-      "type": "sst.aws.Vpc"
-    }
   }
 }
 

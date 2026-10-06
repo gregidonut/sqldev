@@ -3,21 +3,58 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
+	"log"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
-	"github.com/gorilla/mux"
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/api"
+	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/clerkprofile"
+	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/s3store"
+	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/supadb"
+	"github.com/sst/sst/v3/sdk/golang/resource"
 )
 
 func main() {
-	r := mux.NewRouter()
-	server := &api.Server{}
-	strictHandlerWrapper := api.NewStrictHandler(server, nil)
-	adapter := httpadapter.New(api.HandlerFromMux(strictHandlerWrapper, r))
+	supabaseURL, err := linkedString("SupabaseUrl", "value")
+	if err != nil {
+		log.Fatal(err)
+	}
+	supabaseKey, err := linkedString("SupabaseKey", "value")
+	if err != nil {
+		log.Fatal(err)
+	}
+	clerkSecret, err := linkedString("ClerkSecretKey", "value")
+	if err != nil {
+		log.Fatal(err)
+	}
+	bucket, err := linkedString("SQLDevBucket", "name")
+	if err != nil {
+		log.Fatal(err)
+	}
 
+	database, err := supadb.New(supabaseURL, supabaseKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	objects, err := s3store.New(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	profiles, err := clerkprofile.New(clerkSecret)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	server := &api.Server{
+		DB:       database,
+		Objects:  objects,
+		Profiles: profiles,
+		Bucket:   bucket,
+	}
+	adapter := httpadapter.New(api.NewHandler(server))
 	lambda.Start(func(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		resp, err := adapter.ProxyWithContext(ctx, req)
 		if err != nil {
@@ -25,6 +62,18 @@ func main() {
 		}
 		return ensureBinaryEncoded(resp), nil
 	})
+}
+
+func linkedString(name, property string) (string, error) {
+	value, err := resource.Get(name, property)
+	if err != nil {
+		return "", fmt.Errorf("load %s: %w", name, err)
+	}
+	text, ok := value.(string)
+	if !ok || strings.TrimSpace(text) == "" {
+		return "", fmt.Errorf("load %s: empty", name)
+	}
+	return text, nil
 }
 
 // ensureBinaryEncoded forces base64 encoding when the handler returns a known
