@@ -33,7 +33,7 @@ Never record secrets, environment values, tokens, personal data, production data
 | Frontend | `packages/frontend` | — |
 | Browser tests | `packages/e2et/cypress` | — |
 
-`astro-sst/` is a local adapter used by the frontend. It is outside the `packages/*` workspace.
+The frontend adapter is the `astro-sst` dependency in `packages/frontend/package.json`.
 
 ## SST and commands
 
