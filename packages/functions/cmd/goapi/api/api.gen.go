@@ -29,6 +29,54 @@ const (
 	ClerkBearerScopes clerkBearerContextKey = "clerkBearer.Scopes"
 )
 
+// Defines values for JobReceiptStatus.
+const (
+	JobReceiptStatusCompleted JobReceiptStatus = "completed"
+	JobReceiptStatusFailed    JobReceiptStatus = "failed"
+	JobReceiptStatusPending   JobReceiptStatus = "pending"
+	JobReceiptStatusRunning   JobReceiptStatus = "running"
+)
+
+// Valid indicates whether the value is a known member of the JobReceiptStatus enum.
+func (e JobReceiptStatus) Valid() bool {
+	switch e {
+	case JobReceiptStatusCompleted:
+		return true
+	case JobReceiptStatusFailed:
+		return true
+	case JobReceiptStatusPending:
+		return true
+	case JobReceiptStatusRunning:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for JobStateStatus.
+const (
+	JobStateStatusCompleted JobStateStatus = "completed"
+	JobStateStatusFailed    JobStateStatus = "failed"
+	JobStateStatusPending   JobStateStatus = "pending"
+	JobStateStatusRunning   JobStateStatus = "running"
+)
+
+// Valid indicates whether the value is a known member of the JobStateStatus enum.
+func (e JobStateStatus) Valid() bool {
+	switch e {
+	case JobStateStatusCompleted:
+		return true
+	case JobStateStatusFailed:
+		return true
+	case JobStateStatusPending:
+		return true
+	case JobStateStatusRunning:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for StorageTab.
 const (
 	StorageTabMine         StorageTab = "mine"
@@ -114,6 +162,31 @@ type FormBody struct {
 	Payload *openapi_types.File `json:"payload,omitempty"`
 }
 
+// JobReceipt defines model for JobReceipt.
+type JobReceipt struct {
+	JobId  openapi_types.UUID `json:"jobId"`
+	Status JobReceiptStatus   `json:"status"`
+}
+
+// JobReceiptStatus defines model for JobReceipt.Status.
+type JobReceiptStatus string
+
+// JobState defines model for JobState.
+type JobState struct {
+	Error *ErrorMessage `json:"error,omitempty"`
+
+	// HttpStatus Status produced by the finished job. Present for failed jobs and for completed jobs that previously returned an empty body.
+	HttpStatus *int               `json:"httpStatus,omitempty"`
+	JobId      openapi_types.UUID `json:"jobId"`
+
+	// Result Present when the job completed. Shape matches the operation's former response.
+	Result interface{}    `json:"result,omitempty"`
+	Status JobStateStatus `json:"status"`
+}
+
+// JobStateStatus defines model for JobState.Status.
+type JobStateStatus string
+
 // JsonObject defines model for JsonObject.
 type JsonObject map[string]interface{}
 
@@ -163,8 +236,14 @@ type ClerkUserId = string
 // FileName defines model for FileName.
 type FileName = string
 
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = string
+
 // ItemId defines model for ItemId.
 type ItemId = openapi_types.UUID
+
+// JobId defines model for JobId.
+type JobId = openapi_types.UUID
 
 // ObjectKey defines model for ObjectKey.
 type ObjectKey = string
@@ -184,6 +263,9 @@ type Forbidden = ErrorMessage
 // InternalError defines model for InternalError.
 type InternalError = ErrorMessage
 
+// JobAccepted defines model for JobAccepted.
+type JobAccepted = JobReceipt
+
 // NotFound defines model for NotFound.
 type NotFound = ErrorMessage
 
@@ -195,7 +277,8 @@ type clerkBearerContextKey string
 
 // DeleteObjectsParams defines parameters for DeleteObjects.
 type DeleteObjectsParams struct {
-	BypassGovernance *bool `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
+	BypassGovernance *bool          `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
+	IdempotencyKey   IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // ListStorageObjectsParams defines parameters for ListStorageObjects.
@@ -203,19 +286,20 @@ type ListStorageObjectsParams struct {
 	Tab StorageTab `form:"tab" json:"tab"`
 }
 
-// UploadObjectMultipartBody defines parameters for UploadObject.
-type UploadObjectMultipartBody struct {
-	File openapi_types.File `json:"file"`
+// AbortObjectParams defines parameters for AbortObject.
+type AbortObjectParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
-// UploadObjectParams defines parameters for UploadObject.
-type UploadObjectParams struct {
-	FileName FileName `form:"fileName" json:"fileName"`
+// CommitObjectParams defines parameters for CommitObject.
+type CommitObjectParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // CopyObjectParams defines parameters for CopyObject.
 type CopyObjectParams struct {
-	Key ObjectKey `form:"key" json:"key"`
+	Key            ObjectKey      `form:"key" json:"key"`
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // DownloadObjectParams defines parameters for DownloadObject.
@@ -225,14 +309,36 @@ type DownloadObjectParams struct {
 
 // DeleteSingleObjectParams defines parameters for DeleteSingleObject.
 type DeleteSingleObjectParams struct {
-	Key              ObjectKey `form:"key" json:"key"`
-	VersionId        *string   `form:"versionId,omitempty" json:"versionId,omitempty"`
-	BypassGovernance *bool     `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
+	Key              ObjectKey      `form:"key" json:"key"`
+	VersionId        *string        `form:"versionId,omitempty" json:"versionId,omitempty"`
+	BypassGovernance *bool          `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
+	IdempotencyKey   IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // PresignObjectParams defines parameters for PresignObject.
 type PresignObjectParams struct {
-	FileName FileName `form:"fileName" json:"fileName"`
+	FileName       FileName       `form:"fileName" json:"fileName"`
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// CreateTodoParams defines parameters for CreateTodo.
+type CreateTodoParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// MoveTodoItemsParams defines parameters for MoveTodoItems.
+type MoveTodoItemsParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// CreateViewItemParams defines parameters for CreateViewItem.
+type CreateViewItemParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// UpdateViewItemParams defines parameters for UpdateViewItem.
+type UpdateViewItemParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
 // NotifyJSONBody defines parameters for Notify.
@@ -258,9 +364,6 @@ type RenderMdJSONBody struct {
 
 // DeleteObjectsJSONRequestBody defines body for DeleteObjects for application/json ContentType.
 type DeleteObjectsJSONRequestBody = DeleteKeys
-
-// UploadObjectMultipartRequestBody defines body for UploadObject for multipart/form-data ContentType.
-type UploadObjectMultipartRequestBody UploadObjectMultipartBody
 
 // AbortObjectJSONRequestBody defines body for AbortObject for application/json ContentType.
 type AbortObjectJSONRequestBody = PendingUpload
@@ -362,6 +465,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GetJob request
+	GetJob(ctx context.Context, jobId JobId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// BucketExists request
 	BucketExists(ctx context.Context, bucketName BucketName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -373,18 +479,15 @@ type ClientInterface interface {
 	// ListStorageObjects request
 	ListStorageObjects(ctx context.Context, bucketName BucketName, params *ListStorageObjectsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UploadObjectWithBody request with any body
-	UploadObjectWithBody(ctx context.Context, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// AbortObjectWithBody request with any body
-	AbortObjectWithBody(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AbortObjectWithBody(ctx context.Context, bucketName BucketName, params *AbortObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	AbortObject(ctx context.Context, bucketName BucketName, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AbortObject(ctx context.Context, bucketName BucketName, params *AbortObjectParams, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CommitObjectWithBody request with any body
-	CommitObjectWithBody(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CommitObjectWithBody(ctx context.Context, bucketName BucketName, params *CommitObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CommitObject(ctx context.Context, bucketName BucketName, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CommitObject(ctx context.Context, bucketName BucketName, params *CommitObjectParams, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CopyObjectWithBody request with any body
 	CopyObjectWithBody(ctx context.Context, bucketName BucketName, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -404,25 +507,25 @@ type ClientInterface interface {
 	GetClerkUser(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateTodoWithBody request with any body
-	CreateTodoWithBody(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateTodoWithBody(ctx context.Context, todoSpaceId TodoSpaceId, params *CreateTodoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTodoTree request
 	GetTodoTree(ctx context.Context, todoSpaceId TodoSpaceId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// MoveTodoItemsWithBody request with any body
-	MoveTodoItemsWithBody(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	MoveTodoItemsWithBody(ctx context.Context, todoSpaceId TodoSpaceId, params *MoveTodoItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListView request
 	ListView(ctx context.Context, view ViewName, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateViewItemWithBody request with any body
-	CreateViewItemWithBody(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateViewItemWithBody(ctx context.Context, view ViewName, params *CreateViewItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetViewItem request
 	GetViewItem(ctx context.Context, view ViewName, itemId ItemId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// UpdateViewItemWithBody request with any body
-	UpdateViewItemWithBody(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	UpdateViewItemWithBody(ctx context.Context, view ViewName, params *UpdateViewItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// NotifyWithBody request with any body
 	NotifyWithBody(ctx context.Context, params *NotifyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -433,6 +536,18 @@ type ClientInterface interface {
 	RenderMdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	RenderMd(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GetJob(ctx context.Context, jobId JobId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetJobRequest(c.Server, jobId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) BucketExists(ctx context.Context, bucketName BucketName, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -483,8 +598,8 @@ func (c *Client) ListStorageObjects(ctx context.Context, bucketName BucketName, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UploadObjectWithBody(ctx context.Context, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUploadObjectRequestWithBody(c.Server, bucketName, params, contentType, body)
+func (c *Client) AbortObjectWithBody(ctx context.Context, bucketName BucketName, params *AbortObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAbortObjectRequestWithBody(c.Server, bucketName, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -495,8 +610,8 @@ func (c *Client) UploadObjectWithBody(ctx context.Context, bucketName BucketName
 	return c.Client.Do(req)
 }
 
-func (c *Client) AbortObjectWithBody(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAbortObjectRequestWithBody(c.Server, bucketName, contentType, body)
+func (c *Client) AbortObject(ctx context.Context, bucketName BucketName, params *AbortObjectParams, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAbortObjectRequest(c.Server, bucketName, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -507,8 +622,8 @@ func (c *Client) AbortObjectWithBody(ctx context.Context, bucketName BucketName,
 	return c.Client.Do(req)
 }
 
-func (c *Client) AbortObject(ctx context.Context, bucketName BucketName, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAbortObjectRequest(c.Server, bucketName, body)
+func (c *Client) CommitObjectWithBody(ctx context.Context, bucketName BucketName, params *CommitObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCommitObjectRequestWithBody(c.Server, bucketName, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -519,20 +634,8 @@ func (c *Client) AbortObject(ctx context.Context, bucketName BucketName, body Ab
 	return c.Client.Do(req)
 }
 
-func (c *Client) CommitObjectWithBody(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCommitObjectRequestWithBody(c.Server, bucketName, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CommitObject(ctx context.Context, bucketName BucketName, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCommitObjectRequest(c.Server, bucketName, body)
+func (c *Client) CommitObject(ctx context.Context, bucketName BucketName, params *CommitObjectParams, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCommitObjectRequest(c.Server, bucketName, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -615,8 +718,8 @@ func (c *Client) GetClerkUser(ctx context.Context, userId ClerkUserId, reqEditor
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateTodoWithBody(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateTodoRequestWithBody(c.Server, todoSpaceId, contentType, body)
+func (c *Client) CreateTodoWithBody(ctx context.Context, todoSpaceId TodoSpaceId, params *CreateTodoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTodoRequestWithBody(c.Server, todoSpaceId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -639,8 +742,8 @@ func (c *Client) GetTodoTree(ctx context.Context, todoSpaceId TodoSpaceId, reqEd
 	return c.Client.Do(req)
 }
 
-func (c *Client) MoveTodoItemsWithBody(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewMoveTodoItemsRequestWithBody(c.Server, todoSpaceId, contentType, body)
+func (c *Client) MoveTodoItemsWithBody(ctx context.Context, todoSpaceId TodoSpaceId, params *MoveTodoItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewMoveTodoItemsRequestWithBody(c.Server, todoSpaceId, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -663,8 +766,8 @@ func (c *Client) ListView(ctx context.Context, view ViewName, reqEditors ...Requ
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateViewItemWithBody(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateViewItemRequestWithBody(c.Server, view, contentType, body)
+func (c *Client) CreateViewItemWithBody(ctx context.Context, view ViewName, params *CreateViewItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateViewItemRequestWithBody(c.Server, view, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -687,8 +790,8 @@ func (c *Client) GetViewItem(ctx context.Context, view ViewName, itemId ItemId, 
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpdateViewItemWithBody(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateViewItemRequestWithBody(c.Server, view, contentType, body)
+func (c *Client) UpdateViewItemWithBody(ctx context.Context, view ViewName, params *UpdateViewItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpdateViewItemRequestWithBody(c.Server, view, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -745,6 +848,40 @@ func (c *Client) RenderMd(ctx context.Context, body RenderMdJSONRequestBody, req
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetJobRequest generates requests for GetJob
+func NewGetJobRequest(server string, jobId JobId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "jobId", jobId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/jobs/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewBucketExistsRequest generates requests for BucketExists
@@ -852,6 +989,19 @@ func NewDeleteObjectsRequestWithBody(server string, bucketName BucketName, param
 
 	req.Header.Add("Content-Type", contentType)
 
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
 	return req, nil
 }
 
@@ -912,78 +1062,19 @@ func NewListStorageObjectsRequest(server string, bucketName BucketName, params *
 	return req, nil
 }
 
-// NewUploadObjectRequestWithBody generates requests for UploadObject with any type of body
-func NewUploadObjectRequestWithBody(server string, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		// queryValues collects non-styled parameters (passthrough, JSON)
-		// that are safe to round-trip through url.Values.Encode().
-		queryValues := queryURL.Query()
-		// rawQueryFragments collects pre-encoded query fragments from
-		// styled parameters, preserving literal commas as delimiters
-		// per the OpenAPI spec (e.g. "color=blue,black,brown").
-		var rawQueryFragments []string
-
-		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "fileName", params.FileName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-			return nil, err
-		} else {
-			for _, qp := range strings.Split(queryFrag, "&") {
-				rawQueryFragments = append(rawQueryFragments, qp)
-			}
-		}
-
-		if encoded := queryValues.Encode(); encoded != "" {
-			rawQueryFragments = append(rawQueryFragments, encoded)
-		}
-		queryURL.RawQuery = strings.Join(rawQueryFragments, "&")
-	}
-
-	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 // NewAbortObjectRequest calls the generic AbortObject builder with application/json body
-func NewAbortObjectRequest(server string, bucketName BucketName, body AbortObjectJSONRequestBody) (*http.Request, error) {
+func NewAbortObjectRequest(server string, bucketName BucketName, params *AbortObjectParams, body AbortObjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAbortObjectRequestWithBody(server, bucketName, "application/json", bodyReader)
+	return NewAbortObjectRequestWithBody(server, bucketName, params, "application/json", bodyReader)
 }
 
 // NewAbortObjectRequestWithBody generates requests for AbortObject with any type of body
-func NewAbortObjectRequestWithBody(server string, bucketName BucketName, contentType string, body io.Reader) (*http.Request, error) {
+func NewAbortObjectRequestWithBody(server string, bucketName BucketName, params *AbortObjectParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1015,22 +1106,35 @@ func NewAbortObjectRequestWithBody(server string, bucketName BucketName, content
 
 	req.Header.Add("Content-Type", contentType)
 
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
 	return req, nil
 }
 
 // NewCommitObjectRequest calls the generic CommitObject builder with application/json body
-func NewCommitObjectRequest(server string, bucketName BucketName, body CommitObjectJSONRequestBody) (*http.Request, error) {
+func NewCommitObjectRequest(server string, bucketName BucketName, params *CommitObjectParams, body CommitObjectJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCommitObjectRequestWithBody(server, bucketName, "application/json", bodyReader)
+	return NewCommitObjectRequestWithBody(server, bucketName, params, "application/json", bodyReader)
 }
 
 // NewCommitObjectRequestWithBody generates requests for CommitObject with any type of body
-func NewCommitObjectRequestWithBody(server string, bucketName BucketName, contentType string, body io.Reader) (*http.Request, error) {
+func NewCommitObjectRequestWithBody(server string, bucketName BucketName, params *CommitObjectParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1061,6 +1165,19 @@ func NewCommitObjectRequestWithBody(server string, bucketName BucketName, conten
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
 
 	return req, nil
 }
@@ -1131,6 +1248,19 @@ func NewCopyObjectRequestWithBody(server string, bucketName BucketName, params *
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
 
 	return req, nil
 }
@@ -1270,6 +1400,19 @@ func NewDeleteSingleObjectRequest(server string, bucketName BucketName, params *
 		return nil, err
 	}
 
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
 	return req, nil
 }
 
@@ -1327,6 +1470,19 @@ func NewPresignObjectRequest(server string, bucketName BucketName, params *Presi
 		return nil, err
 	}
 
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
 	return req, nil
 }
 
@@ -1365,7 +1521,7 @@ func NewGetClerkUserRequest(server string, userId ClerkUserId) (*http.Request, e
 }
 
 // NewCreateTodoRequestWithBody generates requests for CreateTodo with any type of body
-func NewCreateTodoRequestWithBody(server string, todoSpaceId TodoSpaceId, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateTodoRequestWithBody(server string, todoSpaceId TodoSpaceId, params *CreateTodoParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1396,6 +1552,19 @@ func NewCreateTodoRequestWithBody(server string, todoSpaceId TodoSpaceId, conten
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
 
 	return req, nil
 }
@@ -1435,7 +1604,7 @@ func NewGetTodoTreeRequest(server string, todoSpaceId TodoSpaceId) (*http.Reques
 }
 
 // NewMoveTodoItemsRequestWithBody generates requests for MoveTodoItems with any type of body
-func NewMoveTodoItemsRequestWithBody(server string, todoSpaceId TodoSpaceId, contentType string, body io.Reader) (*http.Request, error) {
+func NewMoveTodoItemsRequestWithBody(server string, todoSpaceId TodoSpaceId, params *MoveTodoItemsParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1466,6 +1635,19 @@ func NewMoveTodoItemsRequestWithBody(server string, todoSpaceId TodoSpaceId, con
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
 
 	return req, nil
 }
@@ -1505,7 +1687,7 @@ func NewListViewRequest(server string, view ViewName) (*http.Request, error) {
 }
 
 // NewCreateViewItemRequestWithBody generates requests for CreateViewItem with any type of body
-func NewCreateViewItemRequestWithBody(server string, view ViewName, contentType string, body io.Reader) (*http.Request, error) {
+func NewCreateViewItemRequestWithBody(server string, view ViewName, params *CreateViewItemParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1536,6 +1718,19 @@ func NewCreateViewItemRequestWithBody(server string, view ViewName, contentType 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
 
 	return req, nil
 }
@@ -1582,7 +1777,7 @@ func NewGetViewItemRequest(server string, view ViewName, itemId ItemId) (*http.R
 }
 
 // NewUpdateViewItemRequestWithBody generates requests for UpdateViewItem with any type of body
-func NewUpdateViewItemRequestWithBody(server string, view ViewName, contentType string, body io.Reader) (*http.Request, error) {
+func NewUpdateViewItemRequestWithBody(server string, view ViewName, params *UpdateViewItemParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1613,6 +1808,19 @@ func NewUpdateViewItemRequestWithBody(server string, view ViewName, contentType 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
 
 	return req, nil
 }
@@ -1753,6 +1961,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetJobWithResponse request
+	GetJobWithResponse(ctx context.Context, jobId JobId, reqEditors ...RequestEditorFn) (*GetJobResponse, error)
+
 	// BucketExistsWithResponse request
 	BucketExistsWithResponse(ctx context.Context, bucketName BucketName, reqEditors ...RequestEditorFn) (*BucketExistsResponse, error)
 
@@ -1764,18 +1975,15 @@ type ClientWithResponsesInterface interface {
 	// ListStorageObjectsWithResponse request
 	ListStorageObjectsWithResponse(ctx context.Context, bucketName BucketName, params *ListStorageObjectsParams, reqEditors ...RequestEditorFn) (*ListStorageObjectsResponse, error)
 
-	// UploadObjectWithBodyWithResponse request with any body
-	UploadObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadObjectResponse, error)
-
 	// AbortObjectWithBodyWithResponse request with any body
-	AbortObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error)
+	AbortObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *AbortObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error)
 
-	AbortObjectWithResponse(ctx context.Context, bucketName BucketName, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error)
+	AbortObjectWithResponse(ctx context.Context, bucketName BucketName, params *AbortObjectParams, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error)
 
 	// CommitObjectWithBodyWithResponse request with any body
-	CommitObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error)
+	CommitObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *CommitObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error)
 
-	CommitObjectWithResponse(ctx context.Context, bucketName BucketName, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error)
+	CommitObjectWithResponse(ctx context.Context, bucketName BucketName, params *CommitObjectParams, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error)
 
 	// CopyObjectWithBodyWithResponse request with any body
 	CopyObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *CopyObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CopyObjectResponse, error)
@@ -1795,25 +2003,25 @@ type ClientWithResponsesInterface interface {
 	GetClerkUserWithResponse(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*GetClerkUserResponse, error)
 
 	// CreateTodoWithBodyWithResponse request with any body
-	CreateTodoWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
+	CreateTodoWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, params *CreateTodoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
 	// GetTodoTreeWithResponse request
 	GetTodoTreeWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, reqEditors ...RequestEditorFn) (*GetTodoTreeResponse, error)
 
 	// MoveTodoItemsWithBodyWithResponse request with any body
-	MoveTodoItemsWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveTodoItemsResponse, error)
+	MoveTodoItemsWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, params *MoveTodoItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveTodoItemsResponse, error)
 
 	// ListViewWithResponse request
 	ListViewWithResponse(ctx context.Context, view ViewName, reqEditors ...RequestEditorFn) (*ListViewResponse, error)
 
 	// CreateViewItemWithBodyWithResponse request with any body
-	CreateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateViewItemResponse, error)
+	CreateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, params *CreateViewItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateViewItemResponse, error)
 
 	// GetViewItemWithResponse request
 	GetViewItemWithResponse(ctx context.Context, view ViewName, itemId ItemId, reqEditors ...RequestEditorFn) (*GetViewItemResponse, error)
 
 	// UpdateViewItemWithBodyWithResponse request with any body
-	UpdateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateViewItemResponse, error)
+	UpdateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, params *UpdateViewItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateViewItemResponse, error)
 
 	// NotifyWithBodyWithResponse request with any body
 	NotifyWithBodyWithResponse(ctx context.Context, params *NotifyParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*NotifyResponse, error)
@@ -1826,9 +2034,43 @@ type ClientWithResponsesInterface interface {
 	RenderMdWithResponse(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
 }
 
+type GetJobResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *JobState
+	JSON401      *Unauthorized
+	JSON404      *NotFound
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetJobResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetJobResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetJobResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type BucketExistsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON202      *JobAccepted
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
 	JSON500      *InternalError
@@ -1861,6 +2103,7 @@ func (r BucketExistsResponse) ContentType() string {
 type DeleteObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -1894,7 +2137,7 @@ func (r DeleteObjectsResponse) ContentType() string {
 type ListStorageObjectsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]StorageObjectRow
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -1925,42 +2168,10 @@ func (r ListStorageObjectsResponse) ContentType() string {
 	return ""
 }
 
-type UploadObjectResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON400      *BadRequest
-	JSON401      *Unauthorized
-	JSON403      *Forbidden
-	JSON500      *InternalError
-}
-
-// Status returns HTTPResponse.Status
-func (r UploadObjectResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UploadObjectResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
-func (r UploadObjectResponse) ContentType() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Header.Get("Content-Type")
-	}
-	return ""
-}
-
 type AbortObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -1994,6 +2205,7 @@ func (r AbortObjectResponse) ContentType() string {
 type CommitObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2028,6 +2240,7 @@ func (r CommitObjectResponse) ContentType() string {
 type CopyObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2062,6 +2275,7 @@ func (r CopyObjectResponse) ContentType() string {
 type DownloadObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2095,6 +2309,7 @@ func (r DownloadObjectResponse) ContentType() string {
 type DeleteSingleObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2128,7 +2343,7 @@ func (r DeleteSingleObjectResponse) ContentType() string {
 type PresignObjectResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *PresignResponse
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2195,7 +2410,7 @@ func (r GetClerkUserResponse) ContentType() string {
 type CreateTodoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *JsonRows
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2229,7 +2444,7 @@ func (r CreateTodoResponse) ContentType() string {
 type GetTodoTreeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *JsonRows
+	JSON202      *JobAccepted
 	JSON401      *Unauthorized
 	JSON500      *InternalError
 }
@@ -2261,7 +2476,7 @@ func (r GetTodoTreeResponse) ContentType() string {
 type MoveTodoItemsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *JsonRows
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2295,7 +2510,7 @@ func (r MoveTodoItemsResponse) ContentType() string {
 type ListViewResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]JsonObject
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON500      *InternalError
@@ -2328,7 +2543,7 @@ func (r ListViewResponse) ContentType() string {
 type CreateViewItemResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *JsonRows
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2362,7 +2577,7 @@ func (r CreateViewItemResponse) ContentType() string {
 type GetViewItemResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *JsonObject
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON404      *NotFound
@@ -2396,7 +2611,7 @@ func (r GetViewItemResponse) ContentType() string {
 type UpdateViewItemResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *JsonRows
+	JSON202      *JobAccepted
 	JSON400      *BadRequest
 	JSON401      *Unauthorized
 	JSON403      *Forbidden
@@ -2488,6 +2703,15 @@ func (r RenderMdResponse) ContentType() string {
 	return ""
 }
 
+// GetJobWithResponse request returning *GetJobResponse
+func (c *ClientWithResponses) GetJobWithResponse(ctx context.Context, jobId JobId, reqEditors ...RequestEditorFn) (*GetJobResponse, error) {
+	rsp, err := c.GetJob(ctx, jobId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetJobResponse(rsp)
+}
+
 // BucketExistsWithResponse request returning *BucketExistsResponse
 func (c *ClientWithResponses) BucketExistsWithResponse(ctx context.Context, bucketName BucketName, reqEditors ...RequestEditorFn) (*BucketExistsResponse, error) {
 	rsp, err := c.BucketExists(ctx, bucketName, reqEditors...)
@@ -2523,26 +2747,17 @@ func (c *ClientWithResponses) ListStorageObjectsWithResponse(ctx context.Context
 	return ParseListStorageObjectsResponse(rsp)
 }
 
-// UploadObjectWithBodyWithResponse request with arbitrary body returning *UploadObjectResponse
-func (c *ClientWithResponses) UploadObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *UploadObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UploadObjectResponse, error) {
-	rsp, err := c.UploadObjectWithBody(ctx, bucketName, params, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUploadObjectResponse(rsp)
-}
-
 // AbortObjectWithBodyWithResponse request with arbitrary body returning *AbortObjectResponse
-func (c *ClientWithResponses) AbortObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error) {
-	rsp, err := c.AbortObjectWithBody(ctx, bucketName, contentType, body, reqEditors...)
+func (c *ClientWithResponses) AbortObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *AbortObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error) {
+	rsp, err := c.AbortObjectWithBody(ctx, bucketName, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseAbortObjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) AbortObjectWithResponse(ctx context.Context, bucketName BucketName, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error) {
-	rsp, err := c.AbortObject(ctx, bucketName, body, reqEditors...)
+func (c *ClientWithResponses) AbortObjectWithResponse(ctx context.Context, bucketName BucketName, params *AbortObjectParams, body AbortObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*AbortObjectResponse, error) {
+	rsp, err := c.AbortObject(ctx, bucketName, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2550,16 +2765,16 @@ func (c *ClientWithResponses) AbortObjectWithResponse(ctx context.Context, bucke
 }
 
 // CommitObjectWithBodyWithResponse request with arbitrary body returning *CommitObjectResponse
-func (c *ClientWithResponses) CommitObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error) {
-	rsp, err := c.CommitObjectWithBody(ctx, bucketName, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CommitObjectWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *CommitObjectParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error) {
+	rsp, err := c.CommitObjectWithBody(ctx, bucketName, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseCommitObjectResponse(rsp)
 }
 
-func (c *ClientWithResponses) CommitObjectWithResponse(ctx context.Context, bucketName BucketName, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error) {
-	rsp, err := c.CommitObject(ctx, bucketName, body, reqEditors...)
+func (c *ClientWithResponses) CommitObjectWithResponse(ctx context.Context, bucketName BucketName, params *CommitObjectParams, body CommitObjectJSONRequestBody, reqEditors ...RequestEditorFn) (*CommitObjectResponse, error) {
+	rsp, err := c.CommitObject(ctx, bucketName, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2620,8 +2835,8 @@ func (c *ClientWithResponses) GetClerkUserWithResponse(ctx context.Context, user
 }
 
 // CreateTodoWithBodyWithResponse request with arbitrary body returning *CreateTodoResponse
-func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
-	rsp, err := c.CreateTodoWithBody(ctx, todoSpaceId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, params *CreateTodoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
+	rsp, err := c.CreateTodoWithBody(ctx, todoSpaceId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2638,8 +2853,8 @@ func (c *ClientWithResponses) GetTodoTreeWithResponse(ctx context.Context, todoS
 }
 
 // MoveTodoItemsWithBodyWithResponse request with arbitrary body returning *MoveTodoItemsResponse
-func (c *ClientWithResponses) MoveTodoItemsWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveTodoItemsResponse, error) {
-	rsp, err := c.MoveTodoItemsWithBody(ctx, todoSpaceId, contentType, body, reqEditors...)
+func (c *ClientWithResponses) MoveTodoItemsWithBodyWithResponse(ctx context.Context, todoSpaceId TodoSpaceId, params *MoveTodoItemsParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*MoveTodoItemsResponse, error) {
+	rsp, err := c.MoveTodoItemsWithBody(ctx, todoSpaceId, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2656,8 +2871,8 @@ func (c *ClientWithResponses) ListViewWithResponse(ctx context.Context, view Vie
 }
 
 // CreateViewItemWithBodyWithResponse request with arbitrary body returning *CreateViewItemResponse
-func (c *ClientWithResponses) CreateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateViewItemResponse, error) {
-	rsp, err := c.CreateViewItemWithBody(ctx, view, contentType, body, reqEditors...)
+func (c *ClientWithResponses) CreateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, params *CreateViewItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateViewItemResponse, error) {
+	rsp, err := c.CreateViewItemWithBody(ctx, view, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2674,8 +2889,8 @@ func (c *ClientWithResponses) GetViewItemWithResponse(ctx context.Context, view 
 }
 
 // UpdateViewItemWithBodyWithResponse request with arbitrary body returning *UpdateViewItemResponse
-func (c *ClientWithResponses) UpdateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateViewItemResponse, error) {
-	rsp, err := c.UpdateViewItemWithBody(ctx, view, contentType, body, reqEditors...)
+func (c *ClientWithResponses) UpdateViewItemWithBodyWithResponse(ctx context.Context, view ViewName, params *UpdateViewItemParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateViewItemResponse, error) {
+	rsp, err := c.UpdateViewItemWithBody(ctx, view, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2716,6 +2931,53 @@ func (c *ClientWithResponses) RenderMdWithResponse(ctx context.Context, body Ren
 	return ParseRenderMdResponse(rsp)
 }
 
+// ParseGetJobResponse parses an HTTP response from a GetJobWithResponse call
+func ParseGetJobResponse(rsp *http.Response) (*GetJobResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetJobResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest JobState
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseBucketExistsResponse parses an HTTP response from a BucketExistsWithResponse call
 func ParseBucketExistsResponse(rsp *http.Response) (*BucketExistsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2730,6 +2992,13 @@ func ParseBucketExistsResponse(rsp *http.Response) (*BucketExistsResponse, error
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2770,6 +3039,13 @@ func ParseDeleteObjectsResponse(rsp *http.Response) (*DeleteObjectsResponse, err
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2817,60 +3093,13 @@ func ParseListStorageObjectsResponse(rsp *http.Response) (*ListStorageObjectsRes
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []StorageObjectRow
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest Forbidden
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest InternalError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUploadObjectResponse parses an HTTP response from a UploadObjectWithResponse call
-func ParseUploadObjectResponse(rsp *http.Response) (*UploadObjectResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UploadObjectResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2918,6 +3147,13 @@ func ParseAbortObjectResponse(rsp *http.Response) (*AbortObjectResponse, error) 
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -2965,6 +3201,13 @@ func ParseCommitObjectResponse(rsp *http.Response) (*CommitObjectResponse, error
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3019,6 +3262,13 @@ func ParseCopyObjectResponse(rsp *http.Response) (*CopyObjectResponse, error) {
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3073,6 +3323,13 @@ func ParseDownloadObjectResponse(rsp *http.Response) (*DownloadObjectResponse, e
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3120,6 +3377,13 @@ func ParseDeleteSingleObjectResponse(rsp *http.Response) (*DeleteSingleObjectRes
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -3167,12 +3431,12 @@ func ParsePresignObjectResponse(rsp *http.Response) (*PresignObjectResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest PresignResponse
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
@@ -3268,12 +3532,12 @@ func ParseCreateTodoResponse(rsp *http.Response) (*CreateTodoResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest JsonRows
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
@@ -3322,12 +3586,12 @@ func ParseGetTodoTreeResponse(rsp *http.Response) (*GetTodoTreeResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest JsonRows
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
 		var dest Unauthorized
@@ -3362,12 +3626,12 @@ func ParseMoveTodoItemsResponse(rsp *http.Response) (*MoveTodoItemsResponse, err
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest JsonRows
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
@@ -3416,12 +3680,12 @@ func ParseListViewResponse(rsp *http.Response) (*ListViewResponse, error) {
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []JsonObject
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
@@ -3463,12 +3727,12 @@ func ParseCreateViewItemResponse(rsp *http.Response) (*CreateViewItemResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest JsonRows
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
@@ -3517,12 +3781,12 @@ func ParseGetViewItemResponse(rsp *http.Response) (*GetViewItemResponse, error) 
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest JsonObject
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
@@ -3571,12 +3835,12 @@ func ParseUpdateViewItemResponse(rsp *http.Response) (*UpdateViewItemResponse, e
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest JsonRows
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest BadRequest
@@ -3657,6 +3921,9 @@ func ParseRenderMdResponse(rsp *http.Response) (*RenderMdResponse, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Read a job owned by the caller
+	// (GET /api/jobs/{jobId})
+	GetJob(w http.ResponseWriter, r *http.Request, jobId JobId)
 	// Check the linked bucket
 	// (GET /api/storage/buckets/{bucketName})
 	BucketExists(w http.ResponseWriter, r *http.Request, bucketName BucketName)
@@ -3666,15 +3933,12 @@ type ServerInterface interface {
 	// List storage objects for a tab
 	// (GET /api/storage/buckets/{bucketName}/objects)
 	ListStorageObjects(w http.ResponseWriter, r *http.Request, bucketName BucketName, params ListStorageObjectsParams)
-	// Upload an object through the API
-	// (POST /api/storage/buckets/{bucketName}/objects)
-	UploadObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params UploadObjectParams)
 	// Abort a prepared upload
 	// (POST /api/storage/buckets/{bucketName}/objects/abort)
-	AbortObject(w http.ResponseWriter, r *http.Request, bucketName BucketName)
+	AbortObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params AbortObjectParams)
 	// Commit a prepared upload after the object exists
 	// (POST /api/storage/buckets/{bucketName}/objects/commit)
-	CommitObject(w http.ResponseWriter, r *http.Request, bucketName BucketName)
+	CommitObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params CommitObjectParams)
 	// Copy an object
 	// (POST /api/storage/buckets/{bucketName}/objects/copy)
 	CopyObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params CopyObjectParams)
@@ -3692,25 +3956,25 @@ type ServerInterface interface {
 	GetClerkUser(w http.ResponseWriter, r *http.Request, userId ClerkUserId)
 	// Create a todo item
 	// (POST /api/views/tdsTodos/{todoSpaceId}/new/post)
-	CreateTodo(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId)
+	CreateTodo(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId, params CreateTodoParams)
 	// Get a todo tree
 	// (GET /api/views/tdsTodos/{todoSpaceId}/tree/get)
 	GetTodoTree(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId)
 	// Move todo items
 	// (PATCH /api/views/tdsTodos/{todoSpaceId}/tree/move/patch)
-	MoveTodoItems(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId)
+	MoveTodoItems(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId, params MoveTodoItemsParams)
 	// List rows in a view
 	// (GET /api/views/{view}/list/get)
 	ListView(w http.ResponseWriter, r *http.Request, view ViewName)
 	// Create a view item
 	// (POST /api/views/{view}/new/item)
-	CreateViewItem(w http.ResponseWriter, r *http.Request, view ViewName)
+	CreateViewItem(w http.ResponseWriter, r *http.Request, view ViewName, params CreateViewItemParams)
 	// Get one view row
 	// (GET /api/views/{view}/one/get/{itemId})
 	GetViewItem(w http.ResponseWriter, r *http.Request, view ViewName, itemId ItemId)
 	// Update a view item
 	// (PATCH /api/views/{view}/one/patch)
-	UpdateViewItem(w http.ResponseWriter, r *http.Request, view ViewName)
+	UpdateViewItem(w http.ResponseWriter, r *http.Request, view ViewName, params UpdateViewItemParams)
 	// Publish a notification to an IoT topic
 	// (POST /notify)
 	Notify(w http.ResponseWriter, r *http.Request, params NotifyParams)
@@ -3727,6 +3991,38 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetJob operation middleware
+func (siw *ServerInterfaceWrapper) GetJob(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "jobId" -------------
+	var jobId JobId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "jobId", mux.Vars(r)["jobId"], &jobId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid"})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "jobId", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetJob(w, r, jobId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // BucketExists operation middleware
 func (siw *ServerInterfaceWrapper) BucketExists(w http.ResponseWriter, r *http.Request) {
@@ -3797,6 +4093,31 @@ func (siw *ServerInterfaceWrapper) DeleteObjects(w http.ResponseWriter, r *http.
 		return
 	}
 
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteObjects(w, r, bucketName, params)
 	}))
@@ -3856,54 +4177,6 @@ func (siw *ServerInterfaceWrapper) ListStorageObjects(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
-// UploadObject operation middleware
-func (siw *ServerInterfaceWrapper) UploadObject(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	_ = err
-
-	// ------------- Path parameter "bucketName" -------------
-	var bucketName BucketName
-
-	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
-		return
-	}
-
-	ctx := r.Context()
-
-	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
-
-	r = r.WithContext(ctx)
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params UploadObjectParams
-
-	// ------------- Required query parameter "fileName" -------------
-
-	err = runtime.BindQueryParameterWithOptions("form", true, true, "fileName", r.URL.Query(), &params.FileName, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
-	if err != nil {
-		var requiredError *runtime.RequiredParameterError
-		if errors.As(err, &requiredError) {
-			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fileName"})
-		} else {
-			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
-		}
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UploadObject(w, r, bucketName, params)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // AbortObject operation middleware
 func (siw *ServerInterfaceWrapper) AbortObject(w http.ResponseWriter, r *http.Request) {
 
@@ -3925,8 +4198,36 @@ func (siw *ServerInterfaceWrapper) AbortObject(w http.ResponseWriter, r *http.Re
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AbortObjectParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AbortObject(w, r, bucketName)
+		siw.Handler.AbortObject(w, r, bucketName, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -3957,8 +4258,36 @@ func (siw *ServerInterfaceWrapper) CommitObject(w http.ResponseWriter, r *http.R
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CommitObjectParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CommitObject(w, r, bucketName)
+		siw.Handler.CommitObject(w, r, bucketName, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4002,6 +4331,31 @@ func (siw *ServerInterfaceWrapper) CopyObject(w http.ResponseWriter, r *http.Req
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "key", Err: err})
 		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
 		return
 	}
 
@@ -4127,6 +4481,31 @@ func (siw *ServerInterfaceWrapper) DeleteSingleObject(w http.ResponseWriter, r *
 		return
 	}
 
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.DeleteSingleObject(w, r, bucketName, params)
 	}))
@@ -4172,6 +4551,31 @@ func (siw *ServerInterfaceWrapper) PresignObject(w http.ResponseWriter, r *http.
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fileName", Err: err})
 		}
+		return
+	}
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
 		return
 	}
 
@@ -4239,8 +4643,36 @@ func (siw *ServerInterfaceWrapper) CreateTodo(w http.ResponseWriter, r *http.Req
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateTodoParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateTodo(w, r, todoSpaceId)
+		siw.Handler.CreateTodo(w, r, todoSpaceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4303,8 +4735,36 @@ func (siw *ServerInterfaceWrapper) MoveTodoItems(w http.ResponseWriter, r *http.
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params MoveTodoItemsParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.MoveTodoItems(w, r, todoSpaceId)
+		siw.Handler.MoveTodoItems(w, r, todoSpaceId, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4367,8 +4827,36 @@ func (siw *ServerInterfaceWrapper) CreateViewItem(w http.ResponseWriter, r *http
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateViewItemParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateViewItem(w, r, view)
+		siw.Handler.CreateViewItem(w, r, view, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4440,8 +4928,36 @@ func (siw *ServerInterfaceWrapper) UpdateViewItem(w http.ResponseWriter, r *http
 
 	r = r.WithContext(ctx)
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateViewItemParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.UpdateViewItem(w, r, view)
+		siw.Handler.UpdateViewItem(w, r, view, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -4623,13 +5139,13 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.HandleFunc(options.BaseURL+"/api/jobs/{jobId}", wrapper.GetJob).Methods(http.MethodGet)
+
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}", wrapper.BucketExists).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects", wrapper.DeleteObjects).Methods(http.MethodDelete)
 
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects", wrapper.ListStorageObjects).Methods(http.MethodGet)
-
-	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects", wrapper.UploadObject).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/abort", wrapper.AbortObject).Methods(http.MethodPost)
 
@@ -4674,9 +5190,75 @@ type ForbiddenJSONResponse ErrorMessage
 
 type InternalErrorJSONResponse ErrorMessage
 
+type JobAcceptedJSONResponse JobReceipt
+
 type NotFoundJSONResponse ErrorMessage
 
 type UnauthorizedJSONResponse ErrorMessage
+
+type GetJobRequestObject struct {
+	JobId JobId `json:"jobId"`
+}
+
+type GetJobResponseObject interface {
+	VisitGetJobResponse(w http.ResponseWriter) error
+}
+
+type GetJob200JSONResponse JobState
+
+func (response GetJob200JSONResponse) VisitGetJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetJob401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response GetJob401JSONResponse) VisitGetJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetJob404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetJob404JSONResponse) VisitGetJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetJob500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response GetJob500JSONResponse) VisitGetJobResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type BucketExistsRequestObject struct {
 	BucketName BucketName `json:"bucketName"`
@@ -4686,12 +5268,18 @@ type BucketExistsResponseObject interface {
 	VisitBucketExistsResponse(w http.ResponseWriter) error
 }
 
-type BucketExists200Response struct {
-}
+type BucketExists202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response BucketExists200Response) VisitBucketExistsResponse(w http.ResponseWriter) error {
-	w.WriteHeader(200)
-	return nil
+func (response BucketExists202JSONResponse) VisitBucketExistsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type BucketExists401JSONResponse struct{ UnauthorizedJSONResponse }
@@ -4722,14 +5310,6 @@ func (response BucketExists403JSONResponse) VisitBucketExistsResponse(w http.Res
 	return err
 }
 
-type BucketExists404Response struct {
-}
-
-func (response BucketExists404Response) VisitBucketExistsResponse(w http.ResponseWriter) error {
-	w.WriteHeader(404)
-	return nil
-}
-
 type BucketExists500JSONResponse struct{ InternalErrorJSONResponse }
 
 func (response BucketExists500JSONResponse) VisitBucketExistsResponse(w http.ResponseWriter) error {
@@ -4754,12 +5334,18 @@ type DeleteObjectsResponseObject interface {
 	VisitDeleteObjectsResponse(w http.ResponseWriter) error
 }
 
-type DeleteObjects200Response struct {
-}
+type DeleteObjects202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response DeleteObjects200Response) VisitDeleteObjectsResponse(w http.ResponseWriter) error {
-	w.WriteHeader(200)
-	return nil
+func (response DeleteObjects202JSONResponse) VisitDeleteObjectsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type DeleteObjects400JSONResponse struct{ BadRequestJSONResponse }
@@ -4827,16 +5413,16 @@ type ListStorageObjectsResponseObject interface {
 	VisitListStorageObjectsResponse(w http.ResponseWriter) error
 }
 
-type ListStorageObjects200JSONResponse []StorageObjectRow
+type ListStorageObjects202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response ListStorageObjects200JSONResponse) VisitListStorageObjectsResponse(w http.ResponseWriter) error {
+func (response ListStorageObjects202JSONResponse) VisitListStorageObjectsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -4897,90 +5483,9 @@ func (response ListStorageObjects500JSONResponse) VisitListStorageObjectsRespons
 	return err
 }
 
-type UploadObjectRequestObject struct {
-	BucketName BucketName `json:"bucketName"`
-	Params     UploadObjectParams
-	Body       *multipart.Reader
-}
-
-type UploadObjectResponseObject interface {
-	VisitUploadObjectResponse(w http.ResponseWriter) error
-}
-
-type UploadObject200Response struct {
-}
-
-func (response UploadObject200Response) VisitUploadObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(200)
-	return nil
-}
-
-type UploadObject400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response UploadObject400JSONResponse) VisitUploadObjectResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UploadObject401JSONResponse struct{ UnauthorizedJSONResponse }
-
-func (response UploadObject401JSONResponse) VisitUploadObjectResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(401)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UploadObject403JSONResponse struct{ ForbiddenJSONResponse }
-
-func (response UploadObject403JSONResponse) VisitUploadObjectResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(403)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type UploadObject413Response struct {
-}
-
-func (response UploadObject413Response) VisitUploadObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(413)
-	return nil
-}
-
-type UploadObject500JSONResponse struct{ InternalErrorJSONResponse }
-
-func (response UploadObject500JSONResponse) VisitUploadObjectResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
 type AbortObjectRequestObject struct {
 	BucketName BucketName `json:"bucketName"`
+	Params     AbortObjectParams
 	Body       *AbortObjectJSONRequestBody
 }
 
@@ -4988,12 +5493,18 @@ type AbortObjectResponseObject interface {
 	VisitAbortObjectResponse(w http.ResponseWriter) error
 }
 
-type AbortObject204Response struct {
-}
+type AbortObject202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response AbortObject204Response) VisitAbortObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
+func (response AbortObject202JSONResponse) VisitAbortObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type AbortObject400JSONResponse struct{ BadRequestJSONResponse }
@@ -5054,6 +5565,7 @@ func (response AbortObject500JSONResponse) VisitAbortObjectResponse(w http.Respo
 
 type CommitObjectRequestObject struct {
 	BucketName BucketName `json:"bucketName"`
+	Params     CommitObjectParams
 	Body       *CommitObjectJSONRequestBody
 }
 
@@ -5061,12 +5573,18 @@ type CommitObjectResponseObject interface {
 	VisitCommitObjectResponse(w http.ResponseWriter) error
 }
 
-type CommitObject204Response struct {
-}
+type CommitObject202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response CommitObject204Response) VisitCommitObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
+func (response CommitObject202JSONResponse) VisitCommitObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type CommitObject400JSONResponse struct{ BadRequestJSONResponse }
@@ -5149,12 +5667,18 @@ type CopyObjectResponseObject interface {
 	VisitCopyObjectResponse(w http.ResponseWriter) error
 }
 
-type CopyObject200Response struct {
-}
+type CopyObject202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response CopyObject200Response) VisitCopyObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(200)
-	return nil
+func (response CopyObject202JSONResponse) VisitCopyObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type CopyObject400JSONResponse struct{ BadRequestJSONResponse }
@@ -5236,23 +5760,17 @@ type DownloadObjectResponseObject interface {
 	VisitDownloadObjectResponse(w http.ResponseWriter) error
 }
 
-type DownloadObject200ApplicationoctetStreamResponse struct {
-	Body          io.Reader
-	ContentLength int64
-}
+type DownloadObject202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response DownloadObject200ApplicationoctetStreamResponse) VisitDownloadObjectResponse(w http.ResponseWriter) error {
+func (response DownloadObject202JSONResponse) VisitDownloadObjectResponse(w http.ResponseWriter) error {
 
-	w.Header().Set("Content-Type", "application/octet-stream")
-	if response.ContentLength != 0 {
-		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
 	}
-	w.WriteHeader(200)
-
-	if closer, ok := response.Body.(io.ReadCloser); ok {
-		defer closer.Close()
-	}
-	_, err := io.Copy(w, response.Body)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
 	return err
 }
 
@@ -5329,12 +5847,18 @@ type DeleteSingleObjectResponseObject interface {
 	VisitDeleteSingleObjectResponse(w http.ResponseWriter) error
 }
 
-type DeleteSingleObject204Response struct {
-}
+type DeleteSingleObject202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response DeleteSingleObject204Response) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
-	w.WriteHeader(204)
-	return nil
+func (response DeleteSingleObject202JSONResponse) VisitDeleteSingleObjectResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
 }
 
 type DeleteSingleObject400JSONResponse struct{ BadRequestJSONResponse }
@@ -5402,16 +5926,16 @@ type PresignObjectResponseObject interface {
 	VisitPresignObjectResponse(w http.ResponseWriter) error
 }
 
-type PresignObject200JSONResponse PresignResponse
+type PresignObject202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response PresignObject200JSONResponse) VisitPresignObjectResponse(w http.ResponseWriter) error {
+func (response PresignObject202JSONResponse) VisitPresignObjectResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5538,6 +6062,7 @@ func (response GetClerkUser500JSONResponse) VisitGetClerkUserResponse(w http.Res
 
 type CreateTodoRequestObject struct {
 	TodoSpaceId TodoSpaceId `json:"todoSpaceId"`
+	Params      CreateTodoParams
 	Body        *multipart.Reader
 }
 
@@ -5545,16 +6070,16 @@ type CreateTodoResponseObject interface {
 	VisitCreateTodoResponse(w http.ResponseWriter) error
 }
 
-type CreateTodo200JSONResponse JsonRows
+type CreateTodo202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response CreateTodo200JSONResponse) VisitCreateTodoResponse(w http.ResponseWriter) error {
+func (response CreateTodo202JSONResponse) VisitCreateTodoResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5623,16 +6148,16 @@ type GetTodoTreeResponseObject interface {
 	VisitGetTodoTreeResponse(w http.ResponseWriter) error
 }
 
-type GetTodoTree200JSONResponse JsonRows
+type GetTodoTree202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response GetTodoTree200JSONResponse) VisitGetTodoTreeResponse(w http.ResponseWriter) error {
+func (response GetTodoTree202JSONResponse) VisitGetTodoTreeResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5667,6 +6192,7 @@ func (response GetTodoTree500JSONResponse) VisitGetTodoTreeResponse(w http.Respo
 
 type MoveTodoItemsRequestObject struct {
 	TodoSpaceId TodoSpaceId `json:"todoSpaceId"`
+	Params      MoveTodoItemsParams
 	Body        *multipart.Reader
 }
 
@@ -5674,16 +6200,16 @@ type MoveTodoItemsResponseObject interface {
 	VisitMoveTodoItemsResponse(w http.ResponseWriter) error
 }
 
-type MoveTodoItems200JSONResponse JsonRows
+type MoveTodoItems202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response MoveTodoItems200JSONResponse) VisitMoveTodoItemsResponse(w http.ResponseWriter) error {
+func (response MoveTodoItems202JSONResponse) VisitMoveTodoItemsResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5752,16 +6278,16 @@ type ListViewResponseObject interface {
 	VisitListViewResponse(w http.ResponseWriter) error
 }
 
-type ListView200JSONResponse []JsonObject
+type ListView202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response ListView200JSONResponse) VisitListViewResponse(w http.ResponseWriter) error {
+func (response ListView202JSONResponse) VisitListViewResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5809,24 +6335,25 @@ func (response ListView500JSONResponse) VisitListViewResponse(w http.ResponseWri
 }
 
 type CreateViewItemRequestObject struct {
-	View ViewName `json:"view"`
-	Body *multipart.Reader
+	View   ViewName `json:"view"`
+	Params CreateViewItemParams
+	Body   *multipart.Reader
 }
 
 type CreateViewItemResponseObject interface {
 	VisitCreateViewItemResponse(w http.ResponseWriter) error
 }
 
-type CreateViewItem200JSONResponse JsonRows
+type CreateViewItem202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response CreateViewItem200JSONResponse) VisitCreateViewItemResponse(w http.ResponseWriter) error {
+func (response CreateViewItem202JSONResponse) VisitCreateViewItemResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5896,16 +6423,16 @@ type GetViewItemResponseObject interface {
 	VisitGetViewItemResponse(w http.ResponseWriter) error
 }
 
-type GetViewItem200JSONResponse JsonObject
+type GetViewItem202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response GetViewItem200JSONResponse) VisitGetViewItemResponse(w http.ResponseWriter) error {
+func (response GetViewItem202JSONResponse) VisitGetViewItemResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -5967,24 +6494,25 @@ func (response GetViewItem500JSONResponse) VisitGetViewItemResponse(w http.Respo
 }
 
 type UpdateViewItemRequestObject struct {
-	View ViewName `json:"view"`
-	Body *multipart.Reader
+	View   ViewName `json:"view"`
+	Params UpdateViewItemParams
+	Body   *multipart.Reader
 }
 
 type UpdateViewItemResponseObject interface {
 	VisitUpdateViewItemResponse(w http.ResponseWriter) error
 }
 
-type UpdateViewItem200JSONResponse JsonRows
+type UpdateViewItem202JSONResponse struct{ JobAcceptedJSONResponse }
 
-func (response UpdateViewItem200JSONResponse) VisitUpdateViewItemResponse(w http.ResponseWriter) error {
+func (response UpdateViewItem202JSONResponse) VisitUpdateViewItemResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(202)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -6120,6 +6648,9 @@ func (response RenderMd400Response) VisitRenderMdResponse(w http.ResponseWriter)
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Read a job owned by the caller
+	// (GET /api/jobs/{jobId})
+	GetJob(ctx context.Context, request GetJobRequestObject) (GetJobResponseObject, error)
 	// Check the linked bucket
 	// (GET /api/storage/buckets/{bucketName})
 	BucketExists(ctx context.Context, request BucketExistsRequestObject) (BucketExistsResponseObject, error)
@@ -6129,9 +6660,6 @@ type StrictServerInterface interface {
 	// List storage objects for a tab
 	// (GET /api/storage/buckets/{bucketName}/objects)
 	ListStorageObjects(ctx context.Context, request ListStorageObjectsRequestObject) (ListStorageObjectsResponseObject, error)
-	// Upload an object through the API
-	// (POST /api/storage/buckets/{bucketName}/objects)
-	UploadObject(ctx context.Context, request UploadObjectRequestObject) (UploadObjectResponseObject, error)
 	// Abort a prepared upload
 	// (POST /api/storage/buckets/{bucketName}/objects/abort)
 	AbortObject(ctx context.Context, request AbortObjectRequestObject) (AbortObjectResponseObject, error)
@@ -6209,6 +6737,32 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// GetJob operation middleware
+func (sh *strictHandler) GetJob(w http.ResponseWriter, r *http.Request, jobId JobId) {
+	var request GetJobRequestObject
+
+	request.JobId = jobId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetJob(ctx, request.(GetJobRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetJob")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetJobResponseObject); ok {
+		if err := validResponse.VisitGetJobResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // BucketExists operation middleware
@@ -6298,45 +6852,12 @@ func (sh *strictHandler) ListStorageObjects(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// UploadObject operation middleware
-func (sh *strictHandler) UploadObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params UploadObjectParams) {
-	var request UploadObjectRequestObject
-
-	request.BucketName = bucketName
-	request.Params = params
-
-	if reader, err := r.MultipartReader(); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
-		return
-	} else {
-		request.Body = reader
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.UploadObject(ctx, request.(UploadObjectRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "UploadObject")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(UploadObjectResponseObject); ok {
-		if err := validResponse.VisitUploadObjectResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
 // AbortObject operation middleware
-func (sh *strictHandler) AbortObject(w http.ResponseWriter, r *http.Request, bucketName BucketName) {
+func (sh *strictHandler) AbortObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params AbortObjectParams) {
 	var request AbortObjectRequestObject
 
 	request.BucketName = bucketName
+	request.Params = params
 
 	var body AbortObjectJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -6366,10 +6887,11 @@ func (sh *strictHandler) AbortObject(w http.ResponseWriter, r *http.Request, buc
 }
 
 // CommitObject operation middleware
-func (sh *strictHandler) CommitObject(w http.ResponseWriter, r *http.Request, bucketName BucketName) {
+func (sh *strictHandler) CommitObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params CommitObjectParams) {
 	var request CommitObjectRequestObject
 
 	request.BucketName = bucketName
+	request.Params = params
 
 	var body CommitObjectJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -6540,10 +7062,11 @@ func (sh *strictHandler) GetClerkUser(w http.ResponseWriter, r *http.Request, us
 }
 
 // CreateTodo operation middleware
-func (sh *strictHandler) CreateTodo(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId) {
+func (sh *strictHandler) CreateTodo(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId, params CreateTodoParams) {
 	var request CreateTodoRequestObject
 
 	request.TodoSpaceId = todoSpaceId
+	request.Params = params
 
 	if reader, err := r.MultipartReader(); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
@@ -6599,10 +7122,11 @@ func (sh *strictHandler) GetTodoTree(w http.ResponseWriter, r *http.Request, tod
 }
 
 // MoveTodoItems operation middleware
-func (sh *strictHandler) MoveTodoItems(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId) {
+func (sh *strictHandler) MoveTodoItems(w http.ResponseWriter, r *http.Request, todoSpaceId TodoSpaceId, params MoveTodoItemsParams) {
 	var request MoveTodoItemsRequestObject
 
 	request.TodoSpaceId = todoSpaceId
+	request.Params = params
 
 	if reader, err := r.MultipartReader(); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
@@ -6658,10 +7182,11 @@ func (sh *strictHandler) ListView(w http.ResponseWriter, r *http.Request, view V
 }
 
 // CreateViewItem operation middleware
-func (sh *strictHandler) CreateViewItem(w http.ResponseWriter, r *http.Request, view ViewName) {
+func (sh *strictHandler) CreateViewItem(w http.ResponseWriter, r *http.Request, view ViewName, params CreateViewItemParams) {
 	var request CreateViewItemRequestObject
 
 	request.View = view
+	request.Params = params
 
 	if reader, err := r.MultipartReader(); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
@@ -6718,10 +7243,11 @@ func (sh *strictHandler) GetViewItem(w http.ResponseWriter, r *http.Request, vie
 }
 
 // UpdateViewItem operation middleware
-func (sh *strictHandler) UpdateViewItem(w http.ResponseWriter, r *http.Request, view ViewName) {
+func (sh *strictHandler) UpdateViewItem(w http.ResponseWriter, r *http.Request, view ViewName, params UpdateViewItemParams) {
 	var request UpdateViewItemRequestObject
 
 	request.View = view
+	request.Params = params
 
 	if reader, err := r.MultipartReader(); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
@@ -6819,45 +7345,48 @@ func (sh *strictHandler) RenderMd(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"BwAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

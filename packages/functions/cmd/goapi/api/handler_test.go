@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/clerkprofile"
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/s3store"
-	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/supadb"
+	"github.com/gregidonut/sqldev/packages/functions/internal/jobs"
+	"github.com/gregidonut/sqldev/packages/functions/internal/queue"
+	"github.com/gregidonut/sqldev/packages/functions/internal/status"
 )
 
 const (
@@ -21,109 +22,104 @@ const (
 	testBucket = "linked-bucket"
 )
 
+func TestListQueuesWorkWithoutTheRawToken(t *testing.T) {
+	messages := queue.NewMemory()
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)
+	response := requestJSON(t, server, http.MethodGet, "/api/views/igPosts/list/get", testJWT, nil)
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
+	}
+	envelope, err := jobs.Parse(messages.Sent()[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Kind != jobs.KindListView || envelope.Claims.Subject != "user_test" {
+		t.Fatalf("envelope = %+v", envelope)
+	}
+	if string(envelope.Payload) != `{"view":"igPosts"}` {
+		t.Fatalf("payload = %s", envelope.Payload)
+	}
+}
+
+func TestRepeatedIdempotencyKeyReusesTheJob(t *testing.T) {
+	messages := queue.NewMemory()
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)
+	first := requestJSON(t, server, http.MethodPost, "/api/storage/buckets/"+testBucket+"/objects/presign?fileName=note.txt", testJWT, nil)
+	second := requestJSON(t, server, http.MethodPost, "/api/storage/buckets/"+testBucket+"/objects/presign?fileName=note.txt", testJWT, nil)
+	if first.Code != http.StatusAccepted || second.Code != http.StatusAccepted {
+		t.Fatalf("statuses = %d %d", first.Code, second.Code)
+	}
+	var left, right JobReceipt
+	if err := json.Unmarshal(first.Body.Bytes(), &left); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(second.Body.Bytes(), &right); err != nil {
+		t.Fatal(err)
+	}
+	if left.JobId != right.JobId {
+		t.Fatalf("jobs = %s %s", left.JobId, right.JobId)
+	}
+	if len(messages.Sent()) != 2 {
+		t.Fatalf("sent = %d, want a safe resend", len(messages.Sent()))
+	}
+}
+
+func TestJobStatusIsOwnerScoped(t *testing.T) {
+	messages := queue.NewMemory()
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)
+	created := requestJSON(t, server, http.MethodGet, "/api/views/igPosts/list/get", testJWT, nil)
+	var receipt JobReceipt
+	if err := json.Unmarshal(created.Body.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	server.Identity = rejectIdentity{}
+	response := requestJSON(t, server, http.MethodGet, "/api/jobs/"+receipt.JobId.String(), "other-token", nil)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
+	}
+}
+
 func TestMissingBearerIsUnauthorized(t *testing.T) {
-	server := testServer(t, &fakeDB{}, &fakeObjects{})
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, queue.NewMemory())
 	response := requestJSON(t, server, http.MethodGet, "/api/views/igPosts/list/get", "", nil)
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", response.Code)
 	}
 }
 
-func TestListViewForwardsClerkJWT(t *testing.T) {
-	db := &fakeDB{listBody: json.RawMessage(`[{"post_id":"11111111-1111-1111-1111-111111111111"}]`)}
-	server := testServer(t, db, &fakeObjects{})
-	response := requestJSON(t, server, http.MethodGet, "/api/views/igPosts/list/get", testJWT, nil)
-	if response.Code != http.StatusOK {
-		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
-	}
-	if db.listJWT != testJWT || db.listRelation != "ig_posts_view" {
-		t.Fatalf("list jwt=%q relation=%q", db.listJWT, db.listRelation)
-	}
-}
-
-func TestStorageWrongBucketDoesNotTouchS3(t *testing.T) {
-	objects := &fakeObjects{}
-	server := testServer(t, &fakeDB{}, objects)
+func TestStorageWrongBucketDoesNotQueue(t *testing.T) {
+	messages := queue.NewMemory()
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)
 	response := requestJSON(t, server, http.MethodGet, "/api/storage/buckets/other/objects?tab=mine", testJWT, nil)
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403", response.Code)
 	}
-	if objects.existCalls != 0 || objects.deleteCalls != 0 || objects.presignCalls != 0 {
-		t.Fatalf("s3 was called: %+v", objects)
+	if len(messages.Sent()) != 0 {
+		t.Fatalf("queued = %d", len(messages.Sent()))
 	}
 }
 
-func TestForgedAbortDoesNotCallDatabase(t *testing.T) {
-	db := &fakeDB{}
-	server := testServer(t, db, &fakeObjects{})
-	body := map[string]any{
-		"storageObjectId":     "22222222-2222-2222-2222-222222222222",
-		"storageObjectDataId": "33333333-3333-3333-3333-333333333333",
-		"fileName":            "note.txt",
-		"isNewObject":         true,
-		"s3ObjectKey":         "99999999-9999-9999-9999-999999999999/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/note.txt",
-	}
-	response := requestJSON(t, server, http.MethodPost, "/api/storage/buckets/"+testBucket+"/objects/abort", testJWT, body)
-	if response.Code != http.StatusForbidden {
-		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
-	}
-	if len(db.rpcs) != 1 || db.rpcs[0] != "set_owner" {
-		t.Fatalf("rpcs = %#v, want only set_owner", db.rpcs)
-	}
-}
-
-func TestCommitMissingObjectAbortsAndDoesNotCommit(t *testing.T) {
-	db := &fakeDB{}
-	objects := &fakeObjects{exists: false}
-	server := testServer(t, db, objects)
-	response := requestJSON(t, server, http.MethodPost, "/api/storage/buckets/"+testBucket+"/objects/commit", testJWT, pendingBody())
-	if response.Code != http.StatusConflict {
-		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
-	}
-	if contains(db.rpcs, "commit_d_storage_upload") {
-		t.Fatalf("commit rpc was called: %#v", db.rpcs)
-	}
-	if !contains(db.rpcs, "abort_d_storage_upload") {
-		t.Fatalf("abort rpc missing: %#v", db.rpcs)
-	}
-}
-
-func TestCommitExistingObjectForwardsJWT(t *testing.T) {
-	db := &fakeDB{}
-	server := testServer(t, db, &fakeObjects{exists: true})
-	response := requestJSON(t, server, http.MethodPost, "/api/storage/buckets/"+testBucket+"/objects/commit", testJWT, pendingBody())
-	if response.Code != http.StatusNoContent {
-		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
-	}
-	if db.rpcJWT != testJWT {
-		t.Fatalf("rpc jwt = %q", db.rpcJWT)
-	}
-	if !contains(db.rpcs, "commit_d_storage_upload") {
-		t.Fatalf("commit rpc missing: %#v", db.rpcs)
-	}
-}
-
-func TestForbiddenRPCIs403(t *testing.T) {
-	db := &fakeDB{rpcErr: &supadb.Error{Status: http.StatusBadRequest, Message: "prepare_d_storage_upload: forbidden"}}
-	server := testServer(t, db, &fakeObjects{})
-	response := requestJSON(t, server, http.MethodPost, "/api/storage/buckets/"+testBucket+"/objects/presign?fileName=note.txt", testJWT, nil)
-	if response.Code != http.StatusForbidden {
-		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
-	}
-}
-
-func TestListStorageFiltersEmptyKeys(t *testing.T) {
+func TestExecuteFiltersEmptyStorageKeys(t *testing.T) {
 	db := &fakeDB{rpcBody: json.RawMessage(`[
-		{"storage_object_id":"22222222-2222-2222-2222-222222222222","user_id":"11111111-1111-1111-1111-111111111111","clerk_user_id":"user_1","created_at":"2026-10-07T12:00:00.123456+00:00","updated_at":"2026-10-07T12:00:00.123456+00:00","s3_object_key":"11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/note.txt","file_name":"note.txt","public":false},
+		{"storage_object_id":"22222222-2222-2222-2222-222222222222","s3_object_key":"11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/note.txt","file_name":"note.txt","public":false},
 		{"s3_object_key":""}
 	]`)}
-	server := testServer(t, db, &fakeObjects{bucketExists: true})
-	response := requestJSON(t, server, http.MethodGet, "/api/storage/buckets/"+testBucket+"/objects?tab=mine", testJWT, nil)
-	if response.Code != http.StatusOK {
-		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
+	server := testServer(t, db, &fakeObjects{bucketExists: true}, queue.NewMemory())
+	outcome, err := server.Execute(jobContext(), jobs.Envelope{
+		Version: jobs.Version,
+		JobID:   "11111111-1111-4111-8111-111111111111",
+		Kind:    jobs.KindListStorage,
+		Claims:  jobs.Claims{Subject: "user_test", Role: "authenticated"},
+		Payload: json.RawMessage(`{"bucket":"` + testBucket + `","tab":"mine"}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome.HTTPStatus != http.StatusOK {
+		t.Fatalf("status = %d message %s", outcome.HTTPStatus, outcome.Message)
 	}
 	var rows []map[string]any
-	if err := json.Unmarshal(response.Body.Bytes(), &rows); err != nil {
+	if err := json.Unmarshal(outcome.Body, &rows); err != nil {
 		t.Fatal(err)
 	}
 	if len(rows) != 1 || rows[0]["file_name"] != "note.txt" {
@@ -131,41 +127,81 @@ func TestListStorageFiltersEmptyKeys(t *testing.T) {
 	}
 }
 
-func TestMoveTodoSendsEveryID(t *testing.T) {
-	db := &fakeDB{rpcBody: json.RawMessage(`[{"todo_item_id":"22222222-2222-2222-2222-222222222222"}]`)}
-	server := testServer(t, db, &fakeObjects{})
-	body, contentType := formBody(map[string][]string{
-		"p_todo_item_ids": {"22222222-2222-2222-2222-222222222222", "33333333-3333-3333-3333-333333333333"},
+func TestExecuteForgedAbortDoesNotCallAbort(t *testing.T) {
+	db := &fakeDB{}
+	server := testServer(t, db, &fakeObjects{}, queue.NewMemory())
+	outcome, err := server.Execute(jobContext(), jobs.Envelope{
+		Version: jobs.Version,
+		JobID:   "11111111-1111-4111-8111-111111111111",
+		Kind:    jobs.KindAbort,
+		Claims:  jobs.Claims{Subject: "user_test", Role: "authenticated"},
+		Payload: json.RawMessage(`{"bucket":"` + testBucket + `","pending":{"storageObjectId":"22222222-2222-2222-2222-222222222222","storageObjectDataId":"33333333-3333-3333-3333-333333333333","fileName":"note.txt","isNewObject":true,"s3ObjectKey":"99999999-9999-9999-9999-999999999999/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/note.txt"}}`),
 	})
-	request := httptest.NewRequest(http.MethodPatch, "/api/views/tdsTodos/44444444-4444-4444-4444-444444444444/tree/move/patch", body)
-	request.Header.Set("Authorization", "Bearer "+testJWT)
-	request.Header.Set("Content-Type", contentType)
-	response := httptest.NewRecorder()
-	server.ServeHTTP(response, request)
-	if response.Code != http.StatusOK {
-		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
+	if err != nil {
+		t.Fatal(err)
 	}
-	ids, _ := db.lastArgs["p_todo_item_ids"].([]string)
-	if len(ids) != 2 {
-		t.Fatalf("ids = %#v", db.lastArgs["p_todo_item_ids"])
+	if outcome.HTTPStatus != http.StatusForbidden {
+		t.Fatalf("status = %d message %s", outcome.HTTPStatus, outcome.Message)
 	}
-	if db.lastArgs["p_new_parent_id"] != nil {
-		t.Fatalf("parent = %#v", db.lastArgs["p_new_parent_id"])
+	if contains(db.rpcs, "abort_d_storage_upload") {
+		t.Fatalf("abort rpc was called: %#v", db.rpcs)
 	}
 }
 
-func testServer(t *testing.T, db *fakeDB, objects *fakeObjects) http.Handler {
+func TestExecuteCommitMissingObjectAborts(t *testing.T) {
+	db := &fakeDB{}
+	server := testServer(t, db, &fakeObjects{exists: false}, queue.NewMemory())
+	outcome, err := server.Execute(jobContext(), jobs.Envelope{
+		Version: jobs.Version,
+		JobID:   "11111111-1111-4111-8111-111111111111",
+		Kind:    jobs.KindCommit,
+		Claims:  jobs.Claims{Subject: "user_test", Role: "authenticated"},
+		Payload: json.RawMessage(`{"bucket":"` + testBucket + `","pending":{"storageObjectId":"22222222-2222-2222-2222-222222222222","storageObjectDataId":"33333333-3333-3333-3333-333333333333","fileName":"note.txt","isNewObject":true,"s3ObjectKey":"` + testUser + `/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/note.txt"}}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome.HTTPStatus != http.StatusConflict {
+		t.Fatalf("status = %d message %s", outcome.HTTPStatus, outcome.Message)
+	}
+	if contains(db.rpcs, "commit_d_storage_upload") || !contains(db.rpcs, "abort_d_storage_upload") {
+		t.Fatalf("rpcs = %#v", db.rpcs)
+	}
+}
+
+func TestImgproxyKindIsReserved(t *testing.T) {
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, queue.NewMemory())
+	outcome, err := server.Execute(jobContext(), jobs.Envelope{
+		Version: jobs.Version,
+		JobID:   "11111111-1111-4111-8111-111111111111",
+		Kind:    jobs.KindImgproxy,
+		Claims:  jobs.Claims{Subject: "user_test", Role: "authenticated"},
+		Payload: json.RawMessage(`{}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome.HTTPStatus != http.StatusNotImplemented {
+		t.Fatalf("status = %d", outcome.HTTPStatus)
+	}
+}
+
+func testServer(t *testing.T, db *fakeDB, objects *fakeObjects, messages *queue.Memory) *Server {
 	t.Helper()
-	return NewHandler(&Server{
+	return &Server{
 		DB:       db,
 		Objects:  objects,
 		Profiles: fakeProfiles{},
 		Bucket:   testBucket,
-	})
+		Identity: fakeIdentity{},
+		Jobs:     status.NewMemory(),
+		Sender:   messages,
+	}
 }
 
-func requestJSON(t *testing.T, handler http.Handler, method, path, token string, body any) *httptest.ResponseRecorder {
+func requestJSON(t *testing.T, server *Server, method, path, token string, body any) *httptest.ResponseRecorder {
 	t.Helper()
+	handler := NewHandler(server)
 	var reader io.Reader
 	if body != nil {
 		payload, err := json.Marshal(body)
@@ -178,6 +214,7 @@ func requestJSON(t *testing.T, handler http.Handler, method, path, token string,
 	if token != "" {
 		request.Header.Set("Authorization", "Bearer "+token)
 	}
+	request.Header.Set("Idempotency-Key", "test-key")
 	if body != nil {
 		request.Header.Set("Content-Type", "application/json")
 	}
@@ -186,26 +223,23 @@ func requestJSON(t *testing.T, handler http.Handler, method, path, token string,
 	return response
 }
 
-func pendingBody() map[string]any {
-	return map[string]any{
-		"storageObjectId":     "22222222-2222-2222-2222-222222222222",
-		"storageObjectDataId": "33333333-3333-3333-3333-333333333333",
-		"fileName":            "note.txt",
-		"isNewObject":         true,
-		"s3ObjectKey":         testUser + "/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/note.txt",
-	}
+func jobContext() context.Context {
+	return context.WithValue(context.Background(), tokenContextKey{}, testJWT)
 }
 
-func formBody(fields map[string][]string) (*bytes.Buffer, string) {
-	var body bytes.Buffer
-	writer := multipart.NewWriter(&body)
-	for key, values := range fields {
-		for _, value := range values {
-			_ = writer.WriteField(key, value)
-		}
+type fakeIdentity struct{}
+
+func (fakeIdentity) Verify(token string) (jobs.Claims, error) {
+	if token != testJWT {
+		return jobs.Claims{}, errUnauthorized
 	}
-	_ = writer.Close()
-	return &body, writer.FormDataContentType()
+	return jobs.Claims{Subject: "user_test", Role: "authenticated"}, nil
+}
+
+type rejectIdentity struct{}
+
+func (rejectIdentity) Verify(string) (jobs.Claims, error) {
+	return jobs.Claims{Subject: "someone_else", Role: "authenticated"}, nil
 }
 
 func contains(values []string, want string) bool {
@@ -292,6 +326,9 @@ func (f *fakeObjects) Exists(context.Context, string, string) (bool, error) {
 func (f *fakeObjects) PresignPut(context.Context, string, string) (string, error) {
 	f.presignCalls++
 	return "https://example.test/put", nil
+}
+func (f *fakeObjects) PresignGet(context.Context, string, string) (string, error) {
+	return "https://example.test/get", nil
 }
 
 type fakeProfiles struct{}

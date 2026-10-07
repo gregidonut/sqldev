@@ -9,6 +9,7 @@ export default $config({
       providers: {
         aws: { region: "ap-east-1" },
         "aws-native": "1.58.0",
+        random: "4.16.6",
       },
     };
   },

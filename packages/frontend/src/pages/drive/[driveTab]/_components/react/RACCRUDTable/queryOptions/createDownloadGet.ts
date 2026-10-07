@@ -1,5 +1,6 @@
 import axios from "axios";
 import { queryOptions } from "@tanstack/react-query";
+import { requestJob } from "@/server/requestJob";
 import { storageBasePath } from "./paths.ts";
 
 export function dStorageDownloadQueryKey(
@@ -22,10 +23,12 @@ export default function createDownloadGetQueryOptions({
     return queryOptions<Blob>({
         queryKey: dStorageDownloadQueryKey(userId, bucketName, key),
         queryFn: async function () {
-            const { data } = await axios<Blob>({
+            const result = await requestJob<{ url: string }>({
                 method: "GET",
                 url: `${storageBasePath(bucketName)}/objects/download`,
                 params: { key },
+            });
+            const { data } = await axios.get<Blob>(result.url, {
                 responseType: "blob",
             });
             return data;

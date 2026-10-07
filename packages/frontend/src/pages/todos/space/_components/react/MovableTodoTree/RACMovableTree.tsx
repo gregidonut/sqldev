@@ -1,7 +1,7 @@
 import { type TodoItem, TodoTree } from "./TodoTree.tsx";
 import React, { useEffect } from "react";
 import { useDragAndDrop, useTreeData } from "react-aria-components";
-import axios from "axios";
+import { requestJob } from "@/server/requestJob";
 import { useMutation } from "@tanstack/react-query";
 
 interface MoveTodoItemsArgs {
@@ -23,13 +23,12 @@ async function moveTodoItems({
         formData.append("p_new_parent_id", newParentId);
     }
 
-    const { data } = await axios({
+    return requestJob({
         url: `/api/views/tdsTodos/${tdsTodoSpaceId}/tree/move/patch`,
         method: "PATCH",
         data: formData,
         headers: { "Content-Type": "multipart/form-data" },
     });
-    return data;
 }
 
 export function RACMovableTree({

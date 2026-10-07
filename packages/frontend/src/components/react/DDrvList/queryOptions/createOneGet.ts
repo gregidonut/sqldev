@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import axios from "axios";
+import { requestJob } from "@/server/requestJob";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
 
@@ -19,11 +19,10 @@ export default function createOneGetQueryOptions<K extends keyof ViewMap>(
             itemId,
         ],
         queryFn: async function () {
-            const { data } = await axios<ViewMap[K]>({
+            return requestJob<ViewMap[K]>({
                 method: "GET",
                 url: `/api/views/${view}/one/get/${itemId}`,
             });
-            return data;
         },
     });
 }

@@ -100,6 +100,19 @@ func (s *Store) Exists(ctx context.Context, bucket, key string) (bool, error) {
 	return false, mapS3Error(err)
 }
 
+func (s *Store) PresignGet(ctx context.Context, bucket, key string) (string, error) {
+	signed, err := s.presign.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}, func(options *s3.PresignOptions) {
+		options.Expires = 15 * time.Minute
+	})
+	if err != nil {
+		return "", mapS3Error(err)
+	}
+	return signed.URL, nil
+}
+
 func (s *Store) PresignPut(ctx context.Context, bucket, key string) (string, error) {
 	signed, err := s.presign.PresignPutObject(ctx, &s3.PutObjectInput{
 		Bucket: aws.String(bucket),

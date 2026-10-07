@@ -2,208 +2,109 @@ package api
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"io"
-	"mime/multipart"
 	"net/http"
-	"strconv"
 
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/utils"
+	"github.com/gregidonut/sqldev/packages/functions/internal/jobs"
 )
 
 func (s *Server) BucketExists(ctx context.Context, request BucketExistsRequestObject) (BucketExistsResponseObject, error) {
-	if _, _, err := s.caller(ctx); err != nil {
-		return bucketFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return bucketFailure(err), nil
 	}
-	exists, err := s.Objects.BucketExists(ctx, request.BucketName)
+	receipt, err := s.submit(ctx, jobs.KindBucketExists, map[string]string{"bucket": request.BucketName}, "")
 	if err != nil {
 		return bucketFailure(err), nil
 	}
-	if !exists {
-		return BucketExists404Response{}, nil
-	}
-	return BucketExists200Response{}, nil
+	return BucketExists202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) ListStorageObjects(ctx context.Context, request ListStorageObjectsRequestObject) (ListStorageObjectsResponseObject, error) {
-	token, _, err := s.caller(ctx)
-	if err != nil {
-		return listStorageFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return listStorageFailure(err), nil
 	}
 	if !request.Params.Tab.Valid() {
 		return listStorageFailure(errBadRequest), nil
 	}
-	raw, err := s.DB.RPC(ctx, token, "get_d_storage_objects", map[string]any{
-		"p_tab": string(request.Params.Tab),
-	})
+	receipt, err := s.submit(ctx, jobs.KindListStorage, map[string]any{
+		"bucket": request.BucketName,
+		"tab":    request.Params.Tab,
+	}, "")
 	if err != nil {
 		return listStorageFailure(err), nil
 	}
-	var rows []StorageObjectRow
-	if err := json.Unmarshal(raw, &rows); err != nil {
-		return listStorageFailure(err), nil
-	}
-	visible := make([]StorageObjectRow, 0, len(rows))
-	for _, row := range rows {
-		if row.S3ObjectKey == nil || *row.S3ObjectKey == "" {
-			continue
-		}
-		visible = append(visible, row)
-	}
-	return ListStorageObjects200JSONResponse(visible), nil
+	return ListStorageObjects202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) PresignObject(ctx context.Context, request PresignObjectRequestObject) (PresignObjectResponseObject, error) {
-	token, _, err := s.caller(ctx)
-	if err != nil {
-		return presignFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return presignFailure(err), nil
 	}
-	prepared, err := s.prepareUpload(ctx, token, request.Params.FileName)
+	if request.Params.FileName == "" {
+		return presignFailure(errBadRequest), nil
+	}
+	receipt, err := s.submit(ctx, jobs.KindPresign, map[string]string{
+		"bucket":   request.BucketName,
+		"fileName": request.Params.FileName,
+	}, request.Params.IdempotencyKey)
 	if err != nil {
 		return presignFailure(err), nil
 	}
-	pending, err := pendingFrom(prepared)
-	if err != nil {
-		return presignFailure(err), nil
-	}
-	signed, err := s.Objects.PresignPut(ctx, s.Bucket, pending.S3ObjectKey)
-	if err != nil {
-		s.abortPending(ctx, token, pending)
-		return presignFailure(err), nil
-	}
-	return PresignObject200JSONResponse{
-		Url:           signed,
-		Key:           pending.S3ObjectKey,
-		PendingUpload: pending,
-	}, nil
+	return PresignObject202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) CommitObject(ctx context.Context, request CommitObjectRequestObject) (CommitObjectResponseObject, error) {
-	token, userID, err := s.caller(ctx)
-	if err != nil {
-		return commitFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return commitFailure(err), nil
 	}
 	if request.Body == nil {
 		return commitFailure(errBadRequest), nil
 	}
-	pending := PendingUpload(*request.Body)
-	if err := s.commitPrepared(ctx, token, userID, pending); err != nil {
+	receipt, err := s.submit(ctx, jobs.KindCommit, map[string]any{
+		"bucket":  request.BucketName,
+		"pending": PendingUpload(*request.Body),
+	}, request.Params.IdempotencyKey)
+	if err != nil {
 		return commitFailure(err), nil
 	}
-	return CommitObject204Response{}, nil
+	return CommitObject202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) AbortObject(ctx context.Context, request AbortObjectRequestObject) (AbortObjectResponseObject, error) {
-	token, userID, err := s.caller(ctx)
-	if err != nil {
-		return abortFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return abortFailure(err), nil
 	}
 	if request.Body == nil {
 		return abortFailure(errBadRequest), nil
 	}
-	pending := PendingUpload(*request.Body)
-	if err := validatePending(userID, pending); err != nil {
+	receipt, err := s.submit(ctx, jobs.KindAbort, map[string]any{
+		"bucket":  request.BucketName,
+		"pending": PendingUpload(*request.Body),
+	}, request.Params.IdempotencyKey)
+	if err != nil {
 		return abortFailure(err), nil
 	}
-	if _, err := s.DB.RPC(ctx, token, "abort_d_storage_upload", abortArgs(pending)); err != nil {
-		return abortFailure(err), nil
-	}
-	return AbortObject204Response{}, nil
-}
-
-func (s *Server) UploadObject(ctx context.Context, request UploadObjectRequestObject) (UploadObjectResponseObject, error) {
-	token, userID, err := s.caller(ctx)
-	if err != nil {
-		return uploadFailure(err), nil
-	}
-	if err := s.sameBucket(request.BucketName); err != nil {
-		return uploadFailure(err), nil
-	}
-	prepared, err := s.prepareUpload(ctx, token, request.Params.FileName)
-	if err != nil {
-		return uploadFailure(err), nil
-	}
-	pending, err := pendingFrom(prepared)
-	if err != nil {
-		return uploadFailure(err), nil
-	}
-	file, size, err := filePart(request.Body)
-	if err != nil {
-		s.abortPending(ctx, token, pending)
-		return uploadFailure(err), nil
-	}
-	defer file.Close()
-	if err := s.Objects.Upload(ctx, s.Bucket, pending.S3ObjectKey, file, size); err != nil {
-		s.abortPending(ctx, token, pending)
-		return uploadFailure(err), nil
-	}
-	if err := s.commitPrepared(ctx, token, userID, pending); err != nil {
-		return uploadFailure(err), nil
-	}
-	return UploadObject200Response{}, nil
+	return AbortObject202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) DownloadObject(ctx context.Context, request DownloadObjectRequestObject) (DownloadObjectResponseObject, error) {
-	token, userID, err := s.caller(ctx)
-	if err != nil {
-		return downloadFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return downloadFailure(err), nil
 	}
-	parts, err := utils.ParseObjectKey(request.Params.Key)
-	if err != nil {
+	if _, err := utils.ParseObjectKey(request.Params.Key); err != nil {
 		return downloadFailure(errBadRequest), nil
 	}
-	row, found, err := s.lookupKey(ctx, token, request.Params.Key)
+	receipt, err := s.submit(ctx, jobs.KindDownload, map[string]string{
+		"bucket": request.BucketName,
+		"key":    request.Params.Key,
+	}, "")
 	if err != nil {
 		return downloadFailure(err), nil
 	}
-	if !found {
-		return downloadFailure(errForbidden), nil
-	}
-	if !row.Public {
-		if err := s.allow(ctx, token, userID, "d_storage_objects.read", row.StorageObjectID); err != nil {
-			return downloadFailure(err), nil
-		}
-	}
-	opened, err := s.Objects.Open(ctx, s.Bucket, request.Params.Key)
-	if err != nil {
-		return downloadFailure(err), nil
-	}
-	var contentType *string
-	if opened.ContentType != "" {
-		contentType = &opened.ContentType
-	}
-	return utils.DownloadObjectResponse{
-		Body:          opened.Body,
-		ContentLength: opened.ContentLength,
-		ContentType:   utils.ContentTypeForObject(parts.FileName, contentType),
-		Filename:      utils.ObjectFilename(parts.FileName),
-	}, nil
+	return DownloadObject202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) CopyObject(ctx context.Context, request CopyObjectRequestObject) (CopyObjectResponseObject, error) {
-	token, userID, err := s.caller(ctx)
-	if err != nil {
-		return copyFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return copyFailure(err), nil
 	}
@@ -213,110 +114,67 @@ func (s *Server) CopyObject(ctx context.Context, request CopyObjectRequestObject
 	if err := s.sameBucket(request.Body.DestinationBucket); err != nil {
 		return copyFailure(err), nil
 	}
-	source, err := utils.ParseObjectKey(request.Params.Key)
-	if err != nil {
+	if _, err := utils.ParseObjectKey(request.Params.Key); err != nil {
 		return copyFailure(errBadRequest), nil
 	}
-	row, found, err := s.lookupKey(ctx, token, request.Params.Key)
+	receipt, err := s.submit(ctx, jobs.KindCopy, map[string]string{
+		"bucket":              request.BucketName,
+		"key":                 request.Params.Key,
+		"destinationBucket":   request.Body.DestinationBucket,
+		"destinationFileName": request.Body.DestinationFileName,
+	}, request.Params.IdempotencyKey)
 	if err != nil {
 		return copyFailure(err), nil
 	}
-	if !found {
-		return copyFailure(errForbidden), nil
-	}
-	if err := s.allow(ctx, token, userID, "d_storage_objects.read", row.StorageObjectID); err != nil {
-		return copyFailure(err), nil
-	}
-	prepared, err := s.prepareUpload(ctx, token, request.Body.DestinationFileName)
-	if err != nil {
-		return copyFailure(err), nil
-	}
-	pending, err := pendingFrom(prepared)
-	if err != nil {
-		return copyFailure(err), nil
-	}
-	sourceKey, err := utils.BuildObjectKey(source)
-	if err != nil {
-		s.abortPending(ctx, token, pending)
-		return copyFailure(err), nil
-	}
-	if err := s.Objects.Copy(ctx, s.Bucket, s.Bucket, sourceKey, pending.S3ObjectKey); err != nil {
-		s.abortPending(ctx, token, pending)
-		return copyFailure(err), nil
-	}
-	if err := s.commitPrepared(ctx, token, userID, pending); err != nil {
-		return copyFailure(err), nil
-	}
-	return CopyObject200Response{}, nil
+	return CopyObject202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) DeleteSingleObject(ctx context.Context, request DeleteSingleObjectRequestObject) (DeleteSingleObjectResponseObject, error) {
-	token, userID, err := s.caller(ctx)
-	if err != nil {
-		return deleteOneFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return deleteOneFailure(err), nil
 	}
 	if _, err := utils.ParseObjectKey(request.Params.Key); err != nil {
 		return deleteOneFailure(errBadRequest), nil
 	}
-	row, found, err := s.lookupKey(ctx, token, request.Params.Key)
-	if err != nil {
-		return deleteOneFailure(err), nil
-	}
-	if !found {
-		return deleteOneFailure(errForbidden), nil
-	}
-	if err := s.allow(ctx, token, userID, "d_storage_objects.delete", row.StorageObjectID); err != nil {
-		return deleteOneFailure(err), nil
-	}
 	versionID := ""
 	if request.Params.VersionId != nil {
 		versionID = *request.Params.VersionId
 	}
 	bypass := request.Params.BypassGovernance != nil && *request.Params.BypassGovernance
-	if err := s.Objects.Delete(ctx, s.Bucket, request.Params.Key, versionID, bypass); err != nil {
+	receipt, err := s.submit(ctx, jobs.KindDeleteObject, map[string]any{
+		"bucket":    request.BucketName,
+		"key":       request.Params.Key,
+		"versionId": versionID,
+		"bypass":    bypass,
+	}, request.Params.IdempotencyKey)
+	if err != nil {
 		return deleteOneFailure(err), nil
 	}
-	return DeleteSingleObject204Response{}, nil
+	return DeleteSingleObject202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) DeleteObjects(ctx context.Context, request DeleteObjectsRequestObject) (DeleteObjectsResponseObject, error) {
-	token, userID, err := s.caller(ctx)
-	if err != nil {
-		return deleteManyFailure(err), nil
-	}
 	if err := s.sameBucket(request.BucketName); err != nil {
 		return deleteManyFailure(err), nil
 	}
 	if request.Body == nil {
 		return deleteManyFailure(errBadRequest), nil
 	}
-	keys := uniqueKeys(request.Body.Keys)
-	if len(keys) == 0 {
-		return DeleteObjects200Response{}, nil
-	}
-	for _, key := range keys {
+	for _, key := range uniqueKeys(request.Body.Keys) {
 		if _, err := utils.ParseObjectKey(key); err != nil {
 			return deleteManyFailure(errBadRequest), nil
 		}
-		row, found, err := s.lookupKey(ctx, token, key)
-		if err != nil {
-			return deleteManyFailure(err), nil
-		}
-		if !found {
-			return deleteManyFailure(errForbidden), nil
-		}
-		if err := s.allow(ctx, token, userID, "d_storage_objects.delete", row.StorageObjectID); err != nil {
-			return deleteManyFailure(err), nil
-		}
 	}
 	bypass := request.Params.BypassGovernance != nil && *request.Params.BypassGovernance
-	if err := s.Objects.DeleteMany(ctx, s.Bucket, keys, bypass); err != nil {
+	receipt, err := s.submit(ctx, jobs.KindDeleteObjects, map[string]any{
+		"bucket": request.BucketName,
+		"keys":   request.Body.Keys,
+		"bypass": bypass,
+	}, request.Params.IdempotencyKey)
+	if err != nil {
 		return deleteManyFailure(err), nil
 	}
-	return DeleteObjects200Response{}, nil
+	return DeleteObjects202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) commitPrepared(ctx context.Context, jwt, userID string, pending PendingUpload) error {
@@ -353,32 +211,6 @@ func uniqueKeys(keys []string) []string {
 		unique = append(unique, key)
 	}
 	return unique
-}
-
-func filePart(reader *multipart.Reader) (io.ReadCloser, int64, error) {
-	if reader == nil {
-		return nil, 0, errBadRequest
-	}
-	for {
-		part, err := reader.NextPart()
-		if errors.Is(err, io.EOF) {
-			return nil, 0, errBadRequest
-		}
-		if err != nil {
-			return nil, 0, err
-		}
-		if part.FormName() != "file" {
-			_ = part.Close()
-			continue
-		}
-		size := int64(-1)
-		if header := part.Header.Get("Content-Length"); header != "" {
-			if parsed, parseErr := strconv.ParseInt(header, 10, 64); parseErr == nil {
-				size = parsed
-			}
-		}
-		return part, size, nil
-	}
 }
 
 func bucketFailure(err error) BucketExistsResponseObject {
@@ -448,22 +280,6 @@ func abortFailure(err error) AbortObjectResponseObject {
 		return AbortObject400JSONResponse{BadRequestJSONResponse: BadRequestJSONResponse{Message: message}}
 	default:
 		return AbortObject500JSONResponse{InternalErrorJSONResponse: InternalErrorJSONResponse{Message: message}}
-	}
-}
-
-func uploadFailure(err error) UploadObjectResponseObject {
-	status, message := classify(err)
-	switch status {
-	case http.StatusUnauthorized:
-		return UploadObject401JSONResponse{UnauthorizedJSONResponse: UnauthorizedJSONResponse{Message: message}}
-	case http.StatusForbidden:
-		return UploadObject403JSONResponse{ForbiddenJSONResponse: ForbiddenJSONResponse{Message: message}}
-	case http.StatusBadRequest:
-		return UploadObject400JSONResponse{BadRequestJSONResponse: BadRequestJSONResponse{Message: message}}
-	case http.StatusRequestEntityTooLarge:
-		return UploadObject413Response{}
-	default:
-		return UploadObject500JSONResponse{InternalErrorJSONResponse: InternalErrorJSONResponse{Message: message}}
 	}
 }
 

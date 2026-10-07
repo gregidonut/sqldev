@@ -1,5 +1,5 @@
-import axios from "axios";
 import { queryOptions } from "@tanstack/react-query";
+import { JobFailedError, requestJob } from "@/server/requestJob";
 import { storageBasePath } from "./paths.ts";
 
 export function dStorageBucketExistsQueryKey(bucketName: string) {
@@ -14,14 +14,18 @@ export default function createBucketExistsGetQueryOptions({
     return queryOptions<boolean>({
         queryKey: dStorageBucketExistsQueryKey(bucketName),
         queryFn: async function () {
-            const { status } = await axios({
-                method: "GET",
-                url: storageBasePath(bucketName),
-                // A missing bucket is an answer, not a failure.
-                validateStatus: (candidate) =>
-                    candidate === 200 || candidate === 404,
-            });
-            return status === 200;
+            try {
+                await requestJob({
+                    method: "GET",
+                    url: storageBasePath(bucketName),
+                });
+                return true;
+            } catch (error) {
+                if (error instanceof JobFailedError && error.status === 404) {
+                    return false;
+                }
+                throw error;
+            }
         },
         enabled: Boolean(bucketName),
     });

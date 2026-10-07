@@ -1,5 +1,5 @@
 import { mutationOptions, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import { requestJob } from "@/server/requestJob";
 import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
 
 export default function createOnePatchMutationOptions({
@@ -13,7 +13,7 @@ export default function createOnePatchMutationOptions({
 
     return mutationOptions({
         mutationFn: async function (data: FormData) {
-            await axios({
+            await requestJob({
                 method: "PATCH",
                 url: `/api/views/${view}/one/patch`,
                 data,

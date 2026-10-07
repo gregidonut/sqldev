@@ -42,6 +42,34 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "JobDeadLetter": {
+      "type": "sst.aws.Queue"
+      "url": string
+    }
+    "JobQueue": {
+      "type": "sst.aws.Queue"
+      "url": string
+    }
+    "JobQueueUrl": {
+      "type": "sst.sst.Linkable"
+      "url": string
+    }
+    "JobResultBucket": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
+    "JobResultBucketName": {
+      "name": string
+      "type": "sst.sst.Linkable"
+    }
+    "JobStatus": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "JobStatusName": {
+      "name": string
+      "type": "sst.sst.Linkable"
+    }
     "NotifySecret": {
       "type": "sst.sst.Secret"
       "value": string
@@ -62,10 +90,6 @@ declare module "sst" {
     "SupabaseUrl": {
       "type": "sst.sst.Secret"
       "value": string
-    }
-    "sqldevSupabaseVPC": {
-      "bastion": string
-      "type": "sst.aws.Vpc"
     }
   }
 }

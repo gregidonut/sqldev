@@ -18,6 +18,10 @@ import (
 
 type tokenContextKey struct{}
 
+func WithBearer(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, tokenContextKey{}, token)
+}
+
 func bearerFrom(ctx context.Context) string {
 	token, _ := ctx.Value(tokenContextKey{}).(string)
 	return token

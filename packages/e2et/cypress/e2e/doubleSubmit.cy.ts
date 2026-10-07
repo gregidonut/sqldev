@@ -52,7 +52,7 @@ describe("double submit", () => {
     );
     cy.get("[data-cy='create_ig_post_submit']").click({ force: true });
 
-      cy.wait("@createPost").its("response.statusCode").should("eq", 200);
+      cy.wait("@createPost").its("response.statusCode").should("eq", 202);
       cy.get("@createPost.all").should("have.length", 1);
     });
   });
@@ -108,7 +108,7 @@ describe("double submit", () => {
       form.requestSubmit();
     });
 
-      cy.wait("@updatePost").its("response.statusCode").should("eq", 200);
+      cy.wait("@updatePost").its("response.statusCode").should("eq", 202);
       cy.get("@updatePost.all").should("have.length", 1);
     });
   });
@@ -137,7 +137,7 @@ describe("double submit", () => {
     );
     cy.get("[data-cy='create_tds_todo_space_submit']").click({ force: true });
 
-      cy.wait("@createSpace").its("response.statusCode").should("eq", 200);
+      cy.wait("@createSpace").its("response.statusCode").should("eq", 202);
       cy.get("@createSpace.all").should("have.length", 1);
     });
   });
@@ -182,7 +182,7 @@ describe("double submit", () => {
     );
     cy.get("[data-cy='create_tds_todo_submit']").click({ force: true });
 
-      cy.wait("@createTodo").its("response.statusCode").should("eq", 200);
+      cy.wait("@createTodo").its("response.statusCode").should("eq", 202);
       cy.get("@createTodo.all").should("have.length", 1);
     });
   });

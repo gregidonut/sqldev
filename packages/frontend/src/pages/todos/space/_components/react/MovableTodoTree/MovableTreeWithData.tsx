@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
-import axios from "axios";
+import { requestJob } from "@/server/requestJob";
 import { RACMovableTree } from "./RACMovableTree.tsx";
 import useMqtt from "@/components/react/hooks/useMqtt";
 import { cy } from "@/utils/cy";
@@ -38,11 +38,10 @@ function RACMovableTreeWithData({
             },
         ],
         queryFn: async () => {
-            const { data } = await axios<TodoItem[]>({
+            return requestJob<TodoItem[]>({
                 method: "get",
                 url: `/api/views/tdsTodos/${tdsTodoSpaceId}/tree/get`,
             });
-            return data;
         },
     });
 

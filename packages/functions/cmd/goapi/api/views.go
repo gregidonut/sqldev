@@ -2,9 +2,10 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/gregidonut/sqldev/packages/functions/internal/jobs"
 )
 
 type viewSpec struct {
@@ -48,50 +49,31 @@ func viewSpecFor(name ViewName) (viewSpec, bool) {
 }
 
 func (s *Server) ListView(ctx context.Context, request ListViewRequestObject) (ListViewResponseObject, error) {
-	token, _, err := s.caller(ctx)
-	if err != nil {
-		return listViewFailure(err), nil
-	}
-	spec, ok := viewSpecFor(request.View)
-	if !ok {
+	if _, ok := viewSpecFor(request.View); !ok {
 		return listViewFailure(errBadRequest), nil
 	}
-	raw, err := s.DB.List(ctx, token, spec.relation)
+	receipt, err := s.submit(ctx, jobs.KindListView, map[string]any{"view": request.View}, "")
 	if err != nil {
 		return listViewFailure(err), nil
 	}
-	rows, err := decodeRows(raw)
-	if err != nil {
-		return listViewFailure(err), nil
-	}
-	return ListView200JSONResponse(rows), nil
+	return ListView202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) GetViewItem(ctx context.Context, request GetViewItemRequestObject) (GetViewItemResponseObject, error) {
-	token, _, err := s.caller(ctx)
-	if err != nil {
-		return getViewFailure(err), nil
-	}
-	spec, ok := viewSpecFor(request.View)
-	if !ok {
+	if _, ok := viewSpecFor(request.View); !ok {
 		return getViewFailure(errBadRequest), nil
 	}
-	raw, err := s.DB.One(ctx, token, spec.relation, spec.idColumn, request.ItemId.String())
+	receipt, err := s.submit(ctx, jobs.KindGetViewItem, map[string]any{
+		"view":   request.View,
+		"itemId": request.ItemId.String(),
+	}, "")
 	if err != nil {
 		return getViewFailure(err), nil
 	}
-	var row JsonObject
-	if err := json.Unmarshal(raw, &row); err != nil {
-		return getViewFailure(err), nil
-	}
-	return GetViewItem200JSONResponse(row), nil
+	return GetViewItem202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) CreateViewItem(ctx context.Context, request CreateViewItemRequestObject) (CreateViewItemResponseObject, error) {
-	token, _, err := s.caller(ctx)
-	if err != nil {
-		return createViewFailure(err), nil
-	}
 	spec, ok := viewSpecFor(request.View)
 	if !ok {
 		return createViewFailure(errBadRequest), nil
@@ -107,25 +89,14 @@ func (s *Server) CreateViewItem(ctx context.Context, request CreateViewItemReque
 	if err := requireFields(args, spec.requiredC...); err != nil {
 		return createViewFailure(err), nil
 	}
-	raw, err := s.DB.RPC(ctx, token, spec.createRPC, args)
+	receipt, err := s.submit(ctx, jobs.KindCreateViewItem, map[string]any{"view": request.View, "args": args}, request.Params.IdempotencyKey)
 	if err != nil {
 		return createViewFailure(err), nil
 	}
-	if request.View == IgPosts {
-		s.notifyPost(ctx, token, raw)
-	}
-	rows, err := decodeRows(raw)
-	if err != nil {
-		return createViewFailure(err), nil
-	}
-	return CreateViewItem200JSONResponse(rows), nil
+	return CreateViewItem202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) UpdateViewItem(ctx context.Context, request UpdateViewItemRequestObject) (UpdateViewItemResponseObject, error) {
-	token, _, err := s.caller(ctx)
-	if err != nil {
-		return updateViewFailure(err), nil
-	}
 	spec, ok := viewSpecFor(request.View)
 	if !ok {
 		return updateViewFailure(errBadRequest), nil
@@ -141,43 +112,24 @@ func (s *Server) UpdateViewItem(ctx context.Context, request UpdateViewItemReque
 	if err := requireFields(args, spec.requiredU...); err != nil {
 		return updateViewFailure(err), nil
 	}
-	raw, err := s.DB.RPC(ctx, token, spec.updateRPC, args)
+	receipt, err := s.submit(ctx, jobs.KindUpdateViewItem, map[string]any{"view": request.View, "args": args}, request.Params.IdempotencyKey)
 	if err != nil {
 		return updateViewFailure(err), nil
 	}
-	if request.View == IgPosts {
-		s.notifyPost(ctx, token, raw)
-	}
-	rows, err := decodeRows(raw)
-	if err != nil {
-		return updateViewFailure(err), nil
-	}
-	return UpdateViewItem200JSONResponse(rows), nil
+	return UpdateViewItem202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) GetTodoTree(ctx context.Context, request GetTodoTreeRequestObject) (GetTodoTreeResponseObject, error) {
-	token, _, err := s.caller(ctx)
+	receipt, err := s.submit(ctx, jobs.KindGetTodoTree, map[string]any{
+		"todoSpaceId": request.TodoSpaceId.String(),
+	}, "")
 	if err != nil {
 		return todoTreeFailure(err), nil
 	}
-	raw, err := s.DB.RPC(ctx, token, "get_tds_todos_tree", map[string]any{
-		"p_todo_space_id": request.TodoSpaceId.String(),
-	})
-	if err != nil {
-		return todoTreeFailure(err), nil
-	}
-	rows, err := decodeRows(raw)
-	if err != nil {
-		return todoTreeFailure(err), nil
-	}
-	return GetTodoTree200JSONResponse(rows), nil
+	return GetTodoTree202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) MoveTodoItems(ctx context.Context, request MoveTodoItemsRequestObject) (MoveTodoItemsResponseObject, error) {
-	token, _, err := s.caller(ctx)
-	if err != nil {
-		return moveTodoFailure(err), nil
-	}
 	values, err := readForm(request.Body)
 	if err != nil {
 		return moveTodoFailure(err), nil
@@ -192,22 +144,14 @@ func (s *Server) MoveTodoItems(ctx context.Context, request MoveTodoItemsRequest
 	} else {
 		args["p_new_parent_id"] = nil
 	}
-	raw, err := s.DB.RPC(ctx, token, "move_tds_todo_items", args)
+	receipt, err := s.submit(ctx, jobs.KindMoveTodoItems, map[string]any{"args": args}, request.Params.IdempotencyKey)
 	if err != nil {
 		return moveTodoFailure(err), nil
 	}
-	rows, err := decodeRows(raw)
-	if err != nil {
-		return moveTodoFailure(err), nil
-	}
-	return MoveTodoItems200JSONResponse(rows), nil
+	return MoveTodoItems202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func (s *Server) CreateTodo(ctx context.Context, request CreateTodoRequestObject) (CreateTodoResponseObject, error) {
-	token, _, err := s.caller(ctx)
-	if err != nil {
-		return createTodoFailure(err), nil
-	}
 	values, err := readForm(request.Body)
 	if err != nil {
 		return createTodoFailure(err), nil
@@ -222,15 +166,14 @@ func (s *Server) CreateTodo(ctx context.Context, request CreateTodoRequestObject
 	if err := requireFields(args, "p_todo_space_id", "p_title"); err != nil {
 		return createTodoFailure(err), nil
 	}
-	raw, err := s.DB.RPC(ctx, token, "create_tds_todo", args)
+	receipt, err := s.submit(ctx, jobs.KindCreateTodo, map[string]any{
+		"todoSpaceId": request.TodoSpaceId.String(),
+		"args":        args,
+	}, request.Params.IdempotencyKey)
 	if err != nil {
 		return createTodoFailure(err), nil
 	}
-	rows, err := decodeRows(raw)
-	if err != nil {
-		return createTodoFailure(err), nil
-	}
-	return CreateTodo200JSONResponse(rows), nil
+	return CreateTodo202JSONResponse{JobAcceptedJSONResponse: JobAcceptedJSONResponse(receipt)}, nil
 }
 
 func listViewFailure(err error) ListViewResponseObject {

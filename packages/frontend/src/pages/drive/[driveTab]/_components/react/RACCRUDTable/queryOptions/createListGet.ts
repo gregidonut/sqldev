@@ -1,5 +1,5 @@
-import axios from "axios";
 import { queryOptions } from "@tanstack/react-query";
+import { requestJob } from "@/server/requestJob";
 import type { ObjectsTab } from "@/utils/storage/objectsTab";
 import { storageBasePath } from "./paths.ts";
 import type { StorageRow } from "./types.ts";
@@ -28,12 +28,11 @@ export default function createListGetQueryOptions({
     return queryOptions<StorageRow[]>({
         queryKey: dStorageListQueryKey(userId, bucketName, tab),
         queryFn: async function () {
-            const { data } = await axios<StorageRow[]>({
+            return requestJob<StorageRow[]>({
                 method: "GET",
                 url: `${storageBasePath(bucketName)}/objects`,
                 params: { tab },
             });
-            return data;
         },
         enabled: Boolean(bucketName),
     });

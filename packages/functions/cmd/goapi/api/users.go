@@ -6,7 +6,7 @@ import (
 )
 
 func (s *Server) GetClerkUser(ctx context.Context, request GetClerkUserRequestObject) (GetClerkUserResponseObject, error) {
-	if _, _, err := s.caller(ctx); err != nil {
+	if _, err := s.authenticate(ctx); err != nil {
 		return userFailure(err), nil
 	}
 	if request.UserId == "" {

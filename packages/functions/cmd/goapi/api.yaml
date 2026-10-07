@@ -35,14 +35,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ViewName"
       responses:
-        "200":
-          description: Rows visible to the caller.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/JsonObject"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -60,12 +54,8 @@ paths:
         - $ref: "#/components/parameters/ViewName"
         - $ref: "#/components/parameters/ItemId"
       responses:
-        "200":
-          description: The requested row.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JsonObject"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -83,6 +73,7 @@ paths:
         - clerkBearer: []
       parameters:
         - $ref: "#/components/parameters/ViewName"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -90,12 +81,8 @@ paths:
             schema:
               $ref: "#/components/schemas/FormBody"
       responses:
-        "200":
-          description: Created row identifiers.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JsonRows"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -113,6 +100,7 @@ paths:
         - clerkBearer: []
       parameters:
         - $ref: "#/components/parameters/ViewName"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -120,12 +108,8 @@ paths:
             schema:
               $ref: "#/components/schemas/FormBody"
       responses:
-        "200":
-          description: Updated row identifiers.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JsonRows"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -144,12 +128,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/TodoSpaceId"
       responses:
-        "200":
-          description: Nested todo tree.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JsonRows"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
@@ -163,6 +143,7 @@ paths:
         - clerkBearer: []
       parameters:
         - $ref: "#/components/parameters/TodoSpaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -170,12 +151,8 @@ paths:
             schema:
               $ref: "#/components/schemas/FormBody"
       responses:
-        "200":
-          description: Moved item identifiers.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JsonRows"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -193,6 +170,7 @@ paths:
         - clerkBearer: []
       parameters:
         - $ref: "#/components/parameters/TodoSpaceId"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -200,18 +178,36 @@ paths:
             schema:
               $ref: "#/components/schemas/FormBody"
       responses:
-        "200":
-          description: Created todo identifier.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JsonRows"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/jobs/{jobId}:
+    get:
+      operationId: getJob
+      summary: Read a job owned by the caller
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      responses:
+        "200":
+          description: Current job state. Completed results use the original response body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobState"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -224,14 +220,12 @@ paths:
       parameters:
         - $ref: "#/components/parameters/BucketName"
       responses:
-        "200":
-          description: The linked bucket exists.
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          description: The linked bucket does not exist.
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -249,52 +243,14 @@ paths:
           schema:
             $ref: "#/components/schemas/StorageTab"
       responses:
-        "200":
-          description: Objects visible on the requested tab.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/StorageObjectRow"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/InternalError"
-    post:
-      operationId: uploadObject
-      summary: Upload an object through the API
-      security:
-        - clerkBearer: []
-      parameters:
-        - $ref: "#/components/parameters/BucketName"
-        - $ref: "#/components/parameters/FileName"
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [file]
-              properties:
-                file:
-                  type: string
-                  format: binary
-      responses:
-        "200":
-          description: Object uploaded and committed.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "413":
-          description: Entity too large.
         "500":
           $ref: "#/components/responses/InternalError"
     delete:
@@ -304,6 +260,7 @@ paths:
         - clerkBearer: []
       parameters:
         - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: bypassGovernance
           in: query
           required: false
@@ -317,8 +274,8 @@ paths:
             schema:
               $ref: "#/components/schemas/DeleteKeys"
       responses:
-        "200":
-          description: Objects deleted.
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -337,13 +294,10 @@ paths:
       parameters:
         - $ref: "#/components/parameters/BucketName"
         - $ref: "#/components/parameters/FileName"
+        - $ref: "#/components/parameters/IdempotencyKey"
       responses:
-        "200":
-          description: Presigned upload.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PresignResponse"
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -361,6 +315,7 @@ paths:
         - clerkBearer: []
       parameters:
         - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -368,8 +323,8 @@ paths:
             schema:
               $ref: "#/components/schemas/PendingUpload"
       responses:
-        "204":
-          description: Upload committed.
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -389,6 +344,7 @@ paths:
         - clerkBearer: []
       parameters:
         - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -396,8 +352,8 @@ paths:
             schema:
               $ref: "#/components/schemas/PendingUpload"
       responses:
-        "204":
-          description: Pending upload aborted.
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -417,13 +373,8 @@ paths:
         - $ref: "#/components/parameters/BucketName"
         - $ref: "#/components/parameters/ObjectKey"
       responses:
-        "200":
-          description: Object bytes.
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -444,6 +395,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/BucketName"
         - $ref: "#/components/parameters/ObjectKey"
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -451,8 +403,8 @@ paths:
             schema:
               $ref: "#/components/schemas/CopyDestination"
       responses:
-        "200":
-          description: Object copied and committed.
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -473,6 +425,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/BucketName"
         - $ref: "#/components/parameters/ObjectKey"
+        - $ref: "#/components/parameters/IdempotencyKey"
         - name: versionId
           in: query
           required: false
@@ -485,8 +438,8 @@ paths:
             type: boolean
             default: false
       responses:
-        "204":
-          description: Object deleted.
+        "202":
+          $ref: "#/components/responses/JobAccepted"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -614,7 +567,28 @@ components:
       required: true
       schema:
         type: string
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
   responses:
+    JobAccepted:
+      description: The work was accepted and will run one EC2 job at a time.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/JobReceipt"
     BadRequest:
       description: The request is invalid.
       content:
@@ -652,6 +626,33 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorMessage"
   schemas:
+    JobReceipt:
+      type: object
+      required: [jobId, status]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+    JobState:
+      type: object
+      required: [jobId, status]
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        result:
+          description: Present when the job completed. Shape matches the operation's former response.
+        error:
+          $ref: "#/components/schemas/ErrorMessage"
+        httpStatus:
+          type: integer
+          description: Status produced by the finished job. Present for failed jobs and for completed jobs that previously returned an empty body.
     ErrorMessage:
       type: object
       required: [message]

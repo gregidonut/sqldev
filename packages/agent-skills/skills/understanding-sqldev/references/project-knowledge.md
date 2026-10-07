@@ -6,7 +6,7 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 
 | Concern | Authored source |
 | --- | --- |
-| App composition | `sst.config.ts` imports `infra/realtime.ts`, `infra/api.ts`, and `infra/web.ts`; storage is returned from `infra/storage.ts` |
+| App composition | `sst.config.ts` imports `infra/realtime.ts`, `infra/api.ts`, and `infra/web.ts`; `infra/api.ts` imports `infra/jobs.ts` and `infra/host.ts`; storage is returned from `infra/storage.ts` |
 | Stage behavior | Production is protected and retained. The `dev` stage skips the VPC and NAT EIP in `infra/vpc.ts` |
 | Secrets | `infra/secrets.ts` declares SST secrets. `sst-env.d.ts` is generated from linked resources |
 | Resource injection | `packages/core/src/envBuilder/index.ts` |
@@ -41,7 +41,9 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 
 ## Boundaries verified from source
 
-- `infra/api.ts` defines `sst.aws.ApiGatewayV1` named `GoApi`. The Lambda receives `events.APIGatewayProxyRequest`. Outside `dev` it is attached to `sqldevSupabaseVPC` and linked to the Supabase URL, Supabase key, and Clerk secret. Older "API Gateway v2" wording does not describe the current resource.
+- `infra/api.ts` defines `sst.aws.ApiGatewayV1` named `GoApi`. The Lambda receives `events.APIGatewayProxyRequest` and uses `GoApiRole`. Setting `role` replaces SST's default function role, so that role allows `appsync:*` in the `dev` stage for the live Lambda bridge. Outside `dev` it is attached to `sqldevSupabaseVPC`. Supabase-backed operations return `202` and a job id; `GET /api/jobs/{jobId}` is owner-scoped. `/notify`, `/renderMd`, and Clerk profile lookup stay synchronous. Older "API Gateway v2" wording does not describe the current resource.
+- `infra/jobs.ts` defines the standard `JobQueue`, its dead-letter queue, the `JobStatus` DynamoDB table, and the private `JobResultBucket`. Queue access is granted on `GoApiRole` and `HostRole`, not through the queue component link.
+- `infra/host.ts` creates the private Supabase EC2 host outside `dev`. `packages/functions/cmd/supabaseworker` is the single-concurrency DBOS consumer. DBOS state lives in the `dbos` schema of that Postgres instance. The `imgproxy` job kind is reserved and not deployed.
 - `packages/frontend/src/fetch.ts` is the Astro 7 advanced-routing entrypoint. Non-API requests use `astro()`. `/api/**` requests run Clerk middleware, require a signed-in user, and forward the native Clerk session JWT to Go. Browser API URLs are unchanged.
 - Go calls Supabase with that Clerk JWT as the bearer token and the publishable key as `apikey`, so `auth.jwt()`, RLS, and the storage RPCs stay user-scoped. It does not use the service role for those calls. `infra/storage.ts` keeps `SQLDevBucket` private.
 - `infra/realtime.ts` defines `sst.aws.Realtime`. Application MQTT is AWS IoT. `packages/backend/supabase/config.toml` sets `[realtime] enabled = false`.

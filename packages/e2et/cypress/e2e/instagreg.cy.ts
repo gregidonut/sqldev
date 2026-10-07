@@ -35,7 +35,7 @@ describe("instagreg", () => {
       }).type(postText);
       cy.get("[data-cy='create_ig_post_submit']").click();
 
-      cy.wait("@createPost").its("response.statusCode").should("eq", 200);
+      cy.wait("@createPost").its("response.statusCode").should("eq", 202);
       cy.wait("@listRefetch");
 
       cy.get("[data-cy='igPosts_list']", { timeout: 20000 }).should(
@@ -75,7 +75,7 @@ describe("instagreg", () => {
 
       cy.get("[data-cy='edit_ig_post_submit']").click();
 
-      cy.wait("@updatePost").its("response.statusCode").should("eq", 200);
+      cy.wait("@updatePost").its("response.statusCode").should("eq", 202);
 
       cy.get("[data-cy='ig_post_body'] h2", { timeout: 20000 }).should(
         "contain",
@@ -115,7 +115,7 @@ describe("instagreg", () => {
       cy.visit("/instagreg");
       cy.waitForClerkLoaded();
       cy.get("[data-cy='igPosts_list']", { timeout: 20000 }).should("exist");
-      cy.wait("@listGet").its("response.statusCode").should("eq", 200);
+      cy.wait("@listGet").its("response.statusCode").should("eq", 202);
       cy.get("[data-cy='mqtt_connected']", { timeout: 20000 }).should("exist");
 
       ownerId().then((identifier) => {

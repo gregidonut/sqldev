@@ -36,6 +36,10 @@ export async function proxyAuthenticatedApi(
     if (accept) {
         headers.set("Accept", accept);
     }
+    const idempotencyKey = request.headers.get("Idempotency-Key");
+    if (idempotencyKey) {
+        headers.set("Idempotency-Key", idempotencyKey);
+    }
     headers.set("Authorization", `Bearer ${token}`);
 
     const init: RequestInit & { duplex?: "half" } = {

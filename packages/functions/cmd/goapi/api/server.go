@@ -12,6 +12,9 @@ import (
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/clerkprofile"
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/s3store"
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/supadb"
+	"github.com/gregidonut/sqldev/packages/functions/internal/queue"
+	"github.com/gregidonut/sqldev/packages/functions/internal/result"
+	"github.com/gregidonut/sqldev/packages/functions/internal/status"
 )
 
 var (
@@ -39,6 +42,7 @@ type Objects interface {
 	Copy(ctx context.Context, sourceBucket, destinationBucket, sourceKey, destinationKey string) error
 	Exists(ctx context.Context, bucket, key string) (bool, error)
 	PresignPut(ctx context.Context, bucket, key string) (string, error)
+	PresignGet(ctx context.Context, bucket, key string) (string, error)
 }
 
 // Profiles loads Clerk users after the caller is authenticated.
@@ -52,6 +56,10 @@ type Server struct {
 	Objects  Objects
 	Profiles Profiles
 	Bucket   string
+	Identity Identity
+	Jobs     status.Store
+	Sender   queue.Sender
+	Results  result.Store
 }
 
 func (s *Server) caller(ctx context.Context) (string, string, error) {

@@ -1,5 +1,5 @@
-import axios from "axios";
 import { mutationOptions, useQueryClient } from "@tanstack/react-query";
+import { requestJob } from "@/server/requestJob";
 import { storageBasePath } from "./paths.ts";
 import { dStorageListKeyPrefix } from "./createListGet.ts";
 
@@ -26,7 +26,7 @@ export default function createCopyPostMutationOptions({
         }: CopyVariables) {
             // The proxy resolves the destination ids itself, so the body only
             // carries the bucket and the requested file name.
-            return axios({
+            return requestJob({
                 method: "POST",
                 url: `${storageBasePath(bucketName)}/objects/copy`,
                 params: { key },

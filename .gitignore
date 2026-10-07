@@ -28,6 +28,9 @@ node_modules
 # opennext
 .open-next
 
+# cypress
+packages/e2et/cypress/downloads/
+
 # misc
 .DS_Store
 

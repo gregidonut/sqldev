@@ -1,5 +1,5 @@
-import axios from "axios";
 import { mutationOptions, useQueryClient } from "@tanstack/react-query";
+import { requestJob } from "@/server/requestJob";
 import { storageBasePath } from "./paths.ts";
 import { dStorageListKeyPrefix } from "./createListGet.ts";
 
@@ -19,7 +19,7 @@ export default function createBatchDeleteMutationOptions({
     return mutationOptions({
         mutationFn: function ({ keys }: BatchDeleteVariables) {
             // Raw key strings; the proxy expands them into ObjectKeyRef objects.
-            return axios({
+            return requestJob({
                 method: "DELETE",
                 url: `${storageBasePath(bucketName)}/objects`,
                 data: { keys },

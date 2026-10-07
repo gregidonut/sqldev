@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Uppy from "@uppy/core";
 import AwsS3 from "@uppy/aws-s3";
+import { requestJob } from "@/server/requestJob";
 import { storageBasePath } from "../queryOptions/paths";
 import type { PendingUpload } from "@/utils/storage/pendingUpload";
 
@@ -47,15 +48,12 @@ function createStorageUppy(bucketName: string): StorageUppy {
     const pendingByS3Key = new Map<string, PendingUpload>();
 
     async function postPending(action: "commit" | "abort", pending: PendingUpload) {
-        const response = await fetch(`${objectsPath}/${action}`, {
+        await requestJob({
             method: "POST",
+            url: `${objectsPath}/${action}`,
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(pending),
+            data: pending,
         });
-        if (!response.ok) {
-            const text = await response.text().catch(() => "");
-            throw new Error(text || `${action} failed (${response.status})`);
-        }
     }
 
     const uppy = new Uppy({
@@ -76,16 +74,14 @@ function createStorageUppy(bucketName: string): StorageUppy {
                 throw new Error(`unsupported S3 ${method} for ${key}`);
             }
 
-            const response = await fetch(
-                `${objectsPath}/presign?fileName=${encodeURIComponent(key)}`,
-                { method: "POST" },
-            );
-            const body: unknown = await response.json().catch(() => null);
+            const body = await requestJob<unknown>({
+                method: "POST",
+                url: `${objectsPath}/presign`,
+                params: { fileName: key },
+            });
 
-            if (!response.ok || !isPresignResponse(body)) {
-                throw new Error(
-                    `Could not prepare upload for ${key} (${response.status})`,
-                );
+            if (!isPresignResponse(body)) {
+                throw new Error(`Could not prepare upload for ${key}`);
             }
 
             pendingByS3Key.set(body.key, body.pendingUpload);

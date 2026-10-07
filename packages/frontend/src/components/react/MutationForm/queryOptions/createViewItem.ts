@@ -1,5 +1,5 @@
 import { mutationOptions, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import { requestJob } from "@/server/requestJob";
 import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
 import type {
     CreateIgPostArgs,
@@ -20,7 +20,7 @@ export default function createViewItemMutationOptions<K extends keyof ViewMap>({
 
     return mutationOptions({
         mutationFn: async function (data: ViewCreateArgs[K]) {
-            await axios({
+            await requestJob({
                 method: "post",
                 url: `/api/views/${view}/new/item`,
                 data,

@@ -1,5 +1,5 @@
-import axios from "axios";
 import { mutationOptions, useQueryClient } from "@tanstack/react-query";
+import { requestJob } from "@/server/requestJob";
 import { storageBasePath } from "./paths.ts";
 import { dStorageListKeyPrefix } from "./createListGet.ts";
 
@@ -18,7 +18,7 @@ export default function createOneDeleteMutationOptions({
 
     return mutationOptions({
         mutationFn: function ({ key }: OneDeleteVariables) {
-            return axios({
+            return requestJob({
                 method: "DELETE",
                 url: `${storageBasePath(bucketName)}/objects/object`,
                 params: { key },
