@@ -1,0 +1,3 @@
+[submodule "packages/astro-sst"]
+	path = packages/astro-sst
+	url = git@github.com:gregidonut/astro-sst.git

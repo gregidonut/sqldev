@@ -33,7 +33,7 @@ Never record secrets, environment values, tokens, personal data, production data
 | Frontend | `packages/frontend` | — |
 | Browser tests | `packages/e2et/cypress` | — |
 
-The frontend adapter is the `astro-sst` dependency in `packages/frontend/package.json`.
+The frontend adapter is the `astro-sst` submodule at `packages/astro-sst`. The installable package is `packages/astro-sst/packages/astro-sst`, linked from `packages/frontend/package.json`. Its Lambda entry uses Astro's automatic server entrypoint, so deployed requests run `packages/frontend/src/fetch.ts` before page matching.
 
 ## SST and commands
 
@@ -55,7 +55,7 @@ AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' STAGE=dev bun run shell src
 
 Local Supabase is the CLI project at `packages/backend/supabase`. Start and stop it through `src/sb`. The `user-postgres-dev` MCP is the local dev database; use it to inspect that database. Schema changes still belong in migrations.
 
-Deployed Supabase is self-hosted and reached by the non-dev frontend Lambda through the VPC in `infra/vpc.ts`. The `dev` stage does not create that VPC. The Go API Lambda is not attached to it. The Supabase EC2 host is not declared in `infra/`.
+Deployed Supabase is self-hosted and reached by the non-dev frontend and Go API Lambdas through the VPC in `infra/vpc.ts`. The `dev` stage does not create that VPC. The Supabase EC2 host is not declared in `infra/`.
 
 Authorization is application RBAC plus RLS. Clerk's JWT `sub` maps to the internal user through `get_owner()`. Roles and permissions are tables and enums, not PostgreSQL role grants. Follow the `supabase` and `supabase-postgres-best-practices` skills before changing schema, policies, views, functions, or storage.
 
