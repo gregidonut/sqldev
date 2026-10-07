@@ -1,3 +1,4 @@
-[submodule "packages/astro-sst"]
-	path = packages/astro-sst
-	url = git@github.com:gregidonut/astro-sst.git
+[submodule "packages/astro-sst-pr-47"]
+	path = packages/astro-sst-pr-47
+	url = git@github.com:sst-community/sst.git
+	branch = astro-sst
