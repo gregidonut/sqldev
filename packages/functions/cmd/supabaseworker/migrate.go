@@ -14,14 +14,14 @@ import (
 
 func migrate(ctx context.Context) error {
 	adminURL := os.Getenv("ADMIN_DATABASE_URL")
+	if err := applyRoles(ctx, envOr("ROLES_DATABASE_URL", adminURL)); err != nil {
+		return fmt.Errorf("roles: %w", err)
+	}
 	conn, err := pgx.Connect(ctx, adminURL)
 	if err != nil {
 		return err
 	}
 	defer conn.Close(ctx)
-	if err := applyFile(ctx, conn, envOr("ROLES_FILE", "/roles.sql")); err != nil {
-		return err
-	}
 	entries, err := os.ReadDir(envOr("MIGRATIONS_DIR", "/migrations"))
 	if err != nil {
 		return err
@@ -33,8 +33,17 @@ func migrate(ctx context.Context) error {
 		}
 	}
 	sort.Strings(names)
+	if _, err := conn.Exec(ctx, `
+		CREATE SCHEMA IF NOT EXISTS supabase_migrations;
+		CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
+			version TEXT PRIMARY KEY,
+			name    TEXT
+		);
+	`); err != nil {
+		return err
+	}
 	for _, name := range names {
-		if err := applyFile(ctx, conn, filepath.Join(envOr("MIGRATIONS_DIR", "/migrations"), name)); err != nil {
+		if err := applyMigration(ctx, conn, filepath.Join(envOr("MIGRATIONS_DIR", "/migrations"), name)); err != nil {
 			return fmt.Errorf("%s: %w", name, err)
 		}
 	}
@@ -61,6 +70,44 @@ func migrate(ctx context.Context) error {
 		GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO dbos_worker;
 	`)
 	return err
+}
+
+// applyRoles runs the roles file as the image superuser, because the
+// application migrations run as postgres, which cannot create objects in auth.
+func applyRoles(ctx context.Context, url string) error {
+	conn, err := pgx.Connect(ctx, url)
+	if err != nil {
+		return err
+	}
+	defer conn.Close(ctx)
+	return applyFile(ctx, conn, envOr("ROLES_FILE", "/roles.sql"))
+}
+
+// applyMigration runs one migration file and records its version in the same
+// transaction, so a rerun skips applied files and a failure leaves no partial file.
+func applyMigration(ctx context.Context, conn *pgx.Conn, path string) error {
+	base := filepath.Base(path)
+	version, name, _ := strings.Cut(strings.TrimSuffix(base, ".sql"), "_")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ($1, $2) ON CONFLICT (version) DO NOTHING`, version, name)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, string(body)); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func applyFile(ctx context.Context, conn *pgx.Conn, path string) error {

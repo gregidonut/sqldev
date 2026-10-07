@@ -138,11 +138,12 @@ const queueStatements = all([
       {
         Effect: "Deny",
         Principal: "*",
+        // GetQueueAttributes is omitted. Pulumi reads it while applying this
+        // policy, and an explicit deny blocks the deploying user.
         Action: [
           "sqs:ReceiveMessage",
           "sqs:DeleteMessage",
           "sqs:ChangeMessageVisibility",
-          "sqs:GetQueueAttributes",
         ],
         Resource: queueArn,
         Condition: {

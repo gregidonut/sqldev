@@ -38,6 +38,10 @@ declare module "sst" {
       "type": "sst.aws.ApiGatewayV1"
       "url": string
     }
+    "HostConfigBucket": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
     "ImgproxyUrl": {
       "type": "sst.sst.Secret"
       "value": string
@@ -90,6 +94,10 @@ declare module "sst" {
     "SupabaseUrl": {
       "type": "sst.sst.Secret"
       "value": string
+    }
+    "sqldevSupabaseVPC": {
+      "bastion": string
+      "type": "sst.aws.Vpc"
     }
   }
 }

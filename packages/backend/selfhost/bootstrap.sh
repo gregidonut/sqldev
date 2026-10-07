@@ -15,6 +15,8 @@ root.mkdir(mode=0o700, exist_ok=True)
     encoding="utf-8",
 )
 admin = "postgres://postgres:{postgresPassword}@127.0.0.1:5432/postgres?sslmode=disable".format(**secret)
+# supabase/postgres makes supabase_admin the superuser; only it can create auth.jwt().
+roles = "postgres://supabase_admin:{postgresPassword}@127.0.0.1:5432/postgres?sslmode=disable".format(**secret)
 worker = "postgres://dbos_worker:{workerPassword}@127.0.0.1:5432/postgres?sslmode=disable".format(**secret)
 (root / "worker.env").write_text(
     "\n".join([
@@ -34,6 +36,7 @@ worker = "postgres://dbos_worker:{workerPassword}@127.0.0.1:5432/postgres?sslmod
 (root / "migrate.env").write_text(
     "\n".join([
         f"ADMIN_DATABASE_URL={admin}",
+        f"ROLES_DATABASE_URL={roles}",
         f"WORKER_DATABASE_URL={worker}",
         f"WORKER_PASSWORD={secret['workerPassword']}",
         "MIGRATIONS_DIR=/migrations",

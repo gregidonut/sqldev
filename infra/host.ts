@@ -52,7 +52,9 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
     }),
   });
 
+  const repositoryName = `${$app.name}-${$app.stage}-worker`;
   const repository = new aws.ecr.Repository("WorkerRepository", {
+    name: repositoryName,
     imageTagMutability: "MUTABLE",
     imageScanningConfiguration: { scanOnPush: true },
     encryptionConfigurations: [{ encryptionType: "AES256" }],
@@ -61,11 +63,15 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
   const auth = aws.ecr.getAuthorizationTokenOutput({
     registryId: repository.registryId,
   });
+  const dockerfile = join(
+    process.cwd(),
+    "packages/functions/cmd/supabaseworker/Dockerfile",
+  );
   const image = new Image("WorkerImage", {
     tags: [interpolate`${repository.repositoryUrl}:latest`],
     context: { location: process.cwd() },
     dockerfile: {
-      location: "packages/functions/cmd/supabaseworker/Dockerfile",
+      location: dockerfile,
     },
     platforms: ["linux/amd64"],
     push: true,

@@ -26,3 +26,21 @@ $$
         END IF;
     END
 $$;
+
+-- Supabase Storage is not deployed here; files live in S3. The migrations still
+-- reference storage.objects (foreign keys on id and RLS policies), so provide
+-- the table. postgres owns it because CREATE POLICY requires the owner.
+CREATE SCHEMA IF NOT EXISTS storage;
+GRANT USAGE ON SCHEMA storage TO postgres, authenticated, anon;
+CREATE TABLE IF NOT EXISTS storage.objects
+(
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    bucket_id  TEXT,
+    name       TEXT,
+    owner      UUID,
+    metadata   JSONB,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE storage.objects OWNER TO postgres;
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
