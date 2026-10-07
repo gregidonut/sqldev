@@ -10,7 +10,7 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 | Stage behavior | Production is protected and retained. The `dev` stage skips the VPC and NAT EIP in `infra/vpc.ts` |
 | Secrets | `infra/secrets.ts` declares SST secrets. `sst-env.d.ts` is generated from linked resources |
 | Resource injection | `packages/core/src/envBuilder/index.ts` |
-| Command wrappers | `packages/scripts/src/sb/index.ts`, `packages/scripts/src/cy/index.ts`, `packages/scripts/src/s3/index.ts` |
+| Command wrappers | `packages/scripts/src/sb/index.ts`, `packages/scripts/src/cy/index.ts`, `packages/scripts/src/s3/index.ts`, `packages/scripts/src/replacehost/index.ts` |
 | Wrapper script | `packages/scripts/package.json` registers only `shell` (`sst --stage $STAGE shell bun`) |
 | Local database | `packages/backend/supabase/config.toml` and `packages/backend/supabase/migrations/` |
 | Browser tests | `packages/e2et/cypress.config.ts`, `packages/e2et/cypress/e2e/`, `packages/e2et/cypress/tasks/` |
