@@ -2,7 +2,36 @@
 # Runs on the private host. Database passwords are fetched at boot and written mode 0600.
 set -euo pipefail
 
-install -d -m 0700 /opt/sqldev /run/sqldev /var/lib/sqldev/postgres
+install -d -m 0700 /opt/sqldev /run/sqldev
+
+volume_token="${DATA_VOLUME_ID//-/}"
+device=""
+for _ in $(seq 1 90); do
+  candidate="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${volume_token}"
+  if [ -e "$candidate" ]; then
+    device=$(readlink -f "$candidate")
+    break
+  fi
+  sleep 2
+done
+if [ -z "$device" ] || [ ! -b "$device" ]; then
+  echo "data volume ${DATA_VOLUME_ID} did not appear" >&2
+  exit 1
+fi
+if ! blkid "$device" >/dev/null 2>&1; then
+  mkfs.xfs -L sqldev-data "$device"
+fi
+install -d /var/lib/sqldev
+mount "$device" /var/lib/sqldev
+install -d -m 0700 /var/lib/sqldev/postgres /var/lib/sqldev/docker
+volume_uuid=$(blkid -s UUID -o value "$device")
+grep -q "$volume_uuid" /etc/fstab || printf 'UUID=%s /var/lib/sqldev xfs defaults,nofail 0 2\n' "$volume_uuid" >> /etc/fstab
+install -d /etc/docker /etc/systemd/system/docker.service.d
+printf '%s\n' '{"data-root":"/var/lib/sqldev/docker"}' > /etc/docker/daemon.json
+cat > /etc/systemd/system/docker.service.d/data-volume.conf <<'EOF'
+[Unit]
+RequiresMountsFor=/var/lib/sqldev
+EOF
 
 SECRET_JSON="$(aws secretsmanager get-secret-value --secret-id "${SECRET_ARN}" --query SecretString --output text)"
 python3 - "${SECRET_JSON}" <<'PY'
@@ -49,6 +78,7 @@ for path in root.iterdir():
 PY
 
 dnf install -y docker
+systemctl daemon-reload
 systemctl enable --now docker
 aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${REGISTRY}"
 

@@ -12,10 +12,12 @@ import {
 } from "./jobs";
 
 const instanceType = process.env.HOST_INSTANCE_TYPE ?? "t3.medium";
-const volumeGb = Number(process.env.HOST_VOLUME_GB ?? "40");
+const volumeGb = Number(process.env.HOST_VOLUME_GB ?? "30");
+// The standard AL2023 snapshot is 8 GB, and AWS rejects a smaller root volume.
+const rootVolumeGb = 8;
 
-if (!Number.isInteger(volumeGb) || volumeGb < 40) {
-  throw new Error("HOST_VOLUME_GB must be an integer of at least 40");
+if (!Number.isInteger(volumeGb) || volumeGb < 30) {
+  throw new Error("HOST_VOLUME_GB must be an integer of at least 30");
 }
 
 const selfhost = join(process.cwd(), "packages/backend/selfhost");
@@ -223,6 +225,13 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
       { name: "virtualization-type", values: ["hvm"] },
     ],
   });
+  const subnetId = vpc.privateSubnets.apply((ids) => ids[0]);
+  const dataVolume = new aws.ebs.Volume("HostDataVolume", {
+    availabilityZone: aws.ec2.getSubnetOutput({ id: subnetId }).availabilityZone,
+    size: volumeGb,
+    type: "gp3",
+    encrypted: true,
+  });
   const userData = all([
     configBucket.name,
     secret.arn,
@@ -232,6 +241,7 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
     bucket.name,
     registry,
     image.ref,
+    dataVolume.id,
   ]).apply(
     ([
       configName,
@@ -242,6 +252,7 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
       appBucket,
       registryAddress,
       imageRef,
+      dataVolumeId,
     ]) => `#!/bin/bash
 set -euo pipefail
 export CONFIG_BUCKET='${configName}'
@@ -255,6 +266,7 @@ export JOB_RESULT_BUCKET='${resultName}'
 export APP_BUCKET='${appBucket}'
 export REGISTRY='${registryAddress}'
 export IMAGE='${imageRef}'
+export DATA_VOLUME_ID='${dataVolumeId}'
 install -d -m 0700 /opt/sqldev
 aws s3 cp "s3://\${CONFIG_BUCKET}/bootstrap.sh" /opt/sqldev/bootstrap.sh
 bash /opt/sqldev/bootstrap.sh
@@ -264,7 +276,7 @@ bash /opt/sqldev/bootstrap.sh
   const instance = new aws.ec2.Instance("SupabaseHost", {
     ami: ami.id,
     instanceType,
-    subnetId: vpc.privateSubnets.apply((ids) => ids[0]),
+    subnetId,
     vpcSecurityGroupIds: [securityGroup.id],
     iamInstanceProfile: profile.name,
     associatePublicIpAddress: false,
@@ -277,14 +289,25 @@ bash /opt/sqldev/bootstrap.sh
     },
     rootBlockDevice: {
       volumeType: "gp3",
-      volumeSize: volumeGb,
+      volumeSize: rootVolumeGb,
       encrypted: true,
-      deleteOnTermination: false,
+      deleteOnTermination: true,
     },
     tags: {
       Name: `${$app.name}-${$app.stage}-supabase`,
     },
   });
+  // Detach the data disk before attaching it to a replacement instance.
+  new aws.ec2.VolumeAttachment(
+    "HostDataAttachment",
+    {
+      deviceName: "/dev/sdf",
+      volumeId: dataVolume.id,
+      instanceId: instance.id,
+      forceDetach: true,
+    },
+    { deleteBeforeReplace: true },
+  );
 
   return { role, instance };
 }
