@@ -211,6 +211,33 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/images/transform:
+    post:
+      operationId: transformImage
+      summary: Queue a typed image transform
+      description: Accepts one private storage object and bounded resize options. The image is processed by the private host after the job is read from SQS.
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImageTransform"
+      responses:
+        "202":
+          $ref: "#/components/responses/JobAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/storage/buckets/{bucketName}:
     get:
       operationId: bucketExists
@@ -647,7 +674,7 @@ components:
           type: string
           enum: [pending, running, completed, failed]
         result:
-          description: Present when the job completed. Shape matches the operation's former response.
+          description: Present when the job completed. Database jobs return their former response body. Image jobs return an ImageResult with a short-lived URL.
         error:
           $ref: "#/components/schemas/ErrorMessage"
         httpStatus:
@@ -728,6 +755,44 @@ components:
           type: boolean
         s3ObjectKey:
           type: string
+    ImageTransform:
+      type: object
+      additionalProperties: false
+      required: [sourceKey, width, height, fit, format, quality]
+      properties:
+        sourceKey:
+          type: string
+          minLength: 1
+          description: Key of a storage object in the linked bucket.
+        width:
+          type: integer
+          minimum: 1
+          maximum: 4096
+        height:
+          type: integer
+          minimum: 1
+          maximum: 4096
+        fit:
+          type: string
+          enum: [contain, cover]
+        format:
+          type: string
+          enum: [jpeg, png, webp]
+        quality:
+          type: integer
+          minimum: 1
+          maximum: 100
+    ImageResult:
+      type: object
+      additionalProperties: false
+      required: [url, contentType]
+      properties:
+        url:
+          type: string
+          description: Presigned GET URL for the transformed image. It expires after five minutes.
+        contentType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
     PresignResponse:
       type: object
       required: [url, key, pendingUpload]

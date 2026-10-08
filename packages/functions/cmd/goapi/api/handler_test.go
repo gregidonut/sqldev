@@ -169,23 +169,6 @@ func TestExecuteCommitMissingObjectAborts(t *testing.T) {
 	}
 }
 
-func TestImgproxyKindIsReserved(t *testing.T) {
-	server := testServer(t, &fakeDB{}, &fakeObjects{}, queue.NewMemory())
-	outcome, err := server.Execute(jobContext(), jobs.Envelope{
-		Version: jobs.Version,
-		JobID:   "11111111-1111-4111-8111-111111111111",
-		Kind:    jobs.KindImgproxy,
-		Claims:  jobs.Claims{Subject: "user_test", Role: "authenticated"},
-		Payload: json.RawMessage(`{}`),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if outcome.HTTPStatus != http.StatusNotImplemented {
-		t.Fatalf("status = %d", outcome.HTTPStatus)
-	}
-}
-
 func testServer(t *testing.T, db *fakeDB, objects *fakeObjects, messages *queue.Memory) *Server {
 	t.Helper()
 	return &Server{
@@ -256,6 +239,7 @@ type fakeDB struct {
 	listJWT      string
 	listRelation string
 	rpcBody      json.RawMessage
+	rpcByName    map[string]json.RawMessage
 	rpcErr       error
 	rpcJWT       string
 	rpcs         []string
@@ -270,6 +254,9 @@ func (f *fakeDB) RPC(_ context.Context, jwt, name string, args any) (json.RawMes
 	}
 	if name == "set_owner" {
 		return json.RawMessage(`"` + testUser + `"`), nil
+	}
+	if body, ok := f.rpcByName[name]; ok {
+		return body, nil
 	}
 	if f.rpcErr != nil {
 		return nil, f.rpcErr

@@ -29,6 +29,66 @@ const (
 	ClerkBearerScopes clerkBearerContextKey = "clerkBearer.Scopes"
 )
 
+// Defines values for ImageResultContentType.
+const (
+	Imagejpeg ImageResultContentType = "image/jpeg"
+	Imagepng  ImageResultContentType = "image/png"
+	Imagewebp ImageResultContentType = "image/webp"
+)
+
+// Valid indicates whether the value is a known member of the ImageResultContentType enum.
+func (e ImageResultContentType) Valid() bool {
+	switch e {
+	case Imagejpeg:
+		return true
+	case Imagepng:
+		return true
+	case Imagewebp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImageTransformFit.
+const (
+	Contain ImageTransformFit = "contain"
+	Cover   ImageTransformFit = "cover"
+)
+
+// Valid indicates whether the value is a known member of the ImageTransformFit enum.
+func (e ImageTransformFit) Valid() bool {
+	switch e {
+	case Contain:
+		return true
+	case Cover:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ImageTransformFormat.
+const (
+	Jpeg ImageTransformFormat = "jpeg"
+	Png  ImageTransformFormat = "png"
+	Webp ImageTransformFormat = "webp"
+)
+
+// Valid indicates whether the value is a known member of the ImageTransformFormat enum.
+func (e ImageTransformFormat) Valid() bool {
+	switch e {
+	case Jpeg:
+		return true
+	case Png:
+		return true
+	case Webp:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for JobReceiptStatus.
 const (
 	JobReceiptStatusCompleted JobReceiptStatus = "completed"
@@ -162,6 +222,35 @@ type FormBody struct {
 	Payload *openapi_types.File `json:"payload,omitempty"`
 }
 
+// ImageResult defines model for ImageResult.
+type ImageResult struct {
+	ContentType ImageResultContentType `json:"contentType"`
+
+	// Url Presigned GET URL for the transformed image. It expires after five minutes.
+	Url string `json:"url"`
+}
+
+// ImageResultContentType defines model for ImageResult.ContentType.
+type ImageResultContentType string
+
+// ImageTransform defines model for ImageTransform.
+type ImageTransform struct {
+	Fit     ImageTransformFit    `json:"fit"`
+	Format  ImageTransformFormat `json:"format"`
+	Height  int                  `json:"height"`
+	Quality int                  `json:"quality"`
+
+	// SourceKey Key of a storage object in the linked bucket.
+	SourceKey string `json:"sourceKey"`
+	Width     int    `json:"width"`
+}
+
+// ImageTransformFit defines model for ImageTransform.Fit.
+type ImageTransformFit string
+
+// ImageTransformFormat defines model for ImageTransform.Format.
+type ImageTransformFormat string
+
 // JobReceipt defines model for JobReceipt.
 type JobReceipt struct {
 	JobId  openapi_types.UUID `json:"jobId"`
@@ -179,7 +268,7 @@ type JobState struct {
 	HttpStatus *int               `json:"httpStatus,omitempty"`
 	JobId      openapi_types.UUID `json:"jobId"`
 
-	// Result Present when the job completed. Shape matches the operation's former response.
+	// Result Present when the job completed. Database jobs return their former response body. Image jobs return an ImageResult with a short-lived URL.
 	Result interface{}    `json:"result,omitempty"`
 	Status JobStateStatus `json:"status"`
 }
@@ -275,6 +364,11 @@ type Unauthorized = ErrorMessage
 // clerkBearerContextKey is the context key for clerkBearer security scheme
 type clerkBearerContextKey string
 
+// TransformImageParams defines parameters for TransformImage.
+type TransformImageParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
 // DeleteObjectsParams defines parameters for DeleteObjects.
 type DeleteObjectsParams struct {
 	BypassGovernance *bool          `form:"bypassGovernance,omitempty" json:"bypassGovernance,omitempty"`
@@ -361,6 +455,9 @@ type NotifyJSONBodyVisibility string
 type RenderMdJSONBody struct {
 	Text string `json:"text"`
 }
+
+// TransformImageJSONRequestBody defines body for TransformImage for application/json ContentType.
+type TransformImageJSONRequestBody = ImageTransform
 
 // DeleteObjectsJSONRequestBody defines body for DeleteObjects for application/json ContentType.
 type DeleteObjectsJSONRequestBody = DeleteKeys
@@ -465,6 +562,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// TransformImageWithBody request with any body
+	TransformImageWithBody(ctx context.Context, params *TransformImageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	TransformImage(ctx context.Context, params *TransformImageParams, body TransformImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetJob request
 	GetJob(ctx context.Context, jobId JobId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -536,6 +638,30 @@ type ClientInterface interface {
 	RenderMdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	RenderMd(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) TransformImageWithBody(ctx context.Context, params *TransformImageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTransformImageRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TransformImage(ctx context.Context, params *TransformImageParams, body TransformImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTransformImageRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetJob(ctx context.Context, jobId JobId, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -848,6 +974,59 @@ func (c *Client) RenderMd(ctx context.Context, body RenderMdJSONRequestBody, req
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewTransformImageRequest calls the generic TransformImage builder with application/json body
+func NewTransformImageRequest(server string, params *TransformImageParams, body TransformImageJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTransformImageRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewTransformImageRequestWithBody generates requests for TransformImage with any type of body
+func NewTransformImageRequestWithBody(server string, params *TransformImageParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/images/transform")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
 }
 
 // NewGetJobRequest generates requests for GetJob
@@ -1961,6 +2140,11 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// TransformImageWithBodyWithResponse request with any body
+	TransformImageWithBodyWithResponse(ctx context.Context, params *TransformImageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TransformImageResponse, error)
+
+	TransformImageWithResponse(ctx context.Context, params *TransformImageParams, body TransformImageJSONRequestBody, reqEditors ...RequestEditorFn) (*TransformImageResponse, error)
+
 	// GetJobWithResponse request
 	GetJobWithResponse(ctx context.Context, jobId JobId, reqEditors ...RequestEditorFn) (*GetJobResponse, error)
 
@@ -2032,6 +2216,40 @@ type ClientWithResponsesInterface interface {
 	RenderMdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
 
 	RenderMdWithResponse(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
+}
+
+type TransformImageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *JobAccepted
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r TransformImageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TransformImageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r TransformImageResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type GetJobResponse struct {
@@ -2703,6 +2921,23 @@ func (r RenderMdResponse) ContentType() string {
 	return ""
 }
 
+// TransformImageWithBodyWithResponse request with arbitrary body returning *TransformImageResponse
+func (c *ClientWithResponses) TransformImageWithBodyWithResponse(ctx context.Context, params *TransformImageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TransformImageResponse, error) {
+	rsp, err := c.TransformImageWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTransformImageResponse(rsp)
+}
+
+func (c *ClientWithResponses) TransformImageWithResponse(ctx context.Context, params *TransformImageParams, body TransformImageJSONRequestBody, reqEditors ...RequestEditorFn) (*TransformImageResponse, error) {
+	rsp, err := c.TransformImage(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTransformImageResponse(rsp)
+}
+
 // GetJobWithResponse request returning *GetJobResponse
 func (c *ClientWithResponses) GetJobWithResponse(ctx context.Context, jobId JobId, reqEditors ...RequestEditorFn) (*GetJobResponse, error) {
 	rsp, err := c.GetJob(ctx, jobId, reqEditors...)
@@ -2929,6 +3164,60 @@ func (c *ClientWithResponses) RenderMdWithResponse(ctx context.Context, body Ren
 		return nil, err
 	}
 	return ParseRenderMdResponse(rsp)
+}
+
+// ParseTransformImageResponse parses an HTTP response from a TransformImageWithResponse call
+func ParseTransformImageResponse(rsp *http.Response) (*TransformImageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TransformImageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGetJobResponse parses an HTTP response from a GetJobWithResponse call
@@ -3921,6 +4210,9 @@ func ParseRenderMdResponse(rsp *http.Response) (*RenderMdResponse, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Queue a typed image transform
+	// (POST /api/images/transform)
+	TransformImage(w http.ResponseWriter, r *http.Request, params TransformImageParams)
 	// Read a job owned by the caller
 	// (GET /api/jobs/{jobId})
 	GetJob(w http.ResponseWriter, r *http.Request, jobId JobId)
@@ -3991,6 +4283,57 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// TransformImage operation middleware
+func (siw *ServerInterfaceWrapper) TransformImage(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params TransformImageParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TransformImage(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetJob operation middleware
 func (siw *ServerInterfaceWrapper) GetJob(w http.ResponseWriter, r *http.Request) {
@@ -5139,6 +5482,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.HandleFunc(options.BaseURL+"/api/images/transform", wrapper.TransformImage).Methods(http.MethodPost)
+
 	r.HandleFunc(options.BaseURL+"/api/jobs/{jobId}", wrapper.GetJob).Methods(http.MethodGet)
 
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}", wrapper.BucketExists).Methods(http.MethodGet)
@@ -5195,6 +5540,85 @@ type JobAcceptedJSONResponse JobReceipt
 type NotFoundJSONResponse ErrorMessage
 
 type UnauthorizedJSONResponse ErrorMessage
+
+type TransformImageRequestObject struct {
+	Params TransformImageParams
+	Body   *TransformImageJSONRequestBody
+}
+
+type TransformImageResponseObject interface {
+	VisitTransformImageResponse(w http.ResponseWriter) error
+}
+
+type TransformImage202JSONResponse struct{ JobAcceptedJSONResponse }
+
+func (response TransformImage202JSONResponse) VisitTransformImageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TransformImage400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response TransformImage400JSONResponse) VisitTransformImageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TransformImage401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response TransformImage401JSONResponse) VisitTransformImageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TransformImage403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response TransformImage403JSONResponse) VisitTransformImageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type TransformImage500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response TransformImage500JSONResponse) VisitTransformImageResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type GetJobRequestObject struct {
 	JobId JobId `json:"jobId"`
@@ -6648,6 +7072,9 @@ func (response RenderMd400Response) VisitRenderMdResponse(w http.ResponseWriter)
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Queue a typed image transform
+	// (POST /api/images/transform)
+	TransformImage(ctx context.Context, request TransformImageRequestObject) (TransformImageResponseObject, error)
 	// Read a job owned by the caller
 	// (GET /api/jobs/{jobId})
 	GetJob(ctx context.Context, request GetJobRequestObject) (GetJobResponseObject, error)
@@ -6737,6 +7164,39 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// TransformImage operation middleware
+func (sh *strictHandler) TransformImage(w http.ResponseWriter, r *http.Request, params TransformImageParams) {
+	var request TransformImageRequestObject
+
+	request.Params = params
+
+	var body TransformImageJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.TransformImage(ctx, request.(TransformImageRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "TransformImage")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(TransformImageResponseObject); ok {
+		if err := validResponse.VisitTransformImageResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // GetJob operation middleware
@@ -7345,48 +7805,53 @@ func (sh *strictHandler) RenderMd(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"BwAA//8=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

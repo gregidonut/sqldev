@@ -11,8 +11,12 @@ import (
 
 func (s *Server) Execute(ctx context.Context, envelope jobs.Envelope) (jobs.Outcome, error) {
 	switch envelope.Kind {
-	case jobs.KindImgproxy:
-		return jobs.Outcome{HTTPStatus: http.StatusNotImplemented, Message: "imgproxy is not configured"}, nil
+	case jobs.KindImagor:
+		request, outcome := s.PrepareImage(ctx, envelope)
+		if outcome.HTTPStatus != 0 {
+			return outcome, nil
+		}
+		return s.RenderImage(ctx, envelope, request)
 	case jobs.KindListView:
 		var payload struct {
 			View string `json:"view"`

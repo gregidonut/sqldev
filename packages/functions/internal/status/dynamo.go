@@ -19,15 +19,16 @@ type Dynamo struct {
 }
 
 type item struct {
-	JobID      string `dynamodbav:"jobId"`
-	Owner      string `dynamodbav:"owner"`
-	Kind       string `dynamodbav:"kind"`
-	Status     string `dynamodbav:"status"`
-	HTTPStatus int    `dynamodbav:"httpStatus,omitempty"`
-	Body       string `dynamodbav:"body,omitempty"`
-	ResultKey  string `dynamodbav:"resultKey,omitempty"`
-	Message    string `dynamodbav:"message,omitempty"`
-	ExpiresAt  int64  `dynamodbav:"expiresAt"`
+	JobID       string `dynamodbav:"jobId"`
+	Owner       string `dynamodbav:"owner"`
+	Kind        string `dynamodbav:"kind"`
+	Status      string `dynamodbav:"status"`
+	HTTPStatus  int    `dynamodbav:"httpStatus,omitempty"`
+	Body        string `dynamodbav:"body,omitempty"`
+	ResultKey   string `dynamodbav:"resultKey,omitempty"`
+	ContentType string `dynamodbav:"contentType,omitempty"`
+	Message     string `dynamodbav:"message,omitempty"`
+	ExpiresAt   int64  `dynamodbav:"expiresAt"`
 }
 
 func NewDynamo(ctx context.Context, table string) (*Dynamo, error) {
@@ -87,16 +88,17 @@ func (d *Dynamo) Update(ctx context.Context, record Record) error {
 		Key: map[string]types.AttributeValue{
 			"jobId": &types.AttributeValueMemberS{Value: record.JobID},
 		},
-		UpdateExpression: aws.String("SET #status = :status, httpStatus = :httpStatus, body = :body, resultKey = :resultKey, message = :message"),
+		UpdateExpression: aws.String("SET #status = :status, httpStatus = :httpStatus, body = :body, resultKey = :resultKey, contentType = :contentType, message = :message"),
 		ExpressionAttributeNames: map[string]string{
 			"#status": "status",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":status":     &types.AttributeValueMemberS{Value: record.Status},
-			":httpStatus": &types.AttributeValueMemberN{Value: strconv.Itoa(record.HTTPStatus)},
-			":body":       &types.AttributeValueMemberS{Value: string(record.Body)},
-			":resultKey":  &types.AttributeValueMemberS{Value: record.ResultKey},
-			":message":    &types.AttributeValueMemberS{Value: record.Message},
+			":status":      &types.AttributeValueMemberS{Value: record.Status},
+			":httpStatus":  &types.AttributeValueMemberN{Value: strconv.Itoa(record.HTTPStatus)},
+			":body":        &types.AttributeValueMemberS{Value: string(record.Body)},
+			":resultKey":   &types.AttributeValueMemberS{Value: record.ResultKey},
+			":contentType": &types.AttributeValueMemberS{Value: record.ContentType},
+			":message":     &types.AttributeValueMemberS{Value: record.Message},
 		},
 		ConditionExpression: aws.String("attribute_exists(jobId)"),
 	})
@@ -116,28 +118,30 @@ func toItem(record Record) item {
 		expires = time.Now().Add(24 * time.Hour)
 	}
 	return item{
-		JobID:      record.JobID,
-		Owner:      record.Owner,
-		Kind:       record.Kind,
-		Status:     record.Status,
-		HTTPStatus: record.HTTPStatus,
-		Body:       string(record.Body),
-		ResultKey:  record.ResultKey,
-		Message:    record.Message,
-		ExpiresAt:  expires.Unix(),
+		JobID:       record.JobID,
+		Owner:       record.Owner,
+		Kind:        record.Kind,
+		Status:      record.Status,
+		HTTPStatus:  record.HTTPStatus,
+		Body:        string(record.Body),
+		ResultKey:   record.ResultKey,
+		ContentType: record.ContentType,
+		Message:     record.Message,
+		ExpiresAt:   expires.Unix(),
 	}
 }
 
 func fromItem(stored item) Record {
 	return Record{
-		JobID:      stored.JobID,
-		Owner:      stored.Owner,
-		Kind:       stored.Kind,
-		Status:     stored.Status,
-		HTTPStatus: stored.HTTPStatus,
-		Body:       []byte(stored.Body),
-		ResultKey:  stored.ResultKey,
-		Message:    stored.Message,
-		ExpiresAt:  time.Unix(stored.ExpiresAt, 0),
+		JobID:       stored.JobID,
+		Owner:       stored.Owner,
+		Kind:        stored.Kind,
+		Status:      stored.Status,
+		HTTPStatus:  stored.HTTPStatus,
+		Body:        []byte(stored.Body),
+		ResultKey:   stored.ResultKey,
+		ContentType: stored.ContentType,
+		Message:     stored.Message,
+		ExpiresAt:   time.Unix(stored.ExpiresAt, 0),
 	}
 }

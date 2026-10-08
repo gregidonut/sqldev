@@ -31,7 +31,7 @@ const (
 	KindCopy           = "copyObject"
 	KindDeleteObject   = "deleteSingleObject"
 	KindDeleteObjects  = "deleteObjects"
-	KindImgproxy       = "imgproxy"
+	KindImagor         = "imagor"
 )
 
 type Claims struct {
@@ -48,10 +48,18 @@ type Envelope struct {
 	TraceID string          `json:"traceId,omitempty"`
 }
 
+// Artifact is the transformed image stored before the caller receives a URL.
+type Artifact struct {
+	Key         string `json:"key"`
+	ContentType string `json:"contentType"`
+	Body        []byte `json:"body,omitempty"`
+}
+
 type Outcome struct {
 	HTTPStatus int             `json:"httpStatus"`
 	Body       json.RawMessage `json:"body,omitempty"`
 	Message    string          `json:"message,omitempty"`
+	Artifact   *Artifact       `json:"artifact,omitempty"`
 }
 
 func NewID() string {
@@ -122,7 +130,7 @@ func knownKind(kind string) bool {
 	case KindListView, KindGetViewItem, KindCreateViewItem, KindUpdateViewItem,
 		KindGetTodoTree, KindMoveTodoItems, KindCreateTodo, KindBucketExists,
 		KindListStorage, KindPresign, KindCommit, KindAbort, KindDownload,
-		KindCopy, KindDeleteObject, KindDeleteObjects, KindImgproxy:
+		KindCopy, KindDeleteObject, KindDeleteObjects, KindImagor:
 		return true
 	default:
 		return false
@@ -132,7 +140,8 @@ func knownKind(kind string) bool {
 func Mutation(kind string) bool {
 	switch kind {
 	case KindCreateViewItem, KindUpdateViewItem, KindMoveTodoItems, KindCreateTodo,
-		KindPresign, KindCommit, KindAbort, KindCopy, KindDeleteObject, KindDeleteObjects:
+		KindPresign, KindCommit, KindAbort, KindCopy, KindDeleteObject, KindDeleteObjects,
+		KindImagor:
 		return true
 	default:
 		return false

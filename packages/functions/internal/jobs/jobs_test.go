@@ -42,6 +42,16 @@ func TestEnvelopeHasNoTokenField(t *testing.T) {
 	}
 }
 
+func TestImagorReusesAnIdempotencyKey(t *testing.T) {
+	if !Mutation(KindImagor) {
+		t.Fatal("imagor retries must reuse the job id")
+	}
+	_, err := Parse(`{"version":1,"jobId":"11111111-1111-4111-8111-111111111111","kind":"imgproxy","claims":{"sub":"user_a","role":"authenticated"},"payload":{}}`)
+	if err == nil || !strings.Contains(err.Error(), "unknown job kind") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestParseRejectsUnknownVersion(t *testing.T) {
 	_, err := Parse(`{"version":9,"jobId":"11111111-1111-4111-8111-111111111111","kind":"listView","claims":{"sub":"user_a","role":"authenticated"},"payload":{}}`)
 	if err == nil || !strings.Contains(err.Error(), "version") {

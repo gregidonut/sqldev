@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Image } from "@pulumi/docker-build";
@@ -22,6 +23,8 @@ if (!Number.isInteger(volumeGb) || volumeGb < 30) {
 
 const selfhost = join(process.cwd(), "packages/backend/selfhost");
 const bootstrap = readFileSync(join(selfhost, "bootstrap.sh"), "utf8");
+// Included in user data so a bootstrap change replaces the instance.
+const bootstrapSHA = createHash("sha256").update(bootstrap).digest("hex");
 
 export const host =
   ["dev"].includes($app.stage) || !SupabaseVPC
@@ -41,6 +44,10 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
     length: 32,
     special: false,
   });
+  const imagorSecret = new random.RandomPassword("HostImagorSecret", {
+    length: 48,
+    special: false,
+  });
 
   const secret = new aws.secretsmanager.Secret("HostSecret", {
     description: "Credentials for the private Supabase and DBOS host",
@@ -51,6 +58,7 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
       postgresPassword: dbPassword.result,
       jwtSecret: jwtSecret.result,
       workerPassword: workerPassword.result,
+      imagorSecret: imagorSecret.result,
     }),
   });
 
@@ -86,6 +94,33 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
       },
     ],
   });
+  const imagorRepositoryName = `${$app.name}-${$app.stage}-imagor`;
+  const imagorRepository = new aws.ecr.Repository("ImagorRepository", {
+    name: imagorRepositoryName,
+    imageTagMutability: "MUTABLE",
+    imageScanningConfiguration: { scanOnPush: true },
+    encryptionConfigurations: [{ encryptionType: "AES256" }],
+  });
+  const imagorImage = new Image("ImagorImage", {
+    tags: [interpolate`${imagorRepository.repositoryUrl}:latest`],
+    context: {
+      location: join(selfhost, "imagor"),
+    },
+    dockerfile: {
+      location: join(selfhost, "imagor/Dockerfile"),
+    },
+    platforms: ["linux/amd64"],
+    push: true,
+    buildOnPreview: false,
+    registries: [
+      {
+        address: registry,
+        username: auth.userName,
+        password: auth.password,
+      },
+    ],
+  });
+  const imagorRef = interpolate`${imagorRepository.repositoryUrl}@${imagorImage.digest}`;
 
   const configBucket = new sst.aws.Bucket("HostConfigBucket");
   new aws.s3.BucketObject("HostBootstrap", {
@@ -113,6 +148,7 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
       resultBucket.arn,
       bucket.arn,
       repository.arn,
+      imagorRepository.arn,
       secret.arn,
       configBucket.arn,
     ]).apply(
@@ -123,6 +159,7 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
         resultArn,
         appBucketArn,
         repositoryArn,
+        imagorRepositoryArn,
         secretArn,
         configArn,
       ]) =>
@@ -185,7 +222,7 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
                 "ecr:BatchGetImage",
                 "ecr:GetDownloadUrlForLayer",
               ],
-              Resource: [repositoryArn],
+              Resource: [repositoryArn, imagorRepositoryArn],
             },
             {
               Effect: "Allow",
@@ -241,6 +278,7 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
     bucket.name,
     registry,
     image.ref,
+    imagorRef,
     dataVolume.id,
   ]).apply(
     ([
@@ -252,6 +290,7 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
       appBucket,
       registryAddress,
       imageRef,
+      imagorImageRef,
       dataVolumeId,
     ]) => `#!/bin/bash
 set -euo pipefail
@@ -266,6 +305,8 @@ export JOB_RESULT_BUCKET='${resultName}'
 export APP_BUCKET='${appBucket}'
 export REGISTRY='${registryAddress}'
 export IMAGE='${imageRef}'
+export IMAGOR_IMAGE='${imagorImageRef}'
+export BOOTSTRAP_SHA='${bootstrapSHA}'
 export DATA_VOLUME_ID='${dataVolumeId}'
 install -d -m 0700 /opt/sqldev
 aws s3 cp "s3://\${CONFIG_BUCKET}/bootstrap.sh" /opt/sqldev/bootstrap.sh

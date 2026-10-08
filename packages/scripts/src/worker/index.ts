@@ -22,6 +22,8 @@ const child = spawn("go", ["run", "./cmd/supabaseworker"], {
         JOB_TABLE_NAME: resources.JobStatusName.name,
         JOB_RESULT_BUCKET: resources.JobResultBucketName.name,
         APP_BUCKET: resources.SQLDevBucket.name,
+        IMAGOR_URL: process.env.IMAGOR_URL ?? "http://127.0.0.1:8000",
+        IMAGOR_SECRET: process.env.IMAGOR_SECRET ?? "",
         DBOS_SYSTEM_DATABASE_URL:
             process.env.DBOS_SYSTEM_DATABASE_URL ??
             "postgresql://postgres:postgres@127.0.0.1:54322/postgres?sslmode=disable",

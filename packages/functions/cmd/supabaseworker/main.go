@@ -11,6 +11,7 @@ import (
 	"github.com/dbos-inc/dbos-transact-golang/dbos"
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/api"
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/s3store"
+	"github.com/gregidonut/sqldev/packages/functions/internal/imagor"
 	"github.com/gregidonut/sqldev/packages/functions/internal/jobs"
 	"github.com/gregidonut/sqldev/packages/functions/internal/queue"
 	"github.com/gregidonut/sqldev/packages/functions/internal/result"
@@ -68,6 +69,14 @@ func serve(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	imageClient, err := imagor.NewFromEnv()
+	if err != nil {
+		return err
+	}
+	var images api.ImageRenderer
+	if imageClient != nil {
+		images = imageClient
+	}
 	processor := &processor{
 		source: source,
 		server: &api.Server{
@@ -75,6 +84,7 @@ func serve(ctx context.Context) error {
 			Bucket:  os.Getenv("APP_BUCKET"),
 			Jobs:    jobsStore,
 			Results: results,
+			Images:  images,
 		},
 	}
 	dbos.RegisterWorkflow(dbosCtx, processor.Run)
@@ -106,13 +116,44 @@ type processor struct {
 }
 
 func (p *processor) Run(ctx dbos.Context, envelope jobs.Envelope) (jobs.Outcome, error) {
-	_ = p.server.Jobs.Update(context.Background(), status.Record{
+	if err := p.server.Jobs.Update(context.Background(), status.Record{
 		JobID:  envelope.JobID,
 		Owner:  envelope.Claims.Subject,
 		Kind:   envelope.Kind,
 		Status: status.Running,
-	})
-	outcome, err := dbos.RunAsTransaction(ctx, p.source, func(txCtx context.Context, tx dbos.Tx) (jobs.Outcome, error) {
+	}); err != nil {
+		slog.Error("mark job running", "jobId", envelope.JobID, "error", err)
+	}
+	outcome, err := p.execute(ctx, envelope)
+	if err != nil {
+		outcome = jobs.Outcome{HTTPStatus: 500, Message: "internal error"}
+	}
+	if finishErr := p.server.Finish(context.Background(), envelope, outcome); finishErr != nil {
+		return withoutImageBytes(outcome), finishErr
+	}
+	outcome = withoutImageBytes(outcome)
+	if err != nil {
+		return outcome, err
+	}
+	return outcome, nil
+}
+
+func withoutImageBytes(outcome jobs.Outcome) jobs.Outcome {
+	if outcome.Artifact == nil {
+		return outcome
+	}
+	outcome.Artifact = &jobs.Artifact{
+		Key:         outcome.Artifact.Key,
+		ContentType: outcome.Artifact.ContentType,
+	}
+	return outcome
+}
+
+func (p *processor) execute(ctx dbos.Context, envelope jobs.Envelope) (jobs.Outcome, error) {
+	if envelope.Kind == jobs.KindImagor {
+		return p.executeImagor(ctx, envelope)
+	}
+	return dbos.RunAsTransaction(ctx, p.source, func(txCtx context.Context, tx dbos.Tx) (jobs.Outcome, error) {
 		session := sqldb.New(tx, envelope.Claims)
 		server := *p.server
 		server.DB = session
@@ -122,16 +163,39 @@ func (p *processor) Run(ctx dbos.Context, envelope jobs.Envelope) (jobs.Outcome,
 		}
 		return outcome, session.Restore(txCtx)
 	})
+}
+
+type imagePrep struct {
+	Request imagor.Request
+	Outcome jobs.Outcome
+}
+
+// executeImagor authorizes inside the database transaction, then calls Imagor
+// only after that transaction has committed.
+func (p *processor) executeImagor(ctx dbos.Context, envelope jobs.Envelope) (jobs.Outcome, error) {
+	prepared, err := dbos.RunAsTransaction(ctx, p.source, func(txCtx context.Context, tx dbos.Tx) (imagePrep, error) {
+		session := sqldb.New(tx, envelope.Claims)
+		server := *p.server
+		server.DB = session
+		request, outcome := server.PrepareImage(api.WithBearer(txCtx, "job"), envelope)
+		if err := session.Restore(txCtx); err != nil {
+			return imagePrep{}, err
+		}
+		return imagePrep{Request: request, Outcome: outcome}, nil
+	})
 	if err != nil {
-		outcome = jobs.Outcome{HTTPStatus: 500, Message: "internal error"}
+		return jobs.Outcome{}, err
 	}
-	if finishErr := p.server.Finish(context.Background(), envelope, outcome); finishErr != nil {
-		return outcome, finishErr
+	return imageOutcome(prepared, func(request imagor.Request) (jobs.Outcome, error) {
+		return p.server.RenderImage(ctx, envelope, request)
+	})
+}
+
+func imageOutcome(prepared imagePrep, render func(imagor.Request) (jobs.Outcome, error)) (jobs.Outcome, error) {
+	if prepared.Outcome.HTTPStatus != 0 {
+		return prepared.Outcome, nil
 	}
-	if err != nil {
-		return outcome, err
-	}
-	return outcome, nil
+	return render(prepared.Request)
 }
 
 func (p *processor) Accept(ctx context.Context, envelope jobs.Envelope) error {

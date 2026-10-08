@@ -12,6 +12,7 @@ import (
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/clerkprofile"
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/s3store"
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/supadb"
+	"github.com/gregidonut/sqldev/packages/functions/internal/imagor"
 	"github.com/gregidonut/sqldev/packages/functions/internal/queue"
 	"github.com/gregidonut/sqldev/packages/functions/internal/result"
 	"github.com/gregidonut/sqldev/packages/functions/internal/status"
@@ -50,6 +51,11 @@ type Profiles interface {
 	Get(ctx context.Context, userID string) (clerkprofile.User, error)
 }
 
+// ImageRenderer calls the private Imagor server. It is nil on the API Lambda.
+type ImageRenderer interface {
+	Render(ctx context.Context, request imagor.Request) (imagor.Image, error)
+}
+
 // Server implements the generated strict API.
 type Server struct {
 	DB       Database
@@ -60,6 +66,7 @@ type Server struct {
 	Jobs     status.Store
 	Sender   queue.Sender
 	Results  result.Store
+	Images   ImageRenderer
 }
 
 func (s *Server) caller(ctx context.Context) (string, string, error) {
@@ -116,7 +123,7 @@ func classify(err error) (int, string) {
 		return http.StatusForbidden, "Forbidden"
 	case errors.Is(err, errNotFound), errors.Is(err, s3store.ErrNotFound), errors.Is(err, clerkprofile.ErrNotFound):
 		return http.StatusNotFound, "Not found"
-	case errors.Is(err, errBadRequest):
+	case errors.Is(err, imagor.ErrInvalid), errors.Is(err, errBadRequest):
 		message := strings.TrimPrefix(err.Error(), errBadRequest.Error()+": ")
 		if message == "" || message == err.Error() {
 			message = "Bad request"
@@ -124,8 +131,12 @@ func classify(err error) (int, string) {
 		return http.StatusBadRequest, message
 	case errors.Is(err, errConflict), errors.Is(err, s3store.ErrInactive):
 		return http.StatusConflict, "Conflict"
-	case errors.Is(err, s3store.ErrTooLarge):
+	case errors.Is(err, s3store.ErrTooLarge), errors.Is(err, imagor.ErrTooLarge):
 		return http.StatusRequestEntityTooLarge, "Entity too large"
+	case errors.Is(err, imagor.ErrTimeout):
+		return http.StatusGatewayTimeout, "Image processing timed out"
+	case errors.Is(err, imagor.ErrMediaType), errors.Is(err, imagor.ErrUpstream):
+		return http.StatusBadGateway, "Image processing failed"
 	default:
 		slog.Error("request failed", "error", err)
 		return http.StatusInternalServerError, "internal error"

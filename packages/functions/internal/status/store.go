@@ -18,15 +18,16 @@ var ErrNotFound = errors.New("job not found")
 var ErrExists = errors.New("job already exists")
 
 type Record struct {
-	JobID      string
-	Owner      string
-	Kind       string
-	Status     string
-	HTTPStatus int
-	Body       json.RawMessage
-	ResultKey  string
-	Message    string
-	ExpiresAt  time.Time
+	JobID       string
+	Owner       string
+	Kind        string
+	Status      string
+	HTTPStatus  int
+	Body        json.RawMessage
+	ResultKey   string
+	ContentType string
+	Message     string
+	ExpiresAt   time.Time
 }
 
 type Store interface {
