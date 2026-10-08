@@ -27,9 +27,14 @@ type StorageDialog =
 
 type ActiveStorageDialog = Exclude<StorageDialog, { readonly kind: "closed" }>;
 
+export const STORAGE_VIEWS = ["detailed", "tiles"] as const;
+
+export type StorageView = (typeof STORAGE_VIEWS)[number];
+
 type StorageTablePreferences = {
     readonly visibleColumns: readonly ToggleableStorageColumnId[];
     readonly sort: StorageSort;
+    readonly view: StorageView;
 };
 
 interface StorageTableStore {
@@ -47,6 +52,8 @@ interface StorageTableStore {
     readonly closeDialog: () => void;
     readonly actionError: string | null;
     readonly setActionError: (actionError: string | null) => void;
+    readonly view: StorageView;
+    readonly setView: (view: StorageView) => void;
 }
 
 const DEFAULT_VISIBLE_COLUMNS = [
@@ -96,8 +103,10 @@ function selectionToColumnIds(
         return toggleableColumnIds();
     }
     const columns: ToggleableStorageColumnId[] = [];
+    const seen = new Set<ToggleableStorageColumnId>();
     for (const key of selection) {
-        if (isToggleableColumnId(key) && !columns.includes(key)) {
+        if (isToggleableColumnId(key) && !seen.has(key)) {
+            seen.add(key);
             columns.push(key);
         }
     }
@@ -111,8 +120,10 @@ function parseVisibleColumns(
         return DEFAULT_VISIBLE_COLUMNS;
     }
     const columns: ToggleableStorageColumnId[] = [];
+    const seen = new Set<ToggleableStorageColumnId>();
     for (const entry of value) {
-        if (isToggleableColumnId(entry) && !columns.includes(entry)) {
+        if (isToggleableColumnId(entry) && !seen.has(entry)) {
+            seen.add(entry);
             columns.push(entry);
         }
     }
@@ -133,10 +144,30 @@ function parseSort(value: unknown): StorageSort {
     };
 }
 
+export function isStorageView(value: unknown): value is StorageView {
+    return STORAGE_VIEWS.some(function (view) {
+        return view === value;
+    });
+}
+
+export function toStorageView(selection: Selection): StorageView | undefined {
+    if (selection === "all") {
+        return undefined;
+    }
+    let view: StorageView | undefined;
+    for (const key of selection) {
+        if (isStorageView(key)) {
+            view = key;
+        }
+    }
+    return view;
+}
+
 function partialize(state: StorageTableStore): StorageTablePreferences {
     return {
         visibleColumns: state.visibleColumns,
         sort: state.sort,
+        view: state.view,
     };
 }
 
@@ -151,6 +182,9 @@ function mergePreferences(
         ...currentState,
         visibleColumns: parseVisibleColumns(persistedState.visibleColumns),
         sort: parseSort(persistedState.sort),
+        view: isStorageView(persistedState.view)
+            ? persistedState.view
+            : currentState.view,
     };
 }
 
@@ -200,6 +234,10 @@ export const useStorageTableStore = create<StorageTableStore>()(
                 actionError: null,
                 setActionError: function (actionError) {
                     set({ actionError });
+                },
+                view: "detailed",
+                setView: function (view) {
+                    set({ view });
                 },
             };
         },

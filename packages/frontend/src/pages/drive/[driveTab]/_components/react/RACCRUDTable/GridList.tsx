@@ -61,7 +61,11 @@ export function GridListItem({ children, ...props }: GridListItemProps) {
         <AriaGridListItem
             textValue={textValue}
             {...props}
-            className={itemStyles}
+            className={composeRenderProps(
+                props.className,
+                (className, renderProps) =>
+                    itemStyles({ ...renderProps, className }),
+            )}
         >
             {composeRenderProps(
                 children,

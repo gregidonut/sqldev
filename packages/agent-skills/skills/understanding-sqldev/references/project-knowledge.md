@@ -21,6 +21,7 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 | Auth middleware | `packages/frontend/src/middleware.ts` |
 | Theme tokens | `packages/frontend/src/styles/global.css` |
 | Upload flow | `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/forms/useStorageUppy.ts`. Astro `src/fetch.ts` forwards `/api/**` to the Go API |
+| Storage thumbnails | `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/queryOptions/createThumbnailGet.ts` requests one 512×320 WebP cover image from `POST /api/images/transform` |
 | MQTT client | `packages/frontend/src/components/react/hooks/useMqtt/index.ts` |
 | Client store | `packages/frontend/src/components/react/DDrvList/store/store.ts` |
 

@@ -1,33 +1,32 @@
 import React, { useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCollator, useFilter } from "react-aria";
-import { DialogTrigger } from "react-aria-components/Dialog";
-import { TooltipTrigger } from "react-aria-components/Tooltip";
-import type { Key, SortDescriptor } from "react-aria-components/Table";
-import { PlusIcon, SlidersIcon, TrashIcon } from "lucide-react";
+import type {
+    Key,
+    Selection,
+    SortDescriptor,
+} from "react-aria-components/Table";
 import { useShallow } from "zustand/react/shallow";
 import type { ObjectsTab } from "@/utils/storage/objectsTab.ts";
 import { AlertDialog } from "../AlertDialog.tsx";
-import { Button } from "../Button.tsx";
-import { Menu, MenuItem, MenuTrigger } from "../Menu.tsx";
 import { Modal } from "../Modal.tsx";
 import { SearchField } from "../SearchField.tsx";
-import { Tooltip } from "../Tooltip.tsx";
 import { StorageList } from "./StorageList.tsx";
-import { StorageTable, TOGGLEABLE_STORAGE_COLUMNS } from "./StorageTable.tsx";
+import { StorageTable } from "./StorageTable.tsx";
+import { StorageTiles } from "./StorageTiles.tsx";
+import { StorageToolbar } from "./StorageToolbar.tsx";
 import {
     toStorageSort,
     useStorageTableStore,
+    type StorageView,
 } from "./store/storageTableStore.ts";
 import { CopyForm } from "../forms/CopyForm.tsx";
-import { UploadForm } from "../forms/UploadForm.tsx";
 import { toErrorMessage } from "./storageDisplay.tsx";
 import createBatchDeleteMutationOptions from "../queryOptions/createBatchDelete.ts";
 import createBucketExistsGetQueryOptions from "../queryOptions/createBucketExistsGet.ts";
 import createListGetQueryOptions from "../queryOptions/createListGet.ts";
 import createOneDeleteMutationOptions from "../queryOptions/createOneDelete.ts";
 import type { StorageRow } from "../queryOptions/types.ts";
-import { cy } from "@/utils/cy";
 
 export type StorageCRUDTableProps = {
     tab: ObjectsTab;
@@ -56,6 +55,70 @@ function compareRows(
         return Number(Boolean(first)) - Number(Boolean(second));
     }
     return collator.compare(String(first ?? ""), String(second ?? ""));
+}
+
+type StorageObjectsViewProps = {
+    items: StorageRow[];
+    visibleColumns: Selection;
+    sortDescriptor: SortDescriptor;
+    onSortChange: (sortDescriptor: SortDescriptor) => void;
+    selectedKeys: Selection;
+    onSelectionChange: (keys: Selection) => void;
+    bucketName: string;
+    userId: string;
+    canDelete: boolean;
+    emptyMessage: string;
+    onCopy: (item: StorageRow) => void;
+    onDelete: (item: StorageRow) => void;
+    onError: (message: string) => void;
+};
+
+function renderStorageView(
+    view: StorageView,
+    props: StorageObjectsViewProps,
+): React.ReactNode {
+    switch (view) {
+        case "detailed":
+            return (
+                <>
+                    <StorageList
+                        items={props.items}
+                        selectedKeys={props.selectedKeys}
+                        onSelectionChange={props.onSelectionChange}
+                        bucketName={props.bucketName}
+                        userId={props.userId}
+                        canDelete={props.canDelete}
+                        emptyMessage={props.emptyMessage}
+                        onCopy={props.onCopy}
+                        onDelete={props.onDelete}
+                        onError={props.onError}
+                    />
+                    <StorageTable
+                        items={props.items}
+                        visibleColumns={props.visibleColumns}
+                        sortDescriptor={props.sortDescriptor}
+                        onSortChange={props.onSortChange}
+                        selectedKeys={props.selectedKeys}
+                        onSelectionChange={props.onSelectionChange}
+                        bucketName={props.bucketName}
+                        userId={props.userId}
+                        canDelete={props.canDelete}
+                        emptyMessage={props.emptyMessage}
+                        onCopy={props.onCopy}
+                        onDelete={props.onDelete}
+                        onError={props.onError}
+                    />
+                </>
+            );
+        case "tiles":
+            return <StorageTiles {...props} />;
+        default:
+            return assertUnreachable(view);
+    }
+}
+
+function assertUnreachable(value: never): never {
+    throw new Error(`Unexpected storage view: ${String(value)}`);
 }
 
 function StatusPanel({
@@ -100,6 +163,7 @@ export default function StorageCRUDTable({
         selectedKeys,
         dialog,
         actionError,
+        view,
         setSearch,
         setSort,
         setVisibleColumns,
@@ -108,6 +172,7 @@ export default function StorageCRUDTable({
         openDialog,
         closeDialog,
         setActionError,
+        setView,
     } = useStorageTableStore(
         useShallow(function (state) {
             return {
@@ -117,6 +182,7 @@ export default function StorageCRUDTable({
                 selectedKeys: state.selectedKeys,
                 dialog: state.dialog,
                 actionError: state.actionError,
+                view: state.view,
                 setSearch: state.setSearch,
                 setSort: state.setSort,
                 setVisibleColumns: state.setVisibleColumns,
@@ -125,6 +191,7 @@ export default function StorageCRUDTable({
                 openDialog: state.openDialog,
                 closeDialog: state.closeDialog,
                 setActionError: state.setActionError,
+                setView: state.setView,
             };
         }),
     );
@@ -268,85 +335,25 @@ export default function StorageCRUDTable({
 
     return (
         <div className="flex w-full min-w-0 flex-col gap-4 p-4">
-            <div className="grid grid-cols-[1fr_auto_auto] items-end gap-2">
-                <SearchField
-                    aria-label="Search storage objects"
-                    placeholder="Search by file, owner, or key"
-                    value={search}
-                    onChange={setSearch}
-                    className="col-span-3 sm:col-span-1"
-                />
-
-                <MenuTrigger>
-                    <TooltipTrigger>
-                        <Button
-                            aria-label="Columns"
-                            variant="secondary"
-                            className="!h-9 !w-9 shrink-0 sm:col-start-2"
-                        >
-                            <SlidersIcon
-                                aria-hidden
-                                className="block h-5 w-5"
-                            />
-                        </Button>
-                        <Tooltip>Columns</Tooltip>
-                    </TooltipTrigger>
-                    <Menu
-                        selectionMode="multiple"
-                        selectedKeys={visibleColumns}
-                        onSelectionChange={setVisibleColumns}
-                        disallowEmptySelection
-                        items={TOGGLEABLE_STORAGE_COLUMNS}
-                    >
-                        {(column) => (
-                            <MenuItem id={column.id}>{column.label}</MenuItem>
-                        )}
-                    </Menu>
-                </MenuTrigger>
-
-                {canModify && (
-                    <DialogTrigger>
-                        <TooltipTrigger>
-                            <Button
-                                {...cy("dStorage_upload")}
-                                aria-label="Upload a file"
-                                variant="secondary"
-                                className="!h-9 !w-9 shrink-0"
-                            >
-                                <PlusIcon
-                                    aria-hidden
-                                    className="block h-5 w-5"
-                                />
-                            </Button>
-                            <Tooltip>Upload a file</Tooltip>
-                        </TooltipTrigger>
-                        <Modal>
-                            <UploadForm
-                                bucketName={bucketName}
-                                userId={userId}
-                            />
-                        </Modal>
-                    </DialogTrigger>
-                )}
-            </div>
-
-            {canModify && (
-                <div className="flex flex-wrap items-center gap-3">
-                    <Button
-                        variant="destructive"
-                        isDisabled={
-                            selectedObjectKeys.length === 0 || isDeleting
-                        }
-                        onPress={() => openDialog({ kind: "batch-delete" })}
-                    >
-                        <TrashIcon aria-hidden className="h-4 w-4" />
-                        Delete selected
-                    </Button>
-                    <span className="font-sans text-xs text-drac-comment">
-                        {selectedObjectKeys.length} selected
-                    </span>
-                </div>
-            )}
+            <SearchField
+                aria-label="Search storage objects"
+                placeholder="Search by file, owner, or key"
+                value={search}
+                onChange={setSearch}
+                className="w-full"
+            />
+            <StorageToolbar
+                canModify={canModify}
+                selectedCount={selectedObjectKeys.length}
+                isDeleting={isDeleting}
+                view={view}
+                visibleColumns={visibleColumns}
+                bucketName={bucketName}
+                userId={userId}
+                onDeleteSelected={() => openDialog({ kind: "batch-delete" })}
+                onViewChange={setView}
+                onVisibleColumnsChange={setVisibleColumns}
+            />
 
             {listQuery.isPending && (
                 <StatusPanel>Loading storage objects…</StatusPanel>
@@ -363,35 +370,21 @@ export default function StorageCRUDTable({
                 <StatusPanel tone="error">{actionError}</StatusPanel>
             )}
 
-            {/* List view for mobile */}
-            <StorageList
-                items={items}
-                selectedKeys={selectedKeys}
-                onSelectionChange={setSelectedKeys}
-                bucketName={bucketName}
-                userId={userId}
-                canDelete={canModify}
-                emptyMessage={TAB_EMPTY_MESSAGE[tab]}
-                onCopy={(item) => openDialog({ kind: "copy", item })}
-                onDelete={(item) => openDialog({ kind: "delete", item })}
-                onError={setActionError}
-            />
-            {/* Table view for desktop */}
-            <StorageTable
-                items={items}
-                visibleColumns={visibleColumns}
-                sortDescriptor={sortDescriptor}
-                onSortChange={handleSortChange}
-                selectedKeys={selectedKeys}
-                onSelectionChange={setSelectedKeys}
-                bucketName={bucketName}
-                userId={userId}
-                canDelete={canModify}
-                emptyMessage={TAB_EMPTY_MESSAGE[tab]}
-                onCopy={(item) => openDialog({ kind: "copy", item })}
-                onDelete={(item) => openDialog({ kind: "delete", item })}
-                onError={setActionError}
-            />
+            {renderStorageView(view, {
+                items,
+                visibleColumns,
+                sortDescriptor,
+                onSortChange: handleSortChange,
+                selectedKeys,
+                onSelectionChange: setSelectedKeys,
+                bucketName,
+                userId,
+                canDelete: canModify,
+                emptyMessage: TAB_EMPTY_MESSAGE[tab],
+                onCopy: (item) => openDialog({ kind: "copy", item }),
+                onDelete: (item) => openDialog({ kind: "delete", item }),
+                onError: setActionError,
+            })}
 
             <Modal
                 isOpen={dialog.kind === "copy"}

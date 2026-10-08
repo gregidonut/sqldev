@@ -42,10 +42,6 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
-    "ImgproxyUrl": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "JobDeadLetter": {
       "type": "sst.aws.Queue"
       "url": string
