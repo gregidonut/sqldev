@@ -27,8 +27,10 @@ reject() {
   fi
 }
 
-require "$dockerfile" "IMAGOR_COMMIT=0daee13ecec5df896f15aef91fcbbb0c87aac935"
-require "$dockerfile" "IMAGOR_VERSION=v1.9.7"
+require "$dockerfile" "IMAGORVIDEO_COMMIT=e187cf0f1b70af87dd2bbb3eb3925659666f7aa2"
+require "$dockerfile" "IMAGORVIDEO_VERSION=v1.2.0"
+require "$dockerfile" "vips8.18.6-r14-ffmpeg"
+require "$dockerfile" "imagorvideo"
 require "$dockerfile" 'git -C /src rev-parse HEAD'
 reject "$dockerfile" "imagor-unsafe|IMAGOR_UNSAFE"
 
@@ -38,6 +40,7 @@ require "$bootstrap" "IMAGOR_SIGNER_TRUNCATE=40"
 require "$bootstrap" "HTTP_LOADER_DISABLE=1"
 require "$bootstrap" "IMAGOR_DISABLE_PARAMS_ENDPOINT=1"
 require "$bootstrap" "S3_LOADER_BUCKET="
+require "$bootstrap" "FFMPEG_MAX_ANIMATION_FRAMES=18"
 require "$bootstrap" "sqldev-imagor"
 require "$bootstrap" "imagor-ready.sh"
 require "$bootstrap" "Requires=docker.service sqldev-imagor.service"

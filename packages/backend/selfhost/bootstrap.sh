@@ -88,6 +88,7 @@ worker = "postgres://dbos_worker:{workerPassword}@127.0.0.1:5432/postgres?sslmod
         "VIPS_MAX_HEIGHT=4096",
         "VIPS_MAX_RESOLUTION=16777216",
         "VIPS_CACHE_SIZE=0",
+        "FFMPEG_MAX_ANIMATION_FRAMES=18",
         "",
     ]),
     encoding="utf-8",

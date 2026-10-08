@@ -48,6 +48,7 @@ export function StorageTiles(props: StorageTilesProps): React.ReactNode {
             {(item) => (
                 <GridListItem
                     {...cy("dStorage_item")}
+                    data-preview-root=""
                     id={item.s3_object_key}
                     textValue={item.file_name}
                     className="h-auto w-full min-w-0 flex-col items-stretch gap-2 rounded-lg border border-drac-selection bg-drac-background p-2"

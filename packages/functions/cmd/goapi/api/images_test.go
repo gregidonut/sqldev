@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/gregidonut/sqldev/packages/functions/internal/imagor"
@@ -92,6 +93,79 @@ func TestTransformImageReopensFailedJob(t *testing.T) {
 	}
 	if reopened.Status != status.Pending || reopened.Attempt != 2 || reopened.Message != "" {
 		t.Fatalf("reopened = %+v", reopened)
+	}
+}
+
+func TestTransformImageQueuesPreviewVariants(t *testing.T) {
+	messages := queue.NewMemory()
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)
+	const pdfKey = testUser + "/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/notes.pdf"
+	const videoKey = testUser + "/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/clip.mp4"
+	tests := []struct {
+		name    string
+		key     string
+		preview string
+	}{
+		{name: "pdf", key: pdfKey, preview: imagor.PreviewPDF},
+		{name: "video", key: videoKey, preview: imagor.PreviewVideo},
+		{name: "animation", key: videoKey, preview: imagor.PreviewAnimation},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			response := requestJSON(t, server, http.MethodPost, "/api/images/transform", testJWT, map[string]any{
+				"sourceKey": test.key,
+				"width":     512,
+				"height":    320,
+				"fit":       "cover",
+				"format":    "webp",
+				"quality":   80,
+				"preview":   test.preview,
+			})
+			if response.Code != http.StatusAccepted {
+				t.Fatalf("status = %d body %s", response.Code, response.Body.String())
+			}
+		})
+	}
+	if len(messages.Sent()) != len(tests) {
+		t.Fatalf("queued = %d", len(messages.Sent()))
+	}
+	envelope, err := jobs.Parse(messages.Sent()[2])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload imagor.Request
+	if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload.Preview != imagor.PreviewAnimation || payload.Format != imagor.FormatWebP {
+		t.Fatalf("payload = %+v", payload)
+	}
+	path, err := imagor.Path(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(path, "filters:seek(0.1):gif(3s,6):format(webp):quality(80)/") {
+		t.Fatalf("path = %s", path)
+	}
+}
+
+func TestTransformImageRejectsMismatchedPreview(t *testing.T) {
+	messages := queue.NewMemory()
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)
+	response := requestJSON(t, server, http.MethodPost, "/api/images/transform", testJWT, map[string]any{
+		"sourceKey": testUser + "/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/notes.pdf",
+		"width":     512,
+		"height":    320,
+		"fit":       "cover",
+		"format":    "jpeg",
+		"quality":   80,
+		"preview":   "animation",
+	})
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
+	}
+	if len(messages.Sent()) != 0 {
+		t.Fatalf("queued = %d", len(messages.Sent()))
 	}
 }
 

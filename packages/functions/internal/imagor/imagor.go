@@ -27,6 +27,19 @@ const (
 	FormatPNG  = "png"
 	FormatWebP = "webp"
 
+	// PreviewImage resizes a still image. An empty preview means the same thing.
+	PreviewImage = "image"
+	// PreviewPDF renders the first page.
+	PreviewPDF = "pdf"
+	// PreviewVideo asks imagorvideo to choose one representative frame.
+	PreviewVideo = "video"
+	// PreviewAnimation renders a short looping WebP clip from a video.
+	PreviewAnimation = "animation"
+
+	animationSeek = "0.1"
+	animationClip = "3s"
+	animationFPS  = "6"
+
 	MaxEdge        = 4096
 	SignerTruncate = 40
 	MaxImageBytes  = 8 << 20
@@ -50,6 +63,7 @@ type Request struct {
 	Fit       string `json:"fit"`
 	Format    string `json:"format"`
 	Quality   int    `json:"quality"`
+	Preview   string `json:"preview,omitempty"`
 }
 
 // Image is a bounded response from the private server.
@@ -121,8 +135,18 @@ func Validate(request Request) error {
 	if request.Quality < 1 || request.Quality > 100 {
 		return fmt.Errorf("%w: quality is outside the allowed range", ErrInvalid)
 	}
+	preview := normalizePreview(request.Preview)
+	if preview == "" {
+		return fmt.Errorf("%w: preview is not supported", ErrInvalid)
+	}
+	if preview == PreviewAnimation && request.Format != FormatWebP {
+		return fmt.Errorf("%w: animation must be webp", ErrInvalid)
+	}
 	if err := validateSourceKey(request.SourceKey); err != nil {
 		return err
+	}
+	if !previewMatches(preview, sourceExtension(request.SourceKey)) {
+		return fmt.Errorf("%w: preview does not match the file", ErrInvalid)
 	}
 	return nil
 }
@@ -136,7 +160,7 @@ func Path(request Request) (string, error) {
 	if request.Fit == FitContain {
 		size = "fit-in/" + size
 	}
-	filters := fmt.Sprintf("filters:format(%s):quality(%d)", request.Format, request.Quality)
+	filters := previewFilters(normalizePreview(request.Preview), request.Format, request.Quality)
 	return size + "/" + filters + "/" + escapeKey(request.SourceKey), nil
 }
 
@@ -219,6 +243,80 @@ func (c *Client) Render(ctx context.Context, request Request) (Image, error) {
 		return Image{}, ErrTooLarge
 	}
 	return Image{ContentType: expected, Body: body}, nil
+}
+
+func normalizePreview(preview string) string {
+	if preview == "" {
+		return PreviewImage
+	}
+	switch preview {
+	case PreviewImage, PreviewPDF, PreviewVideo, PreviewAnimation:
+		return preview
+	default:
+		return ""
+	}
+}
+
+func previewFilters(preview, format string, quality int) string {
+	output := fmt.Sprintf("format(%s):quality(%d)", format, quality)
+	switch preview {
+	case PreviewPDF:
+		return "filters:page(1):" + output
+	case PreviewAnimation:
+		return "filters:seek(" + animationSeek + "):gif(" + animationClip + "," + animationFPS + "):" + output
+	default:
+		return "filters:" + output
+	}
+}
+
+func previewMatches(preview, extension string) bool {
+	switch preview {
+	case PreviewImage:
+		return imageExtensions[extension]
+	case PreviewPDF:
+		return extension == "pdf"
+	case PreviewVideo, PreviewAnimation:
+		return videoExtensions[extension]
+	default:
+		return false
+	}
+}
+
+func sourceExtension(key string) string {
+	name := key
+	if slash := strings.LastIndex(key, "/"); slash >= 0 {
+		name = key[slash+1:]
+	}
+	dot := strings.LastIndex(name, ".")
+	if dot < 0 || dot == len(name)-1 {
+		return ""
+	}
+	return strings.ToLower(name[dot+1:])
+}
+
+var imageExtensions = map[string]bool{
+	"avif": true,
+	"bmp":  true,
+	"gif":  true,
+	"heic": true,
+	"heif": true,
+	"jpeg": true,
+	"jpg":  true,
+	"png":  true,
+	"tif":  true,
+	"tiff": true,
+	"webp": true,
+}
+
+var videoExtensions = map[string]bool{
+	"avi":  true,
+	"m4v":  true,
+	"mkv":  true,
+	"mov":  true,
+	"mp4":  true,
+	"mpeg": true,
+	"mpg":  true,
+	"webm": true,
 }
 
 func validateSourceKey(key string) error {

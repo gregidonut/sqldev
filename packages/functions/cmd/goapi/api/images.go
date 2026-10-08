@@ -24,6 +24,7 @@ func (s *Server) TransformImage(ctx context.Context, request TransformImageReque
 		Fit:       string(request.Body.Fit),
 		Format:    string(request.Body.Format),
 		Quality:   request.Body.Quality,
+		Preview:   string(request.Body.Preview),
 	}
 	if err := imagor.Validate(spec); err != nil {
 		return transformFailure(fmt.Errorf("%w: %s", errBadRequest, err.Error())), nil

@@ -214,8 +214,8 @@ paths:
   /api/images/transform:
     post:
       operationId: transformImage
-      summary: Queue a typed image transform
-      description: Accepts one private storage object and bounded resize options. The image is processed by the private host after the job is read from SQS.
+      summary: Queue a typed media preview
+      description: Accepts one private storage object and bounded resize options. Images, the first PDF page, and a video poster are processed by the private host. A video animation request produces a short looping WebP through the same host.
       security:
         - clerkBearer: []
       parameters:
@@ -758,7 +758,7 @@ components:
     ImageTransform:
       type: object
       additionalProperties: false
-      required: [sourceKey, width, height, fit, format, quality]
+      required: [sourceKey, width, height, fit, format, quality, preview]
       properties:
         sourceKey:
           type: string
@@ -782,6 +782,10 @@ components:
           type: integer
           minimum: 1
           maximum: 100
+        preview:
+          type: string
+          enum: [image, pdf, video, animation]
+          description: image resizes the object, pdf renders its first page, video selects one frame, and animation renders a short looping WebP from a video.
     ImageResult:
       type: object
       additionalProperties: false

@@ -62,6 +62,87 @@ func TestPathUsesOnlyTypedOptions(t *testing.T) {
 	}
 }
 
+func TestPathBuildsPreviewFilters(t *testing.T) {
+	t.Parallel()
+	const owner = "11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/"
+	base := Request{Width: 512, Height: 320, Fit: FitCover, Format: FormatWebP, Quality: 80}
+	tests := []struct {
+		name    string
+		preview string
+		file    string
+		want    string
+	}{
+		{
+			name:    "pdf first page",
+			preview: PreviewPDF,
+			file:    "notes.pdf",
+			want:    "512x320/filters:page(1):format(webp):quality(80)/" + owner + "notes.pdf",
+		},
+		{
+			name:    "video poster",
+			preview: PreviewVideo,
+			file:    "clip.mp4",
+			want:    "512x320/filters:format(webp):quality(80)/" + owner + "clip.mp4",
+		},
+		{
+			name:    "animated webp",
+			preview: PreviewAnimation,
+			file:    "clip.MP4",
+			want:    "512x320/filters:seek(0.1):gif(3s,6):format(webp):quality(80)/" + owner + "clip.MP4",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			request := base
+			request.Preview = test.preview
+			request.SourceKey = owner + test.file
+			path, err := Path(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if path != test.want {
+				t.Fatalf("path = %s", path)
+			}
+			if strings.Contains(path, "unsafe") || strings.Contains(path, "://") {
+				t.Fatalf("path is not a signed local transform: %s", path)
+			}
+		})
+	}
+}
+
+func TestPathRejectsPreviewMismatch(t *testing.T) {
+	t.Parallel()
+	const key = "11111111-1111-1111-1111-111111111111/22222222-2222-2222-2222-222222222222/33333333-3333-3333-3333-333333333333/"
+	base := Request{Width: 20, Height: 10, Fit: FitCover, Format: FormatWebP, Quality: 80}
+	tests := []struct {
+		name    string
+		preview string
+		file    string
+		format  string
+	}{
+		{name: "unknown preview", preview: "gif(99)", file: "clip.mp4"},
+		{name: "animation jpeg", preview: PreviewAnimation, file: "clip.mp4", format: FormatJPEG},
+		{name: "pdf image", preview: PreviewPDF, file: "photo.jpg"},
+		{name: "animation pdf", preview: PreviewAnimation, file: "notes.pdf"},
+		{name: "video text", preview: PreviewVideo, file: "notes.txt"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			request := base
+			request.Preview = test.preview
+			request.SourceKey = key + test.file
+			if test.format != "" {
+				request.Format = test.format
+			}
+			if _, err := Path(request); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("error = %v", err)
+			}
+		})
+	}
+}
+
 func TestPathRejectsUnsafeSources(t *testing.T) {
 	t.Parallel()
 	base := Request{Width: 10, Height: 10, Fit: FitContain, Format: FormatPNG, Quality: 50}
