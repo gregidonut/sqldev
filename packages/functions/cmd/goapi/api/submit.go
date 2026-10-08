@@ -62,6 +62,9 @@ func (s *Server) submit(ctx context.Context, kind string, payload any, idempoten
 		if existing.Owner != claims.Subject || existing.Kind != kind {
 			return JobReceipt{}, errForbidden
 		}
+		if err := s.reopenFailedImage(ctx, kind, existing); err != nil {
+			return JobReceipt{}, err
+		}
 	}
 	envelope := jobs.Envelope{
 		Version: jobs.Version,
@@ -85,6 +88,26 @@ func (s *Server) submit(ctx context.Context, kind string, payload any, idempoten
 		return JobReceipt{}, err
 	}
 	return JobReceipt{JobId: parsed, Status: JobReceiptStatusPending}, nil
+}
+
+// reopenFailedImage lets a failed thumbnail run again. The first attempt keeps
+// the stable job id, and later attempts use a new worker workflow id.
+func (s *Server) reopenFailedImage(ctx context.Context, kind string, existing status.Record) error {
+	if kind != jobs.KindImagor || existing.Status != status.Failed {
+		return nil
+	}
+	next := existing.Attempt + 1
+	if next < 2 {
+		next = 2
+	}
+	existing.Status = status.Pending
+	existing.HTTPStatus = 0
+	existing.Message = ""
+	existing.Body = nil
+	existing.ResultKey = ""
+	existing.ContentType = ""
+	existing.Attempt = next
+	return s.Jobs.Update(ctx, existing)
 }
 
 func (s *Server) authenticate(ctx context.Context) (jobs.Claims, error) {

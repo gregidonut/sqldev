@@ -29,6 +29,7 @@ type item struct {
 	ContentType string `dynamodbav:"contentType,omitempty"`
 	Message     string `dynamodbav:"message,omitempty"`
 	ExpiresAt   int64  `dynamodbav:"expiresAt"`
+	Attempt     int    `dynamodbav:"attempt,omitempty"`
 }
 
 func NewDynamo(ctx context.Context, table string) (*Dynamo, error) {
@@ -83,24 +84,32 @@ func (d *Dynamo) Get(ctx context.Context, jobID string) (Record, error) {
 }
 
 func (d *Dynamo) Update(ctx context.Context, record Record) error {
+	expression := "SET #status = :status, httpStatus = :httpStatus, body = :body, resultKey = :resultKey, contentType = :contentType, message = :message"
+	values := map[string]types.AttributeValue{
+		":status":      &types.AttributeValueMemberS{Value: record.Status},
+		":httpStatus":  &types.AttributeValueMemberN{Value: strconv.Itoa(record.HTTPStatus)},
+		":body":        &types.AttributeValueMemberS{Value: string(record.Body)},
+		":resultKey":   &types.AttributeValueMemberS{Value: record.ResultKey},
+		":contentType": &types.AttributeValueMemberS{Value: record.ContentType},
+		":message":     &types.AttributeValueMemberS{Value: record.Message},
+	}
+	// A zero attempt means this update is a status transition and must not
+	// erase the retry count recorded by an earlier resubmit.
+	if record.Attempt > 0 {
+		expression += ", attempt = :attempt"
+		values[":attempt"] = &types.AttributeValueMemberN{Value: strconv.Itoa(record.Attempt)}
+	}
 	_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(d.table),
 		Key: map[string]types.AttributeValue{
 			"jobId": &types.AttributeValueMemberS{Value: record.JobID},
 		},
-		UpdateExpression: aws.String("SET #status = :status, httpStatus = :httpStatus, body = :body, resultKey = :resultKey, contentType = :contentType, message = :message"),
+		UpdateExpression: aws.String(expression),
 		ExpressionAttributeNames: map[string]string{
 			"#status": "status",
 		},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":status":      &types.AttributeValueMemberS{Value: record.Status},
-			":httpStatus":  &types.AttributeValueMemberN{Value: strconv.Itoa(record.HTTPStatus)},
-			":body":        &types.AttributeValueMemberS{Value: string(record.Body)},
-			":resultKey":   &types.AttributeValueMemberS{Value: record.ResultKey},
-			":contentType": &types.AttributeValueMemberS{Value: record.ContentType},
-			":message":     &types.AttributeValueMemberS{Value: record.Message},
-		},
-		ConditionExpression: aws.String("attribute_exists(jobId)"),
+		ExpressionAttributeValues: values,
+		ConditionExpression:       aws.String("attribute_exists(jobId)"),
 	})
 	if err != nil {
 		var missing *types.ConditionalCheckFailedException
@@ -128,6 +137,7 @@ func toItem(record Record) item {
 		ContentType: record.ContentType,
 		Message:     record.Message,
 		ExpiresAt:   expires.Unix(),
+		Attempt:     record.Attempt,
 	}
 }
 
@@ -143,5 +153,6 @@ func fromItem(stored item) Record {
 		ContentType: stored.ContentType,
 		Message:     stored.Message,
 		ExpiresAt:   time.Unix(stored.ExpiresAt, 0),
+		Attempt:     stored.Attempt,
 	}
 }

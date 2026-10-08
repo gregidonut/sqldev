@@ -56,6 +56,45 @@ func TestTransformImageQueuesAnIdempotentJob(t *testing.T) {
 	}
 }
 
+func TestTransformImageReopensFailedJob(t *testing.T) {
+	messages := queue.NewMemory()
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)
+	body := map[string]any{
+		"sourceKey": imageKey,
+		"width":     200,
+		"height":    100,
+		"fit":       "contain",
+		"format":    "jpeg",
+		"quality":   80,
+	}
+	first := requestJSON(t, server, http.MethodPost, "/api/images/transform", testJWT, body)
+	var receipt JobReceipt
+	if err := json.Unmarshal(first.Body.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	failed, err := server.Jobs.Get(context.Background(), receipt.JobId.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed.Status = status.Failed
+	failed.HTTPStatus = http.StatusNotImplemented
+	failed.Message = "imagor is not configured"
+	if err := server.Jobs.Update(context.Background(), failed); err != nil {
+		t.Fatal(err)
+	}
+	second := requestJSON(t, server, http.MethodPost, "/api/images/transform", testJWT, body)
+	if second.Code != http.StatusAccepted {
+		t.Fatalf("status = %d body %s", second.Code, second.Body.String())
+	}
+	reopened, err := server.Jobs.Get(context.Background(), receipt.JobId.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reopened.Status != status.Pending || reopened.Attempt != 2 || reopened.Message != "" {
+		t.Fatalf("reopened = %+v", reopened)
+	}
+}
+
 func TestTransformImageRejectsUnsafeOptions(t *testing.T) {
 	messages := queue.NewMemory()
 	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)

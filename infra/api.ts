@@ -47,7 +47,7 @@ new aws.iam.RolePolicy("GoApiPolicy", {
         },
         {
           Effect: "Allow",
-          Action: ["dynamodb:GetItem", "dynamodb:PutItem"],
+          Action: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"],
           Resource: [tableArn],
         },
         {

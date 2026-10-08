@@ -28,6 +28,7 @@ type Record struct {
 	ContentType string
 	Message     string
 	ExpiresAt   time.Time
+	Attempt     int
 }
 
 type Store interface {

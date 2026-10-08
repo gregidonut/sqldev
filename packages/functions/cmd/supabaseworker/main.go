@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -199,8 +200,12 @@ func imageOutcome(prepared imagePrep, render func(imagor.Request) (jobs.Outcome,
 }
 
 func (p *processor) Accept(ctx context.Context, envelope jobs.Envelope) error {
+	workflowID := envelope.JobID
+	if record, err := p.server.Jobs.Get(ctx, envelope.JobID); err == nil && record.Attempt > 1 {
+		workflowID = fmt.Sprintf("%s:%d", envelope.JobID, record.Attempt)
+	}
 	_, err := dbos.RunWorkflow(p.dbos, p.Run, envelope,
-		dbos.WithWorkflowID(envelope.JobID),
+		dbos.WithWorkflowID(workflowID),
 		dbos.WithQueue(p.queue),
 	)
 	return err
