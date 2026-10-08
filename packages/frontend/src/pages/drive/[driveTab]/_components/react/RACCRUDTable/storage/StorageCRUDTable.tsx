@@ -1,14 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCollator, useFilter } from "react-aria";
 import { DialogTrigger } from "react-aria-components/Dialog";
 import { TooltipTrigger } from "react-aria-components/Tooltip";
-import type {
-    Key,
-    Selection,
-    SortDescriptor,
-} from "react-aria-components/Table";
+import type { Key, SortDescriptor } from "react-aria-components/Table";
 import { PlusIcon, SlidersIcon, TrashIcon } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import type { ObjectsTab } from "@/utils/storage/objectsTab.ts";
 import { AlertDialog } from "../AlertDialog.tsx";
 import { Button } from "../Button.tsx";
@@ -17,11 +14,11 @@ import { Modal } from "../Modal.tsx";
 import { SearchField } from "../SearchField.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { StorageList } from "./StorageList.tsx";
+import { StorageTable, TOGGLEABLE_STORAGE_COLUMNS } from "./StorageTable.tsx";
 import {
-    StorageTable,
-    TOGGLEABLE_STORAGE_COLUMNS,
-    type StorageColumnId,
-} from "./StorageTable.tsx";
+    toStorageSort,
+    useStorageTableStore,
+} from "./store/storageTableStore.ts";
 import { CopyForm } from "../forms/CopyForm.tsx";
 import { UploadForm } from "../forms/UploadForm.tsx";
 import { toErrorMessage } from "./storageDisplay.tsx";
@@ -37,16 +34,6 @@ export type StorageCRUDTableProps = {
     bucketName: string;
     userId: string;
 };
-
-type DialogKey = "copy" | "delete" | "batch-delete";
-
-const DEFAULT_VISIBLE_COLUMNS: StorageColumnId[] = [
-    "file_name",
-    "public",
-    "clerk_user_id",
-    "created_at",
-    "updated_at",
-];
 
 const TAB_EMPTY_MESSAGE: Record<ObjectsTab, string> = {
     public: "No public objects yet.",
@@ -106,20 +93,64 @@ export default function StorageCRUDTable({
         createListGetQueryOptions({ userId, bucketName, tab }),
     );
 
-    const [search, setSearch] = useState("");
-    const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
-        column: "updated_at",
-        direction: "descending",
-    });
-    const [visibleColumns, setVisibleColumns] = useState<Selection>(
-        () => new Set<Key>(DEFAULT_VISIBLE_COLUMNS),
+    const {
+        search,
+        sort,
+        visibleColumnIds,
+        selectedKeys,
+        dialog,
+        actionError,
+        setSearch,
+        setSort,
+        setVisibleColumns,
+        setSelectedKeys,
+        clearSelection,
+        openDialog,
+        closeDialog,
+        setActionError,
+    } = useStorageTableStore(
+        useShallow(function (state) {
+            return {
+                search: state.search,
+                sort: state.sort,
+                visibleColumnIds: state.visibleColumns,
+                selectedKeys: state.selectedKeys,
+                dialog: state.dialog,
+                actionError: state.actionError,
+                setSearch: state.setSearch,
+                setSort: state.setSort,
+                setVisibleColumns: state.setVisibleColumns,
+                setSelectedKeys: state.setSelectedKeys,
+                clearSelection: state.clearSelection,
+                openDialog: state.openDialog,
+                closeDialog: state.closeDialog,
+                setActionError: state.setActionError,
+            };
+        }),
     );
-    const [selectedKeys, setSelectedKeys] = useState<Selection>(
-        () => new Set<Key>(),
+
+    useEffect(
+        function () {
+            clearSelection();
+        },
+        [tab, clearSelection],
     );
-    const [dialog, setDialog] = useState<DialogKey | null>(null);
-    const [actionItem, setActionItem] = useState<StorageRow | null>(null);
-    const [actionError, setActionError] = useState<string | null>(null);
+
+    const visibleColumns = useMemo(
+        function () {
+            return new Set<Key>(visibleColumnIds);
+        },
+        [visibleColumnIds],
+    );
+    const sortDescriptor = useMemo(
+        function () {
+            return {
+                column: sort.column,
+                direction: sort.direction,
+            };
+        },
+        [sort],
+    );
 
     const { contains } = useFilter({ sensitivity: "base" });
     const collator = useCollator();
@@ -157,32 +188,35 @@ export default function StorageCRUDTable({
 
     const isDeleting = oneDelete.isPending || batchDelete.isPending;
 
-    function openDialog(key: DialogKey, item: StorageRow | null = null) {
-        setActionError(null);
-        setActionItem(item);
-        setDialog(key);
+    function handleDialogOpenChange(isOpen: boolean) {
+        if (!isOpen) {
+            closeDialog();
+        }
     }
 
-    function closeDialog(isOpen: boolean) {
-        if (!isOpen) {
-            setDialog(null);
+    function handleSortChange(descriptor: SortDescriptor) {
+        const next = toStorageSort(descriptor);
+        if (!next) {
+            return;
         }
+        setSort(next);
     }
 
     function confirmSingleDelete() {
-        if (!actionItem) {
+        if (dialog.kind !== "delete") {
             return;
         }
+        const item = dialog.item;
         setActionError(null);
         oneDelete.mutate(
-            { key: actionItem.s3_object_key },
+            { key: item.s3_object_key },
             {
-                onSuccess: () => setSelectedKeys(new Set<Key>()),
+                onSuccess: () => clearSelection(),
                 onError: (error) =>
                     setActionError(
                         toErrorMessage(
                             error,
-                            `Could not delete "${actionItem.file_name}".`,
+                            `Could not delete "${item.file_name}".`,
                         ),
                     ),
             },
@@ -197,7 +231,7 @@ export default function StorageCRUDTable({
         batchDelete.mutate(
             { keys: selectedObjectKeys },
             {
-                onSuccess: () => setSelectedKeys(new Set<Key>()),
+                onSuccess: () => clearSelection(),
                 onError: (error) =>
                     setActionError(
                         toErrorMessage(
@@ -303,7 +337,7 @@ export default function StorageCRUDTable({
                         isDisabled={
                             selectedObjectKeys.length === 0 || isDeleting
                         }
-                        onPress={() => openDialog("batch-delete")}
+                        onPress={() => openDialog({ kind: "batch-delete" })}
                     >
                         <TrashIcon aria-hidden className="h-4 w-4" />
                         Delete selected
@@ -338,8 +372,8 @@ export default function StorageCRUDTable({
                 userId={userId}
                 canDelete={canModify}
                 emptyMessage={TAB_EMPTY_MESSAGE[tab]}
-                onCopy={(item) => openDialog("copy", item)}
-                onDelete={(item) => openDialog("delete", item)}
+                onCopy={(item) => openDialog({ kind: "copy", item })}
+                onDelete={(item) => openDialog({ kind: "delete", item })}
                 onError={setActionError}
             />
             {/* Table view for desktop */}
@@ -347,43 +381,51 @@ export default function StorageCRUDTable({
                 items={items}
                 visibleColumns={visibleColumns}
                 sortDescriptor={sortDescriptor}
-                onSortChange={setSortDescriptor}
+                onSortChange={handleSortChange}
                 selectedKeys={selectedKeys}
                 onSelectionChange={setSelectedKeys}
                 bucketName={bucketName}
                 userId={userId}
                 canDelete={canModify}
                 emptyMessage={TAB_EMPTY_MESSAGE[tab]}
-                onCopy={(item) => openDialog("copy", item)}
-                onDelete={(item) => openDialog("delete", item)}
+                onCopy={(item) => openDialog({ kind: "copy", item })}
+                onDelete={(item) => openDialog({ kind: "delete", item })}
                 onError={setActionError}
             />
 
-            <Modal isOpen={dialog === "copy"} onOpenChange={closeDialog}>
-                {actionItem && (
+            <Modal
+                isOpen={dialog.kind === "copy"}
+                onOpenChange={handleDialogOpenChange}
+            >
+                {dialog.kind === "copy" && (
                     <CopyForm
-                        item={actionItem}
+                        item={dialog.item}
                         bucketName={bucketName}
                         userId={userId}
                     />
                 )}
             </Modal>
 
-            <Modal isOpen={dialog === "delete"} onOpenChange={closeDialog}>
-                <AlertDialog
-                    title="Delete object"
-                    variant="destructive"
-                    actionLabel="Delete"
-                    onAction={confirmSingleDelete}
-                >
-                    Are you sure you want to delete “{actionItem?.file_name}”?
-                    This cannot be undone.
-                </AlertDialog>
+            <Modal
+                isOpen={dialog.kind === "delete"}
+                onOpenChange={handleDialogOpenChange}
+            >
+                {dialog.kind === "delete" && (
+                    <AlertDialog
+                        title="Delete object"
+                        variant="destructive"
+                        actionLabel="Delete"
+                        onAction={confirmSingleDelete}
+                    >
+                        Are you sure you want to delete “{dialog.item.file_name}
+                        ”? This cannot be undone.
+                    </AlertDialog>
+                )}
             </Modal>
 
             <Modal
-                isOpen={dialog === "batch-delete"}
-                onOpenChange={closeDialog}
+                isOpen={dialog.kind === "batch-delete"}
+                onOpenChange={handleDialogOpenChange}
             >
                 <AlertDialog
                     title="Delete selected objects"
