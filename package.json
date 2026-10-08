@@ -2,14 +2,7 @@
   "name": "sqldev",
   "version": "0.0.0",
   "workspaces": [
-    "packages/frontend",
-    "packages/backend",
-    "packages/core",
-    "packages/e2et",
-    "packages/functions",
-    "packages/scripts",
-    "packages/agent-skills",
-    "packages/astro-sst-pr-47/packages/astro-sst"
+    "packages/*"
   ],
   "scripts": {},
   "devDependencies": {

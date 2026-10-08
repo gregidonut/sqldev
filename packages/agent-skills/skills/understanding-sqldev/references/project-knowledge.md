@@ -26,7 +26,7 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 
 ## Workspace packages
 
-`package.json` lists each workspace package. It does not use `packages/*`, so the `packages/astro-sst-pr-47` submodule root (package name `sst`) is not a workspace.
+`package.json` includes `packages/*`:
 
 | Package | Role |
 | --- | --- |
@@ -34,7 +34,6 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 | `@sqldev/core` | Shared SST resource helpers used by scripts and tests |
 | `@sqldev/e2et` | Cypress |
 | `@sqldev/frontend` | Astro application |
-| `@sst-community/astro-sst` | Astro Lambda adapter the frontend builds and imports (`packages/astro-sst-pr-47/packages/astro-sst`) |
 | `@sqldev/functions` | Go Lambda code |
 | `@sqldev/scripts` | SST-shell entry points |
 | `@sqldev/agent-skills` | This skill package |
@@ -48,7 +47,7 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 - Go calls Supabase with that Clerk JWT as the bearer token and the publishable key as `apikey`, so `auth.jwt()`, RLS, and the storage RPCs stay user-scoped. It does not use the service role for those calls. `infra/storage.ts` keeps `SQLDevBucket` private.
 - `infra/realtime.ts` defines `sst.aws.Realtime`. Application MQTT is AWS IoT. `packages/backend/supabase/config.toml` sets `[realtime] enabled = false`.
 - `infra/web.ts` attaches the Astro Lambda to `sqldevSupabaseVPC` only outside `dev`. `infra/api.ts` attaches the Go API Lambda to that same VPC outside `dev`.
-- `packages/frontend/astro.config.mjs` sets `output: "server"` and imports `@sst-community/astro-sst` from `packages/astro-sst-pr-47/packages/astro-sst`. Its server entry calls `createApp().render()` without a prior route match, so `packages/frontend/src/fetch.ts` handles `/api/**` in the deployed Lambda. There is no `pages/api` catch-all.
+- `packages/frontend/astro.config.mjs` sets `output: "server"` and imports `@sst-community/astro-sst`. Its server entry calls `createApp().render()` without a prior route match, so `packages/frontend/src/fetch.ts` handles `/api/**` in the deployed Lambda. There is no `pages/api` catch-all.
 - Clerk server auth is `@clerk/astro`. `packages/frontend/src/middleware.ts` only attaches `clerkMiddleware()`. `packages/frontend/src/utils/clerk/requireAuth.ts` redirects unsigned pages to sign-in. `/` and `/sign-in` stay public; other pages, including `404.astro`, call the page helper. API authentication is enforced in `packages/frontend/src/fetch.ts`.
 - `packages/e2et/cypress/tasks/localDbReset.ts` allows database cleanup only for stages `dev`, `local`, and `development`.
 - `packages/functions/cmd/goapi/api/api.gen.go` is oapi-codegen output. `packages/functions/cmd/goapi/generate.go` pins the generator command.

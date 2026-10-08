@@ -33,7 +33,7 @@ Never record secrets, environment values, tokens, personal data, production data
 | Frontend | `packages/frontend` | — |
 | Browser tests | `packages/e2et/cypress` | — |
 
-The frontend adapter is `@sst-community/astro-sst` in the `packages/astro-sst-pr-47` submodule (`packages/astro-sst-pr-47/packages/astro-sst`), linked from `packages/frontend/package.json`. Its Lambda entry uses Astro's automatic server entrypoint, so deployed requests run `packages/frontend/src/fetch.ts` before page matching.
+The frontend adapter is the published package `@sst-community/astro-sst`, declared in `packages/frontend/package.json`. Its Lambda entry uses Astro's automatic server entrypoint, so deployed requests run `packages/frontend/src/fetch.ts` before page matching.
 
 ## SST and commands
 
