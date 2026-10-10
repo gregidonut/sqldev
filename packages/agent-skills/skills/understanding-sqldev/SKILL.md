@@ -2,7 +2,7 @@
 name: understanding-sqldev
 description: >
   Loads mandatory SQLDev project context before any repository task: SST
-  infrastructure, the packages/scripts shell, Supabase schema and RBAC, the Go
+  infrastructure, the packages/cli developer CLI, Supabase schema and RBAC, the Go
   API, the Astro frontend, and Cypress. Use for every SQLDev task, including
   questions, reviews, and edits. Update the maintained project knowledge
   reference when a durable fact is verified from repository source.
@@ -27,7 +27,7 @@ Never record secrets, environment values, tokens, personal data, production data
 | Area | Source of truth | Do not hand-edit |
 | --- | --- | --- |
 | Infrastructure | `sst.config.ts`, `infra/*.ts` | `sst-env.d.ts` |
-| Linked dev commands | `packages/scripts`, `packages/core/src/envBuilder` | — |
+| Linked dev commands | `packages/cli` (the `sqldev` Go CLI) | — |
 | Database | `packages/backend/supabase/migrations`, `packages/backend/supabase/config.toml` | generated Supabase types |
 | Go HTTP contract | `packages/functions/cmd/goapi/api.yaml`, `config.yaml` | `packages/functions/cmd/goapi/api/api.gen.go` |
 | Frontend | `packages/frontend` | — |
@@ -39,21 +39,20 @@ The frontend adapter is the published package `@sst-community/astro-sst`, declar
 
 SST is the TypeScript infrastructure for this AWS application in `ap-east-1`. Keep long-lived configuration in `infra/secrets.ts`. A process environment variable is acceptable for a quick local test; move that value into an SST secret when it should remain.
 
-Commands that need linked resources start in `packages/scripts`:
+Commands that need linked resources run through the `sqldev` Go CLI in `packages/cli`. It discovers the repository root, loads linked SST resources from the environment, and automatically re-executes itself through `sst shell` when they are absent, so no manual `bun run shell` wrapper is needed:
 
 ```bash
-cd packages/scripts
-AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' STAGE=dev bun run shell src/cy -- run --headless --browser chrome
-AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' STAGE=dev bun run shell src/cy -- open
-AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' STAGE=dev bun run shell src/sb -- db reset
-AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' STAGE=dev bun run shell src/sb -- stop
+AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' sqldev --stage dev cypress run --headless --browser chrome
+AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' sqldev --stage dev cypress open
+AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' sqldev --stage dev supabase db reset
+AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' sqldev --stage dev supabase stop
 ```
 
-`shell` runs `sst shell`. The Supabase and Cypress wrappers in `packages/core/src/envBuilder` inject linked resource values. Do not invoke those CLIs from a bare shell. `src/s3` deletes objects from the linked bucket; run it only when the task explicitly requests that deletion.
+Build the CLI with `CGO_ENABLED=0 go -C packages/cli build -o <dest> .` (the local gcc cannot link cgo). The `supabase` and `cypress` subcommands are transparent: every argument after the command name is forwarded to the vendor CLI unchanged, and linked resource values are injected. `sqldev storage empty` and `sqldev storage delete` operate on the linked bucket; run them only when the task explicitly requests that deletion. `sqldev host database tunnel` and `sqldev host replace` operate on the deployed host.
 
 ## Supabase
 
-Local Supabase is the CLI project at `packages/backend/supabase`. Start and stop it through `src/sb`. The `user-postgres-dev` MCP is the local dev database; use it to inspect that database. Schema changes still belong in migrations.
+Local Supabase is the CLI project at `packages/backend/supabase`. Start and stop it through `sqldev supabase`. The `user-postgres-dev` MCP is the local dev database; use it to inspect that database. Schema changes still belong in migrations.
 
 Deployed Supabase is self-hosted and reached by the non-dev frontend and Go API Lambdas through the VPC in `infra/vpc.ts`. The `dev` stage does not create that VPC. The Supabase EC2 host is not declared in `infra/`.
 
@@ -83,4 +82,4 @@ Browser uploads use Uppy with `@uppy/aws-s3` and server-issued presigned URLs. L
 
 ## Cypress
 
-Tests live in `packages/e2et/cypress` and run through `src/cy`. Database cleanup refuses any stage other than `dev`, `local`, or `development`. Use `cypress-explain` to explain or review a test without changing it. Use `cypress-author` to create, update, or fix a spec.
+Tests live in `packages/e2et/cypress` and run through `sqldev cypress`. Database cleanup refuses any stage other than `dev`, `local`, or `development`. Use `cypress-explain` to explain or review a test without changing it. Use `cypress-author` to create, update, or fix a spec.

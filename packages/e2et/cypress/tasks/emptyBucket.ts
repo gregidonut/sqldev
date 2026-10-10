@@ -1,5 +1,6 @@
-import { emptyBucket as emptySqlDevBucket } from "@sqldev/core/s3";
+import { parseDeleted, runSqldev } from "./sqldevCli.js";
 
 export async function emptyBucket(): Promise<{ deleted: number }> {
-  return emptySqlDevBucket();
+  const { stdout } = await runSqldev(["--output", "json", "storage", "empty", "--yes"]);
+  return { deleted: parseDeleted(stdout) };
 }

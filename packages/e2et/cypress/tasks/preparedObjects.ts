@@ -1,6 +1,6 @@
-import { deleteObjectKeys } from "@sqldev/core/s3";
 import { assertLocalDevStage } from "./localDbReset.js";
 import { isRecord } from "./narrow.js";
+import { runSqldev } from "./sqldevCli.js";
 
 export interface PreparedObjectRef {
   storageObjectId: string;
@@ -37,7 +37,7 @@ export async function deleteRegisteredObjects(): Promise<null> {
     return null;
   }
   assertLocalDevStage();
-  await deleteObjectKeys(keys);
+  await runSqldev(["--output", "json", "storage", "delete", "--", ...keys]);
   prepared.length = 0;
   return null;
 }

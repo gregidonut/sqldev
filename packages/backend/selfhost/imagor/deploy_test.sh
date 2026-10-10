@@ -50,7 +50,7 @@ require "$bootstrap" "FFMPEG_MAX_ANIMATION_FRAMES=18"
 # limit makes the animation fail with 422 while the single-frame poster works.
 # Local dev must use the same value, or this failure only shows on the host.
 require "$bootstrap" '"VIPS_MAX_RESOLUTION=67108864"'
-require "${root}/packages/scripts/src/imagor/index.ts" '"VIPS_MAX_RESOLUTION=67108864"'
+require "${root}/packages/cli/internal/dev/dev.go" '"VIPS_MAX_RESOLUTION=67108864"'
 reject "$bootstrap" "VIPS_MAX_RESOLUTION=16777216"
 require "$bootstrap" "PROGRESS_ADDRESS=127.0.0.1:8001"
 require "$bootstrap" "PROGRESS_URL=http://127.0.0.1:8001"
