@@ -3,6 +3,7 @@ package devstack
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/gregidonut/sqldev/packages/cli/internal/tmux"
@@ -18,6 +19,15 @@ type fakeTmux struct {
 	panes         []tmux.Pane
 	nextPaneNum   int
 
+	// sessionEnv models `set-environment -t <session>`.
+	sessionEnv map[string]string
+	// paneEnv is what each pane's process received at spawn, mirroring tmux:
+	// the pane's own spec.Env plus the session environment as it was at that
+	// moment. A variable written to the session later never appears here.
+	paneEnv map[tmux.PaneID]map[string]string
+	// argv records the command each pane was started with.
+	argv map[tmux.PaneID][]string
+
 	calls      []string
 	lockName   string
 	locked     bool
@@ -29,7 +39,13 @@ type fakeTmux struct {
 }
 
 func newFakeTmux() *fakeTmux {
-	return &fakeTmux{options: map[string]string{}, nextPaneNum: 1}
+	return &fakeTmux{
+		options:     map[string]string{},
+		nextPaneNum: 1,
+		sessionEnv:  map[string]string{},
+		paneEnv:     map[tmux.PaneID]map[string]string{},
+		argv:        map[tmux.PaneID][]string{},
+	}
 }
 
 func (f *fakeTmux) record(call string) { f.calls = append(f.calls, call) }
@@ -40,11 +56,24 @@ func (f *fakeTmux) newPaneID() tmux.PaneID {
 	return id
 }
 
+// spawnEnv computes the environment a freshly spawned pane process receives.
+func (f *fakeTmux) spawnEnv(spec tmux.PaneSpec) map[string]string {
+	env := map[string]string{}
+	for k, v := range f.sessionEnv {
+		env[k] = v
+	}
+	for _, entry := range spec.Env {
+		name, value, _ := strings.Cut(entry, "=")
+		env[name] = value
+	}
+	return env
+}
+
 func (f *fakeTmux) HasSession(_ context.Context, _ string) (bool, error) {
 	return f.sessionExists, f.hasSessionErr
 }
 
-func (f *fakeTmux) NewSession(_ context.Context, _ tmux.PaneSpec) (tmux.PaneID, error) {
+func (f *fakeTmux) NewSession(_ context.Context, spec tmux.PaneSpec) (tmux.PaneID, error) {
 	if f.newSessionErr != nil {
 		return "", f.newSessionErr
 	}
@@ -52,13 +81,17 @@ func (f *fakeTmux) NewSession(_ context.Context, _ tmux.PaneSpec) (tmux.PaneID, 
 	f.sessionExists = true
 	id := f.newPaneID()
 	f.panes = append(f.panes, tmux.Pane{ID: id})
+	f.paneEnv[id] = f.spawnEnv(spec)
+	f.argv[id] = append([]string(nil), spec.Argv...)
 	return id, nil
 }
 
-func (f *fakeTmux) SplitPane(_ context.Context, _ tmux.PaneID, _ tmux.PaneSpec) (tmux.PaneID, error) {
+func (f *fakeTmux) SplitPane(_ context.Context, _ tmux.PaneID, spec tmux.PaneSpec) (tmux.PaneID, error) {
 	f.record("split-window")
 	id := f.newPaneID()
 	f.panes = append(f.panes, tmux.Pane{ID: id})
+	f.paneEnv[id] = f.spawnEnv(spec)
+	f.argv[id] = append([]string(nil), spec.Argv...)
 	return id, nil
 }
 
@@ -86,8 +119,17 @@ func (f *fakeTmux) SessionOption(_ context.Context, session, name string) (strin
 	return f.options[session+"\x00"+name], nil
 }
 
-func (f *fakeTmux) SetEnvironment(_ context.Context, _, _, _ string) error   { return nil }
-func (f *fakeTmux) UnsetEnvironment(_ context.Context, _, _ string) error     { return nil }
+func (f *fakeTmux) SetEnvironment(_ context.Context, _, name, value string) error {
+	f.record("set-env:" + name)
+	f.sessionEnv[name] = value
+	return nil
+}
+
+func (f *fakeTmux) UnsetEnvironment(_ context.Context, _, name string) error {
+	f.record("unset-env:" + name)
+	delete(f.sessionEnv, name)
+	return nil
+}
 
 func (f *fakeTmux) ListPanes(_ context.Context, _ string) ([]tmux.Pane, error) {
 	if f.probeFunc != nil {

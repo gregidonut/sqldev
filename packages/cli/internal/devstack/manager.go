@@ -21,7 +21,9 @@ const imagorContainer = "sqldev-imagor"
 // (and `start --cleanup-legacy`) may remove.
 var legacySessions = []string{"sqldev-sst-dev", "sqldev-worker", "sqldev-imagor"}
 
-// envAllowlist is refreshed into the managed session before pane creation.
+// envAllowlist is the environment forwarded to every managed pane: passed to
+// the first pane at spawn and written to the session for the panes created
+// afterwards.
 var envAllowlist = []string{
 	"PATH", "HOME", "SHELL",
 	"AWS_PROFILE", "AWS_REGION",
@@ -112,6 +114,22 @@ func (m *Manager) isManaged(ctx context.Context) (bool, error) {
 	return stage == m.Cfg.Stage && root == m.Cfg.Root, nil
 }
 
+// ensureCachedBin resolves the stable executable detached panes run. Start and
+// RestartService are separate CLI invocations, so each one must resolve it;
+// otherwise a per-service restart spawns a pane whose command is empty.
+// Materialize is content-addressed, so repeating it is cheap and idempotent.
+func (m *Manager) ensureCachedBin() error {
+	if m.CachedBin != "" {
+		return nil
+	}
+	bin, err := tmux.Materialize(m.Cfg.Tmux.CacheDir, m.Executable)
+	if err != nil {
+		return fmt.Errorf("materialize sqldev binary: %w", err)
+	}
+	m.CachedBin = bin
+	return nil
+}
+
 // Start creates the managed session and all three service panes.
 func (m *Manager) Start(ctx context.Context, cleanupLegacy bool) error {
 	if err := AssertLocalStage(m.Cfg.Stage); err != nil {
@@ -148,20 +166,20 @@ func (m *Manager) startLocked(ctx context.Context, cleanupLegacy bool) error {
 		}
 	}
 
-	if m.CachedBin == "" {
-		bin, err := tmux.Materialize(m.Cfg.Tmux.CacheDir, m.Executable)
-		if err != nil {
-			return fmt.Errorf("materialize sqldev binary: %w", err)
-		}
-		m.CachedBin = bin
+	if err := m.ensureCachedBin(); err != nil {
+		return err
 	}
 
-	// Create the SST pane as the session's first pane.
+	// Create the SST pane as the session's first pane. Its environment must be
+	// passed at spawn: tmux starts the process inside new-session, so the
+	// session environment applied afterwards would never reach it.
+	env := m.sessionEnvironment()
 	sstPane, err := m.Tmux.NewSession(ctx, tmux.PaneSpec{
 		Session: session,
 		Window:  m.Cfg.Tmux.Window,
 		Dir:     m.Cfg.Root,
 		Argv:    m.sstArgv(),
+		Env:     env.pairs(),
 	})
 	if err != nil {
 		return err
@@ -229,23 +247,66 @@ func (m *Manager) applySessionSetup(ctx context.Context) error {
 
 func (m *Manager) refreshEnvironment(ctx context.Context) error {
 	session := m.Cfg.Tmux.Session
-	for _, name := range envAllowlist {
-		value, ok := os.LookupEnv(name)
-		if !ok {
-			if err := m.Tmux.UnsetEnvironment(ctx, session, name); err != nil {
+	for _, entry := range m.sessionEnvironment() {
+		if !entry.set {
+			if err := m.Tmux.UnsetEnvironment(ctx, session, entry.name); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := m.Tmux.SetEnvironment(ctx, session, name, value); err != nil {
+		if err := m.Tmux.SetEnvironment(ctx, session, entry.name, entry.value); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// envEntry is one allowlisted variable and whether it has a value to forward.
+type envEntry struct {
+	name  string
+	value string
+	set   bool
+}
+
+// sessionEnv is the ordered environment forwarded to every managed pane.
+type sessionEnv []envEntry
+
+// pairs renders the variables that have a value as NAME=value entries.
+func (e sessionEnv) pairs() []string {
+	var out []string
+	for _, entry := range e {
+		if entry.set {
+			out = append(out, entry.name+"="+entry.value)
+		}
+	}
+	return out
+}
+
+// sessionEnvironment resolves the allowlisted environment for the managed
+// panes. The resolved AWS profile and region take precedence over the raw
+// process environment: configuration already folds flag, SQLDEV_* env, legacy
+// env, and config file in that order, so a profile given by flag or config
+// reaches the panes even when AWS_PROFILE is not exported in the caller's
+// shell.
+func (m *Manager) sessionEnvironment() sessionEnv {
+	resolved := map[string]string{
+		"AWS_PROFILE": m.Cfg.AWSProfile,
+		"AWS_REGION":  m.Cfg.AWSRegion,
+	}
+	env := make(sessionEnv, 0, len(envAllowlist))
+	for _, name := range envAllowlist {
+		if value := resolved[name]; value != "" {
+			env = append(env, envEntry{name: name, value: value, set: true})
+			continue
+		}
+		value, ok := os.LookupEnv(name)
+		env = append(env, envEntry{name: name, value: value, set: ok})
+	}
+	return env
+}
+
 func (m *Manager) sstArgv() []string {
-	return []string{m.CachedBin, "--root", m.Cfg.Root, "--stage", m.Cfg.Stage, "dev", "sst", "--foreground"}
+	return append(m.baseArgv(), "dev", "sst", "--foreground")
 }
 
 func (m *Manager) workerArgv() []string {
@@ -424,6 +485,9 @@ func (m *Manager) RestartService(ctx context.Context, service tmux.ServiceName) 
 	}
 	if survivor == "" {
 		return fmt.Errorf("cannot replace the only pane; run `sqldev --stage %s dev restart`", m.Cfg.Stage)
+	}
+	if err := m.ensureCachedBin(); err != nil {
+		return err
 	}
 
 	if !target.Dead {

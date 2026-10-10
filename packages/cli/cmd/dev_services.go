@@ -18,7 +18,7 @@ func newDevSSTCommand(appOf func() *app.App) *cobra.Command {
 			a := appOf()
 			if foreground {
 				// SST provides its own linked resources; no EnsureLinked.
-				return dev.RunSST(cmd.Context(), a.Runner, a.Cfg.Root, a.Cfg.Stage)
+				return dev.RunSST(cmd.Context(), a.Runner, a.Cfg.Root, a.Cfg.Stage, a.Cfg.AWSProfile, a.Cfg.AWSRegion)
 			}
 			mgr := newManager(a)
 			mgr.Out = cmd.OutOrStdout()

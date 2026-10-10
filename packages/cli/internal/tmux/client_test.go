@@ -74,6 +74,58 @@ func TestNewSessionRejectsBadPaneID(t *testing.T) {
 	}
 }
 
+func TestNewSessionPassesEnvAsDashEBeforeTheCommand(t *testing.T) {
+	runner := newFakeRunner()
+	runner.responses["new-session"] = "%1\n"
+	client := NewCLIClient(runner)
+
+	_, err := client.NewSession(context.Background(), PaneSpec{
+		Session: "sqldev-dev", Window: "services", Dir: "/repo",
+		Argv: []string{"bin", "dev", "sst"},
+		Env:  []string{"AWS_PROFILE=folio_api_admin", "AWS_REGION=ap-east-1"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := runner.last().Args
+	got := strings.Join(args, " ")
+	for _, want := range []string{"-e AWS_PROFILE=folio_api_admin", "-e AWS_REGION=ap-east-1"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("argv %q missing %q", got, want)
+		}
+	}
+	// tmux stops option parsing at the command, so every -e must precede it.
+	command := indexOfArg(args, "bin")
+	for i, arg := range args {
+		if arg == "-e" && i > command {
+			t.Errorf("-e at %d comes after the command at %d: %q", i, command, got)
+		}
+	}
+}
+
+func TestNewSessionWithoutEnvAddsNoDashE(t *testing.T) {
+	runner := newFakeRunner()
+	runner.responses["new-session"] = "%1\n"
+	client := NewCLIClient(runner)
+	if _, err := client.NewSession(context.Background(), PaneSpec{Session: "s", Window: "w", Argv: []string{"bin"}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, arg := range runner.last().Args {
+		if arg == "-e" {
+			t.Errorf("unexpected -e in %v", runner.last().Args)
+		}
+	}
+}
+
+func indexOfArg(args []string, want string) int {
+	for i, arg := range args {
+		if arg == want {
+			return i
+		}
+	}
+	return -1
+}
+
 func TestSplitPaneTargetsCapturedID(t *testing.T) {
 	runner := newFakeRunner()
 	runner.responses["split-window"] = "%9"

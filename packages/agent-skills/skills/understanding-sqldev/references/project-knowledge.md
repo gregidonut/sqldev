@@ -12,7 +12,8 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 | Resource injection | `packages/cli/internal/passthrough/passthrough.go` |
 | Command wrappers | `packages/cli/cmd/` (`supabase`, `cypress`, `storage`, `host`, `dev`); logic in `packages/cli/internal/` |
 | Local dev orchestration | `packages/cli/internal/devstack` (tmux lifecycle, combined reset) over `packages/cli/internal/tmux`; `dev start/stop/restart/status/attach/reset-data` and foreground `dev sst/worker/imagor` in `packages/cli/cmd/dev_*.go`. Design: `.kiro/specs/local-dev-tmux-orchestration/design.md` |
-| CLI entrypoint | `packages/cli/main.go` builds the `sqldev` executable; linked commands auto-bootstrap through `sst shell` |
+| CLI entrypoint | `packages/cli/main.go` builds the `sqldev` executable; linked commands auto-bootstrap through `sst shell` (`packages/cli/internal/sst/shell.go`), which needs the `--` terminator before the wrapped command or SST rejects its flags such as `--root` |
+| Dev pane environment | tmux starts a session's first pane inside `new-session`, before any `set-environment -t <session>` can apply, so the SST pane only sees variables passed in `tmux.PaneSpec.Env` (`-e`). `devstack.Manager.sessionEnvironment` in `packages/cli/internal/devstack/manager.go` builds that list for the first pane and the session, and resolved config (flag, env, file) wins over the raw process environment for `AWS_PROFILE` and `AWS_REGION` |
 | Local database | `packages/backend/supabase/config.toml` and `packages/backend/supabase/migrations/` |
 | Browser tests | `packages/e2et/cypress.config.ts`, `packages/e2et/cypress/e2e/`, `packages/e2et/cypress/tasks/` |
 | Go module | `packages/functions/go.mod` |

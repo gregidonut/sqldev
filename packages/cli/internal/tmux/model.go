@@ -47,6 +47,11 @@ type PaneSpec struct {
 	Window  string
 	Dir     string
 	Argv    []string
+	// Env lists NAME=value entries delivered to the pane's process at spawn
+	// time. It matters for a session's first pane: tmux starts that process
+	// inside new-session, before any later `set-environment -t <session>` can
+	// run, so session variables written afterwards never reach it.
+	Env []string
 }
 
 // Pane is a parsed row from `tmux list-panes`.

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/gregidonut/sqldev/packages/cli/internal/process"
 )
@@ -109,5 +110,78 @@ func TestIntegrationSessionLifecycle(t *testing.T) {
 	}
 	if exists {
 		t.Error("session should be gone after kill")
+	}
+}
+
+// TestIntegrationFirstPaneReceivesEnvAtSpawn runs real tmux on a private socket
+// and proves the bug the dev orchestrator hit: a session variable written after
+// new-session never reaches the first pane, but PaneSpec.Env does. Panes
+// created later receive the session environment.
+func TestIntegrationFirstPaneReceivesEnvAtSpawn(t *testing.T) {
+	if _, err := exec.LookPath("tmux"); err != nil {
+		t.Skip("tmux not available")
+	}
+	socket := fmt.Sprintf("sqldev-test-env-%d", os.Getpid())
+	client := NewCLIClient(socketRunner{socket: socket})
+	ctx := context.Background()
+	t.Cleanup(func() {
+		_ = process.OSRunner{}.Run(ctx, process.RunRequest{
+			Program: "tmux", Args: []string{"-L", socket, "kill-server"},
+		})
+	})
+
+	dir := t.TempDir()
+	dump := func(name string) []string {
+		return []string{"sh", "-c", fmt.Sprintf("printf '%%s' \"$SQLDEV_PROBE\" > %s/%s; sleep 300", dir, name)}
+	}
+	session := "sqldev-itest-env"
+
+	// First pane: variable only in the session environment, written after the
+	// pane process was spawned (the old behaviour) ...
+	lateSession := session + "-late"
+	if _, err := client.NewSession(ctx, PaneSpec{Session: lateSession, Window: "w", Argv: dump("late")}); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SetEnvironment(ctx, lateSession, "SQLDEV_PROBE", "from-session"); err != nil {
+		t.Fatal(err)
+	}
+
+	// ... versus the variable passed in PaneSpec.Env, then also set on the
+	// session for the panes created afterwards (the fixed behaviour).
+	first, err := client.NewSession(ctx, PaneSpec{
+		Session: session, Window: "w", Argv: dump("first"),
+		Env: []string{"SQLDEV_PROBE=from-spec"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SetEnvironment(ctx, session, "SQLDEV_PROBE", "from-session"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.SplitPane(ctx, first, PaneSpec{Argv: dump("second")}); err != nil {
+		t.Fatal(err)
+	}
+
+	read := func(name string) string {
+		t.Helper()
+		var last string
+		for i := 0; i < 50; i++ {
+			if b, err := os.ReadFile(dir + "/" + name); err == nil {
+				return string(b)
+			}
+			last = "<file not written>"
+			time.Sleep(100 * time.Millisecond)
+		}
+		return last
+	}
+
+	if got := read("late"); got != "" {
+		t.Errorf("first pane spawned before set-environment saw SQLDEV_PROBE=%q; tmux semantics changed, revisit the fix", got)
+	}
+	if got := read("first"); got != "from-spec" {
+		t.Errorf("first pane SQLDEV_PROBE = %q, want from-spec", got)
+	}
+	if got := read("second"); got != "from-session" {
+		t.Errorf("later pane SQLDEV_PROBE = %q, want from-session", got)
 	}
 }

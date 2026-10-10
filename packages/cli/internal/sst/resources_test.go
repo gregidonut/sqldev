@@ -127,7 +127,7 @@ func TestBuildArgsPreservesOrder(t *testing.T) {
 		Stage:      "dev",
 		Args:       []string{"supabase", "db", "reset", "--local"},
 	})
-	want := []string{"--no-install", "sst", "--stage", "dev", "shell", "/abs/sqldev", "supabase", "db", "reset", "--local"}
+	want := []string{"--no-install", "sst", "--stage", "dev", "shell", "--", "/abs/sqldev", "supabase", "db", "reset", "--local"}
 	if len(args) != len(want) {
 		t.Fatalf("args = %v", args)
 	}
@@ -135,6 +135,39 @@ func TestBuildArgsPreservesOrder(t *testing.T) {
 		if args[i] != want[i] {
 			t.Fatalf("args = %v, want %v", args, want)
 		}
+	}
+}
+
+// SST 4.x rejects the wrapped command's own flags (`--root`, `--aws-profile`,
+// `--local`, ...) unless they follow `--`; the dev orchestrator's readiness
+// probe re-execs the CLI with `--root`, so without the terminator worker and
+// imagor panes were never created.
+func TestBuildArgsPutsWrappedCommandFlagsAfterTerminator(t *testing.T) {
+	args := BuildArgs(BootstrapConfig{
+		Executable: "/abs/sqldev",
+		Stage:      "dev",
+		Args:       []string{"--root", "/repo", "--stage", "dev", "dev", "check-links"},
+	})
+	terminator := -1
+	for i, a := range args {
+		if a == "--" {
+			terminator = i
+			break
+		}
+	}
+	if terminator < 0 {
+		t.Fatalf("no -- terminator in %v", args)
+	}
+	if args[terminator+1] != "/abs/sqldev" {
+		t.Errorf("executable must directly follow --: %v", args)
+	}
+	for i, a := range args {
+		if a == "--root" && i < terminator {
+			t.Errorf("--root at %d precedes the terminator at %d: %v", i, terminator, args)
+		}
+	}
+	if args[terminator-1] != "shell" {
+		t.Errorf("-- must follow the shell subcommand: %v", args)
 	}
 }
 
@@ -184,7 +217,7 @@ func TestBootstrapRunsFromRoot(t *testing.T) {
 		t.Errorf("dir = %q, want /repo", runner.req.Dir)
 	}
 	joined := join(runner.req.Args)
-	if joined != "--no-install sst --stage staging shell /abs/sqldev storage empty --yes" {
+	if joined != "--no-install sst --stage staging shell -- /abs/sqldev storage empty --yes" {
 		t.Errorf("args = %q", joined)
 	}
 }

@@ -177,13 +177,26 @@ func inspectImagor(ctx context.Context, runner process.Runner) (managed bool, ow
 
 // RunSST runs `bunx --no-install sst --stage <stage> dev` from the repository
 // root attached to the current terminal. It does not require linked resources;
-// SST provides them.
-func RunSST(ctx context.Context, runner process.Runner, root, stage string) error {
-	return runner.Run(ctx, process.RunRequest{
+// SST provides them. A non-empty awsProfile or awsRegion is exported to SST so
+// a profile chosen by flag or config reaches it even when the variable is not
+// set in the calling environment.
+func RunSST(ctx context.Context, runner process.Runner, root, stage, awsProfile, awsRegion string) error {
+	req := process.RunRequest{
 		Program: "bunx",
 		Args:    []string{"--no-install", "sst", "--stage", stage, "dev"},
 		Dir:     root,
-	})
+	}
+	if awsProfile != "" || awsRegion != "" {
+		env := os.Environ()
+		if awsProfile != "" {
+			env = append(env, kv("AWS_PROFILE", awsProfile))
+		}
+		if awsRegion != "" {
+			env = append(env, kv("AWS_REGION", awsRegion))
+		}
+		req.Env = env
+	}
+	return runner.Run(ctx, req)
 }
 
 func kv(key, value string) string { return key + "=" + value }

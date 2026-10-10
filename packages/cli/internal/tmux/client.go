@@ -85,7 +85,10 @@ func (c *CLIClient) HasSession(ctx context.Context, name string) (bool, error) {
 	return false, nil
 }
 
-// NewSession creates a detached session whose first pane runs spec.Argv.
+// NewSession creates a detached session whose first pane runs spec.Argv. The
+// entries in spec.Env are passed with `-e` so the first pane's process sees
+// them; the session environment cannot be populated before that process
+// starts.
 func (c *CLIClient) NewSession(ctx context.Context, spec PaneSpec) (PaneID, error) {
 	args := []string{
 		"new-session", "-d",
@@ -95,6 +98,9 @@ func (c *CLIClient) NewSession(ctx context.Context, spec PaneSpec) (PaneID, erro
 	}
 	if spec.Dir != "" {
 		args = append(args, "-c", spec.Dir)
+	}
+	for _, entry := range spec.Env {
+		args = append(args, "-e", entry)
 	}
 	args = append(args, spec.Argv...)
 	id, err := c.capture(ctx, args...)

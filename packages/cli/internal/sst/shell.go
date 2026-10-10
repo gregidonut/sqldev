@@ -49,13 +49,6 @@ func Bootstrap(ctx context.Context, runner process.Runner, cfg BootstrapConfig) 
 		return errors.New("cannot determine the sqldev executable path for sst bootstrap")
 	}
 
-	args := []string{"--no-install", "sst"}
-	if cfg.Stage != "" {
-		args = append(args, "--stage", cfg.Stage)
-	}
-	args = append(args, "shell", cfg.Executable)
-	args = append(args, cfg.Args...)
-
 	env := append(os.Environ(), bootstrapMarker+"=1")
 	if cfg.AWSProfile != "" {
 		env = append(env, "AWS_PROFILE="+cfg.AWSProfile)
@@ -66,19 +59,23 @@ func Bootstrap(ctx context.Context, runner process.Runner, cfg BootstrapConfig) 
 
 	return runner.Run(ctx, process.RunRequest{
 		Program: "bunx",
-		Args:    args,
+		Args:    BuildArgs(cfg),
 		Dir:     cfg.Root,
 		Env:     env,
 	})
 }
 
-// BuildArgs exposes the exact bunx argument vector for tests.
+// BuildArgs exposes the exact bunx argument vector for tests. The `--`
+// terminator is required: without it `sst shell` parses the wrapped command's
+// own flags (--root, --aws-profile, --local, ...) as SST flags and rejects the
+// invocation with its usage text. Everything after `--` reaches the command
+// unchanged.
 func BuildArgs(cfg BootstrapConfig) []string {
 	args := []string{"--no-install", "sst"}
 	if cfg.Stage != "" {
 		args = append(args, "--stage", cfg.Stage)
 	}
-	args = append(args, "shell", cfg.Executable)
+	args = append(args, "shell", "--", cfg.Executable)
 	args = append(args, cfg.Args...)
 	return args
 }
