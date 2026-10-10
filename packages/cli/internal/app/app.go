@@ -77,3 +77,6 @@ func (a *App) EnsureLinked(ctx context.Context) (handled bool, err error) {
 	})
 	return true, err
 }
+
+// ExecutablePath returns the absolute path to the running binary.
+func (a *App) ExecutablePath() string { return a.Executable }

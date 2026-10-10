@@ -30,10 +30,45 @@ sqldev
   storage delete KEY...# delete specific keys (dedupe, 1000-batches)
   host database tunnel # SSM Postgres port-forward to the deployed host
   host replace         # replace the host, preserving its data volume (needs --yes)
-  dev worker           # run the local Supabase worker
-  dev imagor           # run the local Imagor container
+  dev start            # start sst/worker/imagor in managed tmux panes
+  dev stop             # stop the managed session and clean up the Imagor container
+  dev restart          # restart all managed local services
+  dev restart --reset-data   # restart and run the combined S3 + Supabase reset
+  dev status           # show per-pane state (human or --output json)
+  dev attach           # attach, or switch-client when already inside tmux
+  dev reset-data       # empty linked S3 then `supabase db reset --local --no-seed`
+  dev sst     [--foreground]  # restart the sst pane, or run it attached
+  dev worker  [--foreground]  # restart the worker pane, or run it attached
+  dev imagor  [--foreground]  # restart the Imagor pane, or run it attached
 ```
 
 Commands that need linked SST resources auto-bootstrap through
 `bunx --no-install sst --stage <stage> shell` when the current environment is
 not already an `sst shell` child.
+
+## Local development with tmux
+
+`dev start`/`dev restart` own one tmux session per stage, `sqldev-<stage>`, with
+a `services` window containing separately titled `sst`, `worker`, and `imagor`
+panes. The orchestrator never enters `sst shell`; only the foreground panes and
+`dev reset-data` acquire linked resources. Failed services stay visible as dead
+panes (`remain-on-exit`). The orchestrator only touches a session carrying its
+own `@sqldev-managed`/`@sqldev-stage`/`@sqldev-root` markers.
+
+```bash
+# Bring the whole local stack up and attach.
+sqldev --stage dev dev restart --attach
+
+# Peek at state without attaching.
+sqldev --stage dev dev status
+
+# Rebuild one service without disturbing the others.
+sqldev --stage dev dev worker
+
+# Nuke local data (empty S3, reset Supabase) and restart. Prompts once.
+sqldev --stage dev dev restart --reset-data
+```
+
+`dev restart --reset-data` and `dev reset-data` only run for the `dev`, `local`,
+and `development` stages. tmux settings live under `dev.tmux` in config and the
+`SQLDEV_TMUX_*` environment variables.

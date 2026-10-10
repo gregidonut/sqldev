@@ -35,6 +35,24 @@ sqldev --stage dev dev worker
 sqldev --stage dev dev imagor
 ```
 
+Prefer the tmux orchestrator for day-to-day local development. It runs `sst dev`,
+the worker, and Imagor in separate inspectable panes of one managed session and
+turns a full restart into a single command:
+
+```bash
+# Start/restart everything in managed tmux panes, then attach.
+sqldev --stage dev dev restart --attach
+
+# Check per-service state without attaching.
+sqldev --stage dev dev status
+
+# Restart one service's pane only.
+sqldev --stage dev dev worker
+
+# Empty linked S3 and reset local Supabase, then restart. Prompts once.
+sqldev --stage dev dev restart --reset-data
+```
+
 Configuration precedence is flag, then `SQLDEV_*` env, then a compatible legacy
 env (`STAGE`, `AWS_PROFILE`, ...), then an optional `.sqldev.yaml`, then
 defaults. See `.kiro/specs/go-cli-consolidation/design.md` for the full design.

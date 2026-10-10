@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/gregidonut/sqldev/packages/cli/internal/app"
+	"github.com/gregidonut/sqldev/packages/cli/internal/prompt"
 	"github.com/gregidonut/sqldev/packages/cli/internal/storage"
 )
 
@@ -154,13 +155,6 @@ func reportDeleted(cmd *cobra.Command, output string, deleted int) error {
 	return nil
 }
 
-func confirm(cmd *cobra.Command, prompt string) (bool, error) {
-	fmt.Fprintf(cmd.OutOrStdout(), "%s [y/N]: ", prompt)
-	reader := bufio.NewReader(cmd.InOrStdin())
-	line, err := reader.ReadString('\n')
-	if err != nil && err != io.EOF {
-		return false, err
-	}
-	answer := strings.ToLower(strings.TrimSpace(line))
-	return answer == "y" || answer == "yes", nil
+func confirm(cmd *cobra.Command, message string) (bool, error) {
+	return prompt.Stdio{}.Confirm(cmd.InOrStdin(), cmd.OutOrStdout(), message)
 }

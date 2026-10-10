@@ -4,8 +4,11 @@
 package dev
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gregidonut/sqldev/packages/cli/internal/process"
 	"github.com/gregidonut/sqldev/packages/cli/internal/sst"
@@ -62,8 +65,10 @@ func RunWorker(ctx context.Context, runner process.Runner, res sst.Resources, fu
 
 // RunImagor removes any existing container then runs the local Imagor image,
 // reproducing packages/scripts/src/imagor. The container env list is identical,
-// including VIPS_MAX_RESOLUTION and FFMPEG_MAX_ANIMATION_FRAMES.
-func RunImagor(ctx context.Context, runner process.Runner, res sst.Resources, image string) error {
+// including VIPS_MAX_RESOLUTION and FFMPEG_MAX_ANIMATION_FRAMES. The managed
+// container carries ownership labels so one local stage never silently removes
+// another stage's container.
+func RunImagor(ctx context.Context, runner process.Runner, res sst.Resources, image, stage string) error {
 	bucket, err := res.String("SQLDevBucket", "name")
 	if err != nil {
 		return err
@@ -94,20 +99,91 @@ func RunImagor(ctx context.Context, runner process.Runner, res sst.Resources, im
 		}
 	}
 
-	// Best-effort removal of a previous container; ignore its failure, exactly
-	// as the original `docker rm -f` did before starting.
-	_ = runner.Run(ctx, process.RunRequest{
-		Program: "docker",
-		Args:    []string{"rm", "-f", "sqldev-imagor"},
-	})
+	// Label-aware removal: never remove a container owned by another stage.
+	if err := RemoveOwnedImagor(ctx, runner, stage); err != nil {
+		return err
+	}
 
-	args := []string{"run", "--rm", "--name", "sqldev-imagor", "-p", "127.0.0.1:8000:8000"}
+	args := []string{
+		"run", "--rm",
+		"--name", imagorContainer,
+		"--label", "io.sqldev.managed=true",
+		"--label", "io.sqldev.stage=" + stage,
+		"-p", "127.0.0.1:8000:8000",
+	}
 	for _, entry := range envArgs {
 		args = append(args, "-e", entry)
 	}
 	args = append(args, image)
 
 	return runner.Run(ctx, process.RunRequest{Program: "docker", Args: args})
+}
+
+const imagorContainer = "sqldev-imagor"
+
+// RemoveOwnedImagor removes the local Imagor container only when the current
+// stage is allowed to: a same-stage managed container, or an unlabeled legacy
+// container. A managed container owned by a different stage is a conflict.
+func RemoveOwnedImagor(ctx context.Context, runner process.Runner, stage string) error {
+	managed, owner, exists, err := inspectImagor(ctx, runner)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+	if managed && owner != "" && owner != stage {
+		return fmt.Errorf(
+			"the %s container is owned by stage %q; stop that stage before starting %q",
+			imagorContainer, owner, stage,
+		)
+	}
+	// Same-stage managed, or a legacy unlabeled container: safe to replace.
+	return runner.Run(ctx, process.RunRequest{
+		Program: "docker",
+		Args:    []string{"rm", "-f", imagorContainer},
+	})
+}
+
+// inspectImagor reports whether the sqldev-imagor container exists and, if so,
+// whether it carries the managed label and which stage owns it.
+func inspectImagor(ctx context.Context, runner process.Runner) (managed bool, owner string, exists bool, err error) {
+	var out bytes.Buffer
+	runErr := runner.Run(ctx, process.RunRequest{
+		Program: "docker",
+		Args: []string{
+			"inspect", imagorContainer,
+			"--format", "{{index .Config.Labels \"io.sqldev.managed\"}}\t{{index .Config.Labels \"io.sqldev.stage\"}}",
+		},
+		Stdout: &out,
+	})
+	if runErr != nil {
+		// `docker inspect` on a missing container exits nonzero; treat that as
+		// "does not exist" rather than a hard failure.
+		if process.ExitCode(runErr) != 0 {
+			return false, "", false, nil
+		}
+		return false, "", false, runErr
+	}
+	line := strings.TrimSpace(out.String())
+	fields := strings.SplitN(line, "\t", 2)
+	managedField := fields[0]
+	if len(fields) == 2 {
+		owner = strings.TrimSpace(fields[1])
+	}
+	managed = strings.TrimSpace(managedField) == "true"
+	return managed, owner, true, nil
+}
+
+// RunSST runs `bunx --no-install sst --stage <stage> dev` from the repository
+// root attached to the current terminal. It does not require linked resources;
+// SST provides them.
+func RunSST(ctx context.Context, runner process.Runner, root, stage string) error {
+	return runner.Run(ctx, process.RunRequest{
+		Program: "bunx",
+		Args:    []string{"--no-install", "sst", "--stage", stage, "dev"},
+		Dir:     root,
+	})
 }
 
 func kv(key, value string) string { return key + "=" + value }

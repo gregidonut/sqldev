@@ -50,6 +50,8 @@ AWS_PROFILE='folio_api_admin' AWS_REGION='ap-east-1' sqldev --stage dev supabase
 
 Build the CLI with `CGO_ENABLED=0 go -C packages/cli build -o <dest> .` (the local gcc cannot link cgo). The `supabase` and `cypress` subcommands are transparent: every argument after the command name is forwarded to the vendor CLI unchanged, and linked resource values are injected. `sqldev storage empty` and `sqldev storage delete` operate on the linked bucket; run them only when the task explicitly requests that deletion. `sqldev host database tunnel` and `sqldev host replace` operate on the deployed host.
 
+For day-to-day local development, `sqldev --stage dev dev restart` runs `sst dev`, the worker, and Imagor in separate inspectable panes of one managed tmux session (`sqldev-<stage>`), and `sqldev --stage dev dev status` reports per-pane state. `sqldev --stage dev dev restart --reset-data` empties the linked S3 bucket and runs `supabase db reset --local --no-seed` before restarting; it and `dev reset-data` are refused outside the `dev`, `local`, and `development` stages. See `.kiro/specs/local-dev-tmux-orchestration/design.md`.
+
 ## Supabase
 
 Local Supabase is the CLI project at `packages/backend/supabase`. Start and stop it through `sqldev supabase`. The `user-postgres-dev` MCP is the local dev database; use it to inspect that database. Schema changes still belong in migrations.

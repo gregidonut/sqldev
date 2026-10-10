@@ -138,9 +138,127 @@ func clearEnv(t *testing.T) {
 		"SQLDEV_AWS_REGION", "AWS_REGION",
 		"SQLDEV_OUTPUT",
 		"SQLDEV_HOST_LOCAL_PORT", "LOCAL_PORT",
+		"SQLDEV_TMUX_SESSION", "SQLDEV_TMUX_WINDOW",
+		"SQLDEV_TMUX_STARTUP_TIMEOUT", "SQLDEV_TMUX_POLL_INTERVAL",
+		"SQLDEV_TMUX_STOP_GRACE_PERIOD", "SQLDEV_TMUX_CACHE_DIR",
 		"XDG_CONFIG_HOME",
 	} {
 		t.Setenv(key, "")
 		os.Unsetenv(key)
+	}
+}
+
+func TestTmuxDefaults(t *testing.T) {
+	root := writeRoot(t)
+	clearEnv(t)
+	cfg, err := Load(root, Flags{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Tmux.Session != "sqldev-dev" {
+		t.Errorf("session = %q, want sqldev-dev", cfg.Tmux.Session)
+	}
+	if cfg.Tmux.Window != "services" {
+		t.Errorf("window = %q", cfg.Tmux.Window)
+	}
+	if cfg.Tmux.StartupTimeout.String() != "2m0s" {
+		t.Errorf("startup = %s", cfg.Tmux.StartupTimeout)
+	}
+	if cfg.Tmux.PollInterval.String() != "2s" {
+		t.Errorf("poll = %s", cfg.Tmux.PollInterval)
+	}
+	if cfg.Tmux.CacheDir == "" {
+		t.Error("cache dir should default to a non-empty path")
+	}
+}
+
+func TestTmuxSessionRendersStage(t *testing.T) {
+	root := writeRoot(t)
+	clearEnv(t)
+	cfg, err := Load(root, Flags{Stage: "local"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Tmux.Session != "sqldev-local" {
+		t.Errorf("session = %q, want sqldev-local", cfg.Tmux.Session)
+	}
+}
+
+func TestTmuxFlagEnvFileDefaultPrecedence(t *testing.T) {
+	root := writeRoot(t)
+	clearEnv(t)
+	// YAML beats default.
+	path := filepath.Join(root, ".sqldev.yaml")
+	if err := os.WriteFile(path, []byte("dev:\n  tmux:\n    window: fromfile\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(root, Flags{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Tmux.Window != "fromfile" {
+		t.Errorf("window = %q, want fromfile", cfg.Tmux.Window)
+	}
+	// Env beats YAML.
+	t.Setenv("SQLDEV_TMUX_WINDOW", "fromenv")
+	cfg, err = Load(root, Flags{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Tmux.Window != "fromenv" {
+		t.Errorf("window = %q, want fromenv", cfg.Tmux.Window)
+	}
+}
+
+func TestTmuxInvalidDurations(t *testing.T) {
+	root := writeRoot(t)
+	for _, bad := range []string{"notaduration", "0s", "-5s"} {
+		clearEnv(t)
+		t.Setenv("SQLDEV_TMUX_STARTUP_TIMEOUT", bad)
+		if _, err := Load(root, Flags{}); err == nil {
+			t.Errorf("duration %q should fail", bad)
+		}
+	}
+}
+
+func TestTmuxPollMustBeLessThanTimeout(t *testing.T) {
+	root := writeRoot(t)
+	clearEnv(t)
+	t.Setenv("SQLDEV_TMUX_STARTUP_TIMEOUT", "2s")
+	t.Setenv("SQLDEV_TMUX_POLL_INTERVAL", "5s")
+	if _, err := Load(root, Flags{}); err == nil {
+		t.Fatal("poll >= timeout should fail")
+	}
+}
+
+func TestInvalidStageRejected(t *testing.T) {
+	root := writeRoot(t)
+	clearEnv(t)
+	for _, bad := range []string{"-bad", "has space", "a:b", "a.b"} {
+		if _, err := Load(root, Flags{Stage: bad}); err == nil {
+			t.Errorf("stage %q should be rejected", bad)
+		}
+	}
+}
+
+func TestInvalidSessionNameRejected(t *testing.T) {
+	root := writeRoot(t)
+	clearEnv(t)
+	t.Setenv("SQLDEV_TMUX_SESSION", "bad:name")
+	if _, err := Load(root, Flags{}); err == nil {
+		t.Fatal("invalid session name should fail")
+	}
+}
+
+func TestTmuxCacheDirAbsolute(t *testing.T) {
+	root := writeRoot(t)
+	clearEnv(t)
+	t.Setenv("SQLDEV_TMUX_CACHE_DIR", "relative/cache")
+	cfg, err := Load(root, Flags{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !filepath.IsAbs(cfg.Tmux.CacheDir) {
+		t.Errorf("cache dir not absolute: %q", cfg.Tmux.CacheDir)
 	}
 }
