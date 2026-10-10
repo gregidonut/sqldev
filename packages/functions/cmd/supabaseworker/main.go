@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -212,13 +213,85 @@ func imageOutcome(prepared imagePrep, render func(imagor.Request) (jobs.Outcome,
 }
 
 func (p *processor) Accept(ctx context.Context, envelope jobs.Envelope) error {
-	workflowID := envelope.JobID
-	if record, err := p.server.Jobs.Get(ctx, envelope.JobID); err == nil && record.Attempt > 1 {
-		workflowID = fmt.Sprintf("%s:%d", envelope.JobID, record.Attempt)
+	record, err := p.server.Jobs.Get(ctx, envelope.JobID)
+	if err != nil && !errors.Is(err, status.ErrNotFound) {
+		return err
 	}
-	_, err := dbos.RunWorkflow(p.dbos, p.Run, envelope,
+	workflowID, err := chooseWorkflowID(envelope, record, err == nil, p.lookupWorkflow)
+	if err != nil {
+		return err
+	}
+	_, err = dbos.RunWorkflow(p.dbos, p.Run, envelope,
 		dbos.WithWorkflowID(workflowID),
 		dbos.WithQueue(p.queue),
 	)
 	return err
+}
+
+// workflowLookup reports the state of the DBOS workflow with one id. The bool
+// is false when no such workflow exists.
+type workflowLookup func(id string) (dbos.WorkflowStatusType, bool, error)
+
+// chooseWorkflowID picks the DBOS workflow id for one queue message.
+//
+// DBOS treats a workflow id as an idempotency key: running a finished id again
+// returns the recorded result and ignores the new input. Job ids are stable per
+// idempotency key, but their status record expires after 24 hours while the
+// workflow row does not. A thumbnail requested again after that window gets a
+// fresh "pending" record, and the worker would attach it to the old finished
+// workflow, so nothing would ever update the record. Normal completion always
+// moves the record out of "pending" before the workflow ends, so a finished
+// workflow paired with a pending record means the record was recreated. Such a
+// job runs under an id tied to that record's expiry. The id is the same for
+// every duplicate message of the same record, so duplicates still collapse.
+//
+// Only Imagor jobs are renewed. They render a derived copy and are safe to run
+// again, while a mutation must not run twice for one idempotency key.
+func chooseWorkflowID(envelope jobs.Envelope, record status.Record, found bool, lookup workflowLookup) (string, error) {
+	id := envelope.JobID
+	if !found {
+		return id, nil
+	}
+	if record.Attempt > 1 {
+		id = fmt.Sprintf("%s:%d", id, record.Attempt)
+	}
+	if envelope.Kind != jobs.KindImagor || record.Status != status.Pending {
+		return id, nil
+	}
+	state, exists, err := lookup(id)
+	if err != nil {
+		return "", err
+	}
+	if !exists || !workflowFinished(state) {
+		return id, nil
+	}
+	return fmt.Sprintf("%s:e%d", id, record.ExpiresAt.Unix()), nil
+}
+
+func workflowFinished(state dbos.WorkflowStatusType) bool {
+	switch state {
+	case dbos.WorkflowStatusSuccess,
+		dbos.WorkflowStatusError,
+		dbos.WorkflowStatusCancelled,
+		dbos.WorkflowStatusMaxRecoveryAttemptsExceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *processor) lookupWorkflow(id string) (dbos.WorkflowStatusType, bool, error) {
+	handle, err := dbos.RetrieveWorkflow[jobs.Outcome](p.dbos, id)
+	if err != nil {
+		var dbosErr *dbos.Error
+		if errors.As(err, &dbosErr) && dbosErr.Code == dbos.ErrorCodeNonExistentWorkflow {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	current, err := handle.GetStatus()
+	if err != nil {
+		return "", false, err
+	}
+	return current.Status, true, nil
 }

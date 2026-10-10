@@ -88,7 +88,9 @@ worker = "postgres://dbos_worker:{workerPassword}@127.0.0.1:5432/postgres?sslmod
         "IMAGOR_PROCESS_QUEUE_SIZE=2",
         "VIPS_MAX_WIDTH=4096",
         "VIPS_MAX_HEIGHT=4096",
-        "VIPS_MAX_RESOLUTION=16777216",
+        # libvips counts every frame of an animation, so 18 frames of 1080p
+        # (about 37 MP) need more than a single 4096x4096 image does.
+        "VIPS_MAX_RESOLUTION=67108864",
         "VIPS_CACHE_SIZE=0",
         "FFMPEG_MAX_ANIMATION_FRAMES=18",
         "PROGRESS_ADDRESS=127.0.0.1:8001",

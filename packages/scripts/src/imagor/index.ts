@@ -18,6 +18,8 @@ const envArgs = [
     "IMAGOR_DISABLE_PARAMS_ENDPOINT=1",
     "HTTP_LOADER_DISABLE=1",
     "FFMPEG_MAX_ANIMATION_FRAMES=18",
+    // Keep in step with VIPS_MAX_RESOLUTION in packages/backend/selfhost/bootstrap.sh.
+    "VIPS_MAX_RESOLUTION=67108864",
     "AWS_REGION=ap-east-1",
     `S3_LOADER_BUCKET=${bucket}`,
     "S3_SAFE_CHARS=--",
