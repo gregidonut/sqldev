@@ -107,6 +107,7 @@ func (s *Server) reopenFailedImage(ctx context.Context, kind string, existing st
 	existing.ResultKey = ""
 	existing.ContentType = ""
 	existing.Attempt = next
+	existing.Progress = status.Progress{}
 	return s.Jobs.Update(ctx, existing)
 }
 
@@ -141,6 +142,13 @@ func (s *Server) GetJob(ctx context.Context, request GetJobRequestObject) (GetJo
 	}
 	if record.Status == status.Failed {
 		state.Error = &ErrorMessage{Message: record.Message}
+	}
+	if record.Status == status.Running && record.Progress.Validate() == nil {
+		state.Progress = &JobProgress{
+			Phase:     JobProgressPhase(record.Progress.Phase),
+			Completed: record.Progress.Completed,
+			Total:     record.Progress.Total,
+		}
 	}
 	if record.Status == status.Completed && record.ContentType != "" {
 		if record.ResultKey == "" || s.Results == nil {
@@ -183,6 +191,7 @@ func (s *Server) Finish(ctx context.Context, envelope jobs.Envelope, outcome job
 	}
 	record.HTTPStatus = outcome.HTTPStatus
 	record.Message = outcome.Message
+	record.Progress = status.Progress{}
 	if outcome.HTTPStatus >= 400 {
 		record.Status = status.Failed
 		record.Body = nil

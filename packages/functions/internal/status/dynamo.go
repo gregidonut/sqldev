@@ -19,17 +19,20 @@ type Dynamo struct {
 }
 
 type item struct {
-	JobID       string `dynamodbav:"jobId"`
-	Owner       string `dynamodbav:"owner"`
-	Kind        string `dynamodbav:"kind"`
-	Status      string `dynamodbav:"status"`
-	HTTPStatus  int    `dynamodbav:"httpStatus,omitempty"`
-	Body        string `dynamodbav:"body,omitempty"`
-	ResultKey   string `dynamodbav:"resultKey,omitempty"`
-	ContentType string `dynamodbav:"contentType,omitempty"`
-	Message     string `dynamodbav:"message,omitempty"`
-	ExpiresAt   int64  `dynamodbav:"expiresAt"`
-	Attempt     int    `dynamodbav:"attempt,omitempty"`
+	JobID             string `dynamodbav:"jobId"`
+	Owner             string `dynamodbav:"owner"`
+	Kind              string `dynamodbav:"kind"`
+	Status            string `dynamodbav:"status"`
+	HTTPStatus        int    `dynamodbav:"httpStatus,omitempty"`
+	Body              string `dynamodbav:"body,omitempty"`
+	ResultKey         string `dynamodbav:"resultKey,omitempty"`
+	ContentType       string `dynamodbav:"contentType,omitempty"`
+	Message           string `dynamodbav:"message,omitempty"`
+	ExpiresAt         int64  `dynamodbav:"expiresAt"`
+	Attempt           int    `dynamodbav:"attempt,omitempty"`
+	ProgressPhase     string `dynamodbav:"progressPhase,omitempty"`
+	ProgressCompleted int    `dynamodbav:"progressCompleted,omitempty"`
+	ProgressTotal     int    `dynamodbav:"progressTotal,omitempty"`
 }
 
 func NewDynamo(ctx context.Context, table string) (*Dynamo, error) {
@@ -84,7 +87,7 @@ func (d *Dynamo) Get(ctx context.Context, jobID string) (Record, error) {
 }
 
 func (d *Dynamo) Update(ctx context.Context, record Record) error {
-	expression := "SET #status = :status, httpStatus = :httpStatus, body = :body, resultKey = :resultKey, contentType = :contentType, message = :message"
+	set := "SET #status = :status, httpStatus = :httpStatus, body = :body, resultKey = :resultKey, contentType = :contentType, message = :message"
 	values := map[string]types.AttributeValue{
 		":status":      &types.AttributeValueMemberS{Value: record.Status},
 		":httpStatus":  &types.AttributeValueMemberN{Value: strconv.Itoa(record.HTTPStatus)},
@@ -96,9 +99,10 @@ func (d *Dynamo) Update(ctx context.Context, record Record) error {
 	// A zero attempt means this update is a status transition and must not
 	// erase the retry count recorded by an earlier resubmit.
 	if record.Attempt > 0 {
-		expression += ", attempt = :attempt"
+		set += ", attempt = :attempt"
 		values[":attempt"] = &types.AttributeValueMemberN{Value: strconv.Itoa(record.Attempt)}
 	}
+	expression := set + " REMOVE progressPhase, progressCompleted, progressTotal"
 	_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: aws.String(d.table),
 		Key: map[string]types.AttributeValue{
@@ -121,23 +125,63 @@ func (d *Dynamo) Update(ctx context.Context, record Record) error {
 	return nil
 }
 
+// progressCondition limits a progress write to the running job of one owner.
+// owner and status are DynamoDB reserved words, so both use name aliases.
+const progressCondition = "attribute_exists(jobId) AND #owner = :owner AND #status = :running AND (attribute_not_exists(progressTotal) OR progressTotal = :total) AND (attribute_not_exists(progressCompleted) OR progressCompleted <= :completed)"
+
+func (d *Dynamo) UpdateProgress(ctx context.Context, jobID, owner string, progress Progress) error {
+	if err := progress.Validate(); err != nil {
+		return err
+	}
+	_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
+		TableName: aws.String(d.table),
+		Key: map[string]types.AttributeValue{
+			"jobId": &types.AttributeValueMemberS{Value: jobID},
+		},
+		UpdateExpression: aws.String("SET progressPhase = :phase, progressCompleted = :completed, progressTotal = :total"),
+		ExpressionAttributeNames: map[string]string{
+			"#owner":  "owner",
+			"#status": "status",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":phase":     &types.AttributeValueMemberS{Value: progress.Phase},
+			":completed": &types.AttributeValueMemberN{Value: strconv.Itoa(progress.Completed)},
+			":total":     &types.AttributeValueMemberN{Value: strconv.Itoa(progress.Total)},
+			":owner":     &types.AttributeValueMemberS{Value: owner},
+			":running":   &types.AttributeValueMemberS{Value: Running},
+		},
+		ConditionExpression: aws.String(progressCondition),
+	})
+	if err != nil {
+		var rejected *types.ConditionalCheckFailedException
+		if errors.As(err, &rejected) {
+			return ErrNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 func toItem(record Record) item {
 	expires := record.ExpiresAt
 	if expires.IsZero() {
 		expires = time.Now().Add(24 * time.Hour)
 	}
 	return item{
-		JobID:       record.JobID,
-		Owner:       record.Owner,
-		Kind:        record.Kind,
-		Status:      record.Status,
-		HTTPStatus:  record.HTTPStatus,
-		Body:        string(record.Body),
-		ResultKey:   record.ResultKey,
-		ContentType: record.ContentType,
-		Message:     record.Message,
-		ExpiresAt:   expires.Unix(),
-		Attempt:     record.Attempt,
+		JobID:             record.JobID,
+		Owner:             record.Owner,
+		Kind:              record.Kind,
+		Status:            record.Status,
+		HTTPStatus:        record.HTTPStatus,
+		Body:              string(record.Body),
+		ResultKey:         record.ResultKey,
+		ContentType:       record.ContentType,
+		Message:           record.Message,
+		ExpiresAt:         expires.Unix(),
+		Attempt:           record.Attempt,
+		ProgressPhase:     record.Progress.Phase,
+		ProgressCompleted: record.Progress.Completed,
+		ProgressTotal:     record.Progress.Total,
 	}
 }
 
@@ -154,5 +198,10 @@ func fromItem(stored item) Record {
 		Message:     stored.Message,
 		ExpiresAt:   time.Unix(stored.ExpiresAt, 0),
 		Attempt:     stored.Attempt,
+		Progress: Progress{
+			Phase:     stored.ProgressPhase,
+			Completed: stored.ProgressCompleted,
+			Total:     stored.ProgressTotal,
+		},
 	}
 }

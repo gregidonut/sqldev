@@ -10,6 +10,9 @@ packages/frontend/AGENTS.md
 packages/frontend/agent/
 packages/frontend/skills-lock.json
 packages/frontend/src/utils/supabase/models/
+
+.kiro
+
 skills-lock.json
 #
 # dependencies

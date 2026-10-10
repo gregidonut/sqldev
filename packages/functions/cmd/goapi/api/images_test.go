@@ -169,6 +169,40 @@ func TestTransformImageRejectsMismatchedPreview(t *testing.T) {
 	}
 }
 
+func TestGetJobReturnsRunningAnimationProgress(t *testing.T) {
+	server := testServer(t, &fakeDB{}, &fakeObjects{}, queue.NewMemory())
+	const jobID = "dddddddd-dddd-4ddd-8ddd-dddddddddddd"
+	if err := server.Jobs.Create(context.Background(), status.Record{
+		JobID:  jobID,
+		Owner:  "user_test",
+		Kind:   jobs.KindImagor,
+		Status: status.Running,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := server.Jobs.UpdateProgress(context.Background(), jobID, "user_test", status.Progress{
+		Phase: status.ProgressFrames, Completed: 3, Total: 7,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	response := requestJSON(t, server, http.MethodGet, "/api/jobs/"+jobID, testJWT, nil)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d body %s", response.Code, response.Body.String())
+	}
+	var state JobState
+	if err := json.Unmarshal(response.Body.Bytes(), &state); err != nil {
+		t.Fatal(err)
+	}
+	if state.Progress == nil || state.Progress.Completed != 3 || state.Progress.Total != 7 || state.Progress.Phase != Frames {
+		t.Fatalf("progress = %+v", state.Progress)
+	}
+	server.Identity = rejectIdentity{}
+	denied := requestJSON(t, server, http.MethodGet, "/api/jobs/"+jobID, "other-token", nil)
+	if denied.Code != http.StatusNotFound {
+		t.Fatalf("other owner status = %d", denied.Code)
+	}
+}
+
 func TestTransformImageRejectsUnsafeOptions(t *testing.T) {
 	messages := queue.NewMemory()
 	server := testServer(t, &fakeDB{}, &fakeObjects{}, messages)
@@ -335,7 +369,7 @@ type fakeImages struct {
 	calls int
 }
 
-func (f *fakeImages) Render(_ context.Context, request imagor.Request) (imagor.Image, error) {
+func (f *fakeImages) Render(_ context.Context, request imagor.Request, _ string, _ func(imagor.Progress)) (imagor.Image, error) {
 	f.calls++
 	f.got = request
 	return f.image, f.err

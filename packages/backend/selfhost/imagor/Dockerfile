@@ -17,6 +17,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && git clone --depth 1 --branch "${IMAGORVIDEO_VERSION}" https://github.com/cshum/imagorvideo.git /src \
     && test "$(git -C /src rev-parse HEAD)" = "${IMAGORVIDEO_COMMIT}"
+COPY progress.patch /tmp/progress.patch
+RUN git -C /src apply /tmp/progress.patch
 
 FROM ${BASE_IMAGE} AS native-base
 

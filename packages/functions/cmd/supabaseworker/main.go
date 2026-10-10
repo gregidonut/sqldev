@@ -130,6 +130,18 @@ func (p *processor) Run(ctx dbos.Context, envelope jobs.Envelope) (jobs.Outcome,
 		outcome = jobs.Outcome{HTTPStatus: 500, Message: "internal error"}
 	}
 	if finishErr := p.server.Finish(context.Background(), envelope, outcome); finishErr != nil {
+		// A job left running can never be resubmitted, because only failed
+		// image jobs reopen under a new workflow id.
+		if markErr := p.server.Jobs.Update(context.Background(), status.Record{
+			JobID:      envelope.JobID,
+			Owner:      envelope.Claims.Subject,
+			Kind:       envelope.Kind,
+			Status:     status.Failed,
+			HTTPStatus: 500,
+			Message:    "internal error",
+		}); markErr != nil {
+			slog.Error("mark job failed", "jobId", envelope.JobID, "error", markErr)
+		}
 		return withoutImageBytes(outcome), finishErr
 	}
 	outcome = withoutImageBytes(outcome)

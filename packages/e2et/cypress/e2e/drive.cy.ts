@@ -596,6 +596,7 @@ describe("drive", () => {
       const animationJobId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
       const posterPath = "/__cypress/video-poster.webp";
       const animationPath = "/__cypress/video-animation.webp";
+      let animationStage: "frames" | "encoding" | "done" = "frames";
 
       signInAndOpenDrive();
       uploadThroughDialog([video, pdf]);
@@ -663,6 +664,28 @@ describe("drive", () => {
       }).as("transformPreview");
       cy.intercept("GET", new RegExp(`/api/jobs/(${posterJobId}|${animationJobId})$`), (req) => {
         const jobId = req.url.split("/").pop();
+        if (jobId === animationJobId && animationStage === "frames") {
+          req.reply({
+            statusCode: 200,
+            body: {
+              jobId,
+              status: "running",
+              progress: { phase: "frames", completed: 3, total: 7 },
+            },
+          });
+          return;
+        }
+        if (jobId === animationJobId && animationStage === "encoding") {
+          req.reply({
+            statusCode: 200,
+            body: {
+              jobId,
+              status: "running",
+              progress: { phase: "encoding", completed: 7, total: 7 },
+            },
+          });
+          return;
+        }
         const path = jobId === animationJobId ? animationPath : posterPath;
         req.reply({
           statusCode: 200,
@@ -693,6 +716,9 @@ describe("drive", () => {
         .find("[data-cy='dStorage_thumbnail_image']", { timeout: 20000 })
         .should("have.attr", "src")
         .and("include", posterPath);
+      cy.contains("[data-cy='dStorage_item']", video.fileName)
+        .find("[role='progressbar']")
+        .should("not.exist");
       cy.get("@transformPreview.all").should(function (interceptions) {
         expect(
           previewRequests(interceptions, "animation", video.fileName),
@@ -707,9 +733,38 @@ describe("drive", () => {
 
       cy.contains("[data-cy='dStorage_item']", video.fileName).trigger("pointerenter");
       cy.contains("[data-cy='dStorage_item']", video.fileName)
+        .find("[role='progressbar']", { timeout: 20000 })
+        .should("have.attr", "aria-valuenow", "3")
+        .and("have.attr", "aria-valuemin", "0")
+        .and("have.attr", "aria-valuemax", "7")
+        .and("have.attr", "aria-label", `Generating animated preview for ${video.fileName}`);
+      cy.contains("[data-cy='dStorage_item']", video.fileName)
+        .find("[data-cy='dStorage_thumbnail_image']")
+        .should("be.visible");
+      cy.contains("[data-cy='dStorage_item']", video.fileName).trigger("pointerleave");
+      cy.contains("[data-cy='dStorage_item']", video.fileName)
+        .find("[role='progressbar']")
+        .should("have.attr", "aria-valuenow", "3");
+      cy.then(() => {
+        animationStage = "encoding";
+      });
+      cy.contains("[data-cy='dStorage_item']", video.fileName)
+        .find("[role='progressbar']", { timeout: 20000 })
+        .should("have.attr", "aria-valuenow", "7");
+      cy.then(() => {
+        animationStage = "done";
+      });
+      cy.contains("[data-cy='dStorage_item']", video.fileName)
+        .find("[role='progressbar']", { timeout: 20000 })
+        .should("not.exist");
+      cy.contains("[data-cy='dStorage_item']", video.fileName).trigger("pointerenter");
+      cy.contains("[data-cy='dStorage_item']", video.fileName)
         .find("[data-cy='dStorage_thumbnail_animation']", { timeout: 20000 })
         .should("have.attr", "src")
         .and("include", animationPath);
+      cy.contains("[data-cy='dStorage_item']", video.fileName)
+        .find("[role='progressbar']")
+        .should("not.exist");
       cy.contains("[data-cy='dStorage_item']", video.fileName).trigger("pointerleave");
       cy.contains("[data-cy='dStorage_item']", video.fileName)
         .find("[data-cy='dStorage_thumbnail_image']")

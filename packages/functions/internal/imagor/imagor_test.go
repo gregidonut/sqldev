@@ -209,7 +209,7 @@ func TestRenderSignsAndLimitsTheResponse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	image, err := client.Render(context.Background(), request)
+	image, err := client.Render(context.Background(), request, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestRenderSignsAndLimitsTheResponse(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = limited.Render(context.Background(), request)
+			_, err = limited.Render(context.Background(), request, "", nil)
 			if !errors.Is(err, test.wantErr) {
 				t.Fatalf("error = %v", err)
 			}
@@ -252,7 +252,7 @@ func TestRenderSignsAndLimitsTheResponse(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, err = client.Render(ctx, request)
+	_, err = client.Render(ctx, request, "", nil)
 	if !errors.Is(err, ErrTimeout) {
 		t.Fatalf("canceled error = %v", err)
 	}

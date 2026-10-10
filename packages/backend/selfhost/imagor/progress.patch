@@ -1,0 +1,337 @@
+diff --git a/cmd/imagorvideo/main.go b/cmd/imagorvideo/main.go
+index 3c87657..32150a6 100644
+--- a/cmd/imagorvideo/main.go
++++ b/cmd/imagorvideo/main.go
+@@ -10,6 +10,7 @@ import (
+ )
+ 
+ func main() {
++	go imagorvideo.ServeProgress()
+ 	var server = config.CreateServer(
+ 		os.Args[1:],
+ 		imagorvideo.Config,
+diff --git a/ffmpeg/ffmpeg.go b/ffmpeg/ffmpeg.go
+index f32e7d7..78ef89f 100644
+--- a/ffmpeg/ffmpeg.go
++++ b/ffmpeg/ffmpeg.go
+@@ -6,6 +6,7 @@ package ffmpeg
+ // #include "ffmpeg.h"
+ import "C"
+ import (
++	"context"
+ 	"io"
+ 	"math"
+ 	"runtime/cgo"
+@@ -55,6 +56,8 @@ type AVContext struct {
+ 	title, artist      string
+ 	hasVideo, hasAudio bool
+ 	closed             bool
++	progress           func(phase string, completed, total int)
++	progressCtx        context.Context
+ }
+ 
+ type opaqueHandle struct {
+@@ -183,7 +186,12 @@ func (av *AVContext) ExportFrames(timestamps []time.Duration, bands int) (frames
+ 	}
+ 	// position of the last decoded frame, -1 before any decode
+ 	position := time.Duration(-1)
++	total := len(timestamps)
++	av.reportFrames(0, total)
+ 	for _, ts := range timestamps {
++		if err = av.progressErr(); err != nil {
++			return
++		}
+ 		if position < 0 || ts < position || ts-position > sequentialDecodeWindow {
+ 			if err = seekDuration(av, ts); err != nil {
+ 				return
+@@ -224,10 +232,36 @@ func (av *AVContext) ExportFrames(timestamps []time.Duration, bands int) (frames
+ 			return
+ 		}
+ 		frames = append(frames, buf)
++		av.reportFrames(len(frames), total)
+ 	}
+ 	return
+ }
+ 
++// SetFrameProgress receives one report after each exported output frame.
++// total is the planned timestamp count, which already includes duration and frame caps.
++func (av *AVContext) SetFrameProgress(progress func(phase string, completed, total int)) {
++	av.progress = progress
++}
++
++// SetProgressContext stops ExportFrames when the caller cancels.
++func (av *AVContext) SetProgressContext(ctx context.Context) {
++	av.progressCtx = ctx
++}
++
++func (av *AVContext) reportFrames(completed, total int) {
++	if av.progress == nil || total < 1 || completed < 0 || completed > total {
++		return
++	}
++	av.progress("frames", completed, total)
++}
++
++func (av *AVContext) progressErr() error {
++	if av.progressCtx == nil {
++		return nil
++	}
++	return av.progressCtx.Err()
++}
++
+ // sequentialDecodeWindow is the forward distance up to which it is cheaper to
+ // keep decoding than to seek back to the previous keyframe
+ const sequentialDecodeWindow = 2 * time.Second
+diff --git a/processor.go b/processor.go
+index 3d15054..a3a6e9c 100644
+--- a/processor.go
++++ b/processor.go
+@@ -131,11 +131,20 @@ func (p *Processor) Process(ctx context.Context, in *imagor.Blob, params imagorp
+ 	}
+ 	bands := 3
+ 	var (
+-		anim      *animation
+-		start     time.Duration
+-		hasFormat bool
++		anim       *animation
++		start      time.Duration
++		hasFormat  bool
++		progressID string
++		kept       imagorpath.Filters
+ 	)
+ 	for _, filter := range params.Filters {
++		if filter.Name == "progress" {
++			if id, ok := bindProgress(ctx, av, filter.Args); ok {
++				progressID = id
++			}
++			continue
++		}
++		kept = append(kept, filter)
+ 		switch filter.Name {
+ 		case "format":
+ 			hasFormat = true
+@@ -185,6 +194,7 @@ func (p *Processor) Process(ctx context.Context, in *imagor.Blob, params imagorp
+ 			}
+ 		}
+ 	}
++	params.Filters = kept
+ 
+ 	switch meta.Orientation {
+ 	case 3:
+@@ -199,6 +209,7 @@ func (p *Processor) Process(ctx context.Context, in *imagor.Blob, params imagorp
+ 			out = nil
+ 			return
+ 		}
++		finishProgress(progressID)
+ 		if !hasFormat {
+ 			// keep the animation as gif unless a format was requested explicitly
+ 			filters = append(filters, imagorpath.Filter{Name: "format", Args: "gif"})
+@@ -217,6 +228,8 @@ func (p *Processor) Process(ctx context.Context, in *imagor.Blob, params imagorp
+ 
+ 	if len(filters) > 0 {
+ 		params.Filters = append(params.Filters, filters...)
++	}
++	if progressID != "" || len(filters) > 0 {
+ 		params.Path = imagorpath.GeneratePath(params)
+ 	}
+ 	err = imagor.ErrForward{Params: params}
+diff --git a/progress.go b/progress.go
+new file mode 100644
+index 0000000..49169b7
+--- /dev/null
++++ b/progress.go
+@@ -0,0 +1,195 @@
++package imagorvideo
++
++import (
++	"context"
++	"crypto/hmac"
++	"crypto/sha256"
++	"crypto/subtle"
++	"encoding/base64"
++	"encoding/json"
++	"net"
++	"net/http"
++	"os"
++	"strings"
++	"sync"
++	"time"
++
++	"github.com/cshum/imagorvideo/ffmpeg"
++)
++
++const (
++	progressAuthPrefix = "sqldev-progress-auth\n"
++	progressTTL        = 2 * time.Minute
++	progressLimit      = 64
++)
++
++type progressSnapshot struct {
++	Phase     string `json:"phase"`
++	Completed int    `json:"completed"`
++	Total     int    `json:"total"`
++}
++
++type progressEntry struct {
++	progressSnapshot
++	token   string
++	updated time.Time
++}
++
++var progressState = struct {
++	mu    sync.Mutex
++	items map[string]progressEntry
++}{items: map[string]progressEntry{}}
++
++// ServeProgress exposes frame progress on loopback. It refuses any other address.
++func ServeProgress() {
++	addr := strings.TrimSpace(os.Getenv("PROGRESS_ADDRESS"))
++	if addr == "" {
++		addr = "127.0.0.1:8001"
++	}
++	host, _, err := net.SplitHostPort(addr)
++	if err != nil || (host != "127.0.0.1" && host != "localhost") {
++		return
++	}
++	server := &http.Server{
++		Addr:              addr,
++		Handler:           http.HandlerFunc(handleProgress),
++		ReadHeaderTimeout: 2 * time.Second,
++	}
++	_ = server.ListenAndServe()
++}
++
++func bindProgress(ctx context.Context, av *ffmpeg.AVContext, args string) (string, bool) {
++	id, token, ok := splitProgress(args)
++	if !ok || !acceptProgress(id, token) {
++		return "", false
++	}
++	av.SetProgressContext(ctx)
++	av.SetFrameProgress(func(phase string, completed, total int) {
++		reportProgress(id, phase, completed, total)
++	})
++	return id, true
++}
++
++func finishProgress(id string) {
++	if id == "" {
++		return
++	}
++	progressState.mu.Lock()
++	defer progressState.mu.Unlock()
++	item, ok := progressState.items[id]
++	if !ok || item.Total < 1 {
++		return
++	}
++	item.Phase = "encoding"
++	item.Completed = item.Total
++	item.updated = time.Now()
++	progressState.items[id] = item
++}
++
++func splitProgress(args string) (string, string, bool) {
++	id, token, ok := strings.Cut(args, ",")
++	if !ok || !validProgressID(id) || !validProgressID(token) {
++		return "", "", false
++	}
++	return id, token, true
++}
++
++func validProgressID(value string) bool {
++	if len(value) < 16 || len(value) > 64 {
++		return false
++	}
++	for _, char := range value {
++		switch {
++		case char >= 'a' && char <= 'z':
++		case char >= 'A' && char <= 'Z':
++		case char >= '0' && char <= '9':
++		case char == '-' || char == '_':
++		default:
++			return false
++		}
++	}
++	return true
++}
++
++func acceptProgress(id, token string) bool {
++	if !progressAuthorized(id, token) {
++		return false
++	}
++	progressState.mu.Lock()
++	defer progressState.mu.Unlock()
++	pruneProgressLocked(time.Now())
++	item, exists := progressState.items[id]
++	if !exists && len(progressState.items) >= progressLimit {
++		return false
++	}
++	item.token = token
++	item.Phase = "frames"
++	item.updated = time.Now()
++	progressState.items[id] = item
++	return true
++}
++
++func reportProgress(id, phase string, completed, total int) {
++	if total < 1 || completed < 0 || completed > total || (phase != "frames" && phase != "encoding") {
++		return
++	}
++	progressState.mu.Lock()
++	defer progressState.mu.Unlock()
++	item, ok := progressState.items[id]
++	if !ok {
++		return
++	}
++	if item.Total > 0 && (total != item.Total || completed < item.Completed) {
++		return
++	}
++	item.Phase = phase
++	item.Completed = completed
++	item.Total = total
++	item.updated = time.Now()
++	progressState.items[id] = item
++}
++
++func handleProgress(w http.ResponseWriter, r *http.Request) {
++	if r.Method != http.MethodGet {
++		w.WriteHeader(http.StatusNotFound)
++		return
++	}
++	id := strings.TrimPrefix(r.URL.Path, "/progress/")
++	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
++	if !validProgressID(id) || !progressAuthorized(id, token) {
++		w.WriteHeader(http.StatusNotFound)
++		return
++	}
++	progressState.mu.Lock()
++	defer progressState.mu.Unlock()
++	pruneProgressLocked(time.Now())
++	item, ok := progressState.items[id]
++	if !ok || subtle.ConstantTimeCompare([]byte(item.token), []byte(token)) != 1 {
++		w.WriteHeader(http.StatusNotFound)
++		return
++	}
++	w.Header().Set("Content-Type", "application/json")
++	_ = json.NewEncoder(w).Encode(item.progressSnapshot)
++}
++
++func progressAuthorized(id, token string) bool {
++	secret := strings.TrimSpace(os.Getenv("IMAGOR_SECRET"))
++	if secret == "" || !validProgressID(token) {
++		return false
++	}
++	mac := hmac.New(sha256.New, []byte(secret))
++	_, _ = mac.Write([]byte(progressAuthPrefix + id))
++	expected := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
++	if len(expected) > 32 {
++		expected = expected[:32]
++	}
++	return subtle.ConstantTimeCompare([]byte(expected), []byte(token)) == 1
++}
++
++func pruneProgressLocked(now time.Time) {
++	for id, item := range progressState.items {
++		if now.Sub(item.updated) > progressTTL {
++			delete(progressState.items, id)
++		}
++	}
++}

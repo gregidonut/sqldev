@@ -53,7 +53,7 @@ type Profiles interface {
 
 // ImageRenderer calls the private Imagor server. It is nil on the API Lambda.
 type ImageRenderer interface {
-	Render(ctx context.Context, request imagor.Request) (imagor.Image, error)
+	Render(ctx context.Context, request imagor.Request, jobID string, report func(imagor.Progress)) (imagor.Image, error)
 }
 
 // Server implements the generated strict API.

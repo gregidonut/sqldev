@@ -72,11 +72,28 @@ type Image struct {
 	Body        []byte
 }
 
+// Progress is one observation from the private animation endpoint.
+type Progress struct {
+	Phase     string
+	Completed int
+	Total     int
+}
+
+// Valid reports whether the observation can drive a determinate progress bar.
+func (p Progress) Valid() bool {
+	if p.Phase != "frames" && p.Phase != "encoding" {
+		return false
+	}
+	return p.Total > 0 && p.Completed >= 0 && p.Completed <= p.Total
+}
+
 // Client calls the loopback Imagor process. It never enables unsafe mode.
 type Client struct {
-	baseURL string
-	secret  string
-	http    *http.Client
+	baseURL      string
+	progressURL  string
+	secret       string
+	http         *http.Client
+	progressHTTP *http.Client
 }
 
 // New rejects a non-local URL so the worker cannot be pointed at a public service.
@@ -96,10 +113,17 @@ func New(rawURL, secret string) (*Client, error) {
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 	return &Client{
-		baseURL: strings.TrimRight(parsed.String(), "/"),
-		secret:  secret,
+		baseURL:     strings.TrimRight(parsed.String(), "/"),
+		progressURL: "http://127.0.0.1:8001",
+		secret:      secret,
 		http: &http.Client{
 			Timeout: requestTimeout,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		progressHTTP: &http.Client{
+			Timeout: 2 * time.Second,
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
@@ -118,7 +142,32 @@ func NewFromEnv() (*Client, error) {
 	if rawURL == "" {
 		rawURL = "http://127.0.0.1:8000"
 	}
-	return New(rawURL, secret)
+	client, err := New(rawURL, secret)
+	if err != nil {
+		return nil, err
+	}
+	if progressURL := strings.TrimSpace(os.Getenv("PROGRESS_URL")); progressURL != "" {
+		if err := client.SetProgressURL(progressURL); err != nil {
+			return nil, err
+		}
+	}
+	return client, nil
+}
+
+// SetProgressURL sets the loopback progress endpoint. An empty value keeps the default.
+func (c *Client) SetProgressURL(rawURL string) error {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || parsed.Host == "" || parsed.Scheme != "http" {
+		return errors.New("progress url must be http on localhost")
+	}
+	host := parsed.Hostname()
+	if host != "127.0.0.1" && host != "localhost" {
+		return errors.New("progress url must be http on localhost")
+	}
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	c.progressURL = strings.TrimRight(parsed.String(), "/")
+	return nil
 }
 
 // Validate checks the typed options and storage-key shape before a path is signed.
@@ -200,14 +249,36 @@ func ContentType(format string) (string, error) {
 }
 
 // Render signs the request and downloads the processed image from loopback.
-func (c *Client) Render(ctx context.Context, request Request) (Image, error) {
+// report receives changed animation progress until the image response finishes.
+func (c *Client) Render(ctx context.Context, request Request, jobID string, report func(Progress)) (Image, error) {
 	path, err := Path(request)
 	if err != nil {
 		return Image{}, err
 	}
+	var progressID, progressToken string
+	if report != nil && normalizePreview(request.Preview) == PreviewAnimation {
+		progressID = ProgressID(c.secret, jobID)
+		progressToken = ProgressToken(c.secret, progressID)
+		path, err = WithProgress(path, progressID, progressToken)
+		if err != nil {
+			return Image{}, err
+		}
+	}
 	expected, err := ContentType(request.Format)
 	if err != nil {
 		return Image{}, err
+	}
+	if progressID != "" {
+		watchCtx, cancel := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			c.watchProgress(watchCtx, progressID, progressToken, report)
+		}()
+		defer func() {
+			cancel()
+			<-done
+		}()
 	}
 	endpoint := c.baseURL + "/" + Sign(c.secret, path) + "/" + path
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)

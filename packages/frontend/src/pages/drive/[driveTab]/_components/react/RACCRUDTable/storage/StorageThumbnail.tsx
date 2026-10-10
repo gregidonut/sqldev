@@ -1,10 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ProgressBar } from "react-aria-components/ProgressBar";
 import { FileIcon } from "lucide-react";
 import { cy } from "@/utils/cy";
+import type { JobProgress } from "@/server/requestJob";
 import createThumbnailGetQueryOptions, {
     thumbnailKind,
 } from "../queryOptions/createThumbnailGet.ts";
+
+type AnimationGeneration =
+    | { readonly state: "inactive" }
+    | {
+          readonly state: "generating";
+          readonly phase: JobProgress["phase"];
+          readonly completed: number;
+          readonly total: number;
+      };
 
 interface StorageThumbnailProps {
     fileName: string;
@@ -21,27 +32,34 @@ export function StorageThumbnail({
         <div
             {...cy("dStorage_thumbnail")}
             ref={preview.ref}
-            aria-hidden
             className="relative aspect-[8/5] w-full overflow-hidden rounded-md bg-drac-selection"
         >
-            {preview.image ? (
-                <img
-                    {...cy(preview.image.selector)}
-                    alt=""
-                    src={preview.image.url}
-                    width={512}
-                    height={320}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full object-cover"
-                    onError={preview.image.onError}
-                />
-            ) : (
-                <ThumbnailFallback
+            <div aria-hidden className="h-full w-full">
+                {preview.image ? (
+                    <img
+                        {...cy(preview.image.selector)}
+                        alt=""
+                        src={preview.image.url}
+                        width={512}
+                        height={320}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover"
+                        onError={preview.image.onError}
+                    />
+                ) : (
+                    <ThumbnailFallback
+                        fileName={fileName}
+                        isLoading={preview.isLoading}
+                    />
+                )}
+            </div>
+            {preview.generation.state === "generating" ? (
+                <AnimationProgress
                     fileName={fileName}
-                    isLoading={preview.isLoading}
+                    progress={preview.generation}
                 />
-            )}
+            ) : null}
         </div>
     );
 }
@@ -53,14 +71,30 @@ function useThumbnailPreview(fileName: string, sourceKey: string) {
     const [animationReady, setAnimationReady] = useState(false);
     const [posterBroken, setPosterBroken] = useState(false);
     const [animationBroken, setAnimationBroken] = useState(false);
+    const [latestProgress, setLatestProgress] = useState<JobProgress | null>(
+        null,
+    );
     const poster = useQuery({
         ...createThumbnailGetQueryOptions(sourceKey, kind ?? "image"),
         enabled: kind !== undefined && isVisible,
     });
     const animation = useQuery({
-        ...createThumbnailGetQueryOptions(sourceKey, "animation"),
+        ...createThumbnailGetQueryOptions(
+            sourceKey,
+            "animation",
+            setLatestProgress,
+        ),
         enabled: canRequestAnimation(kind, isVisible, animationReady),
     });
+    const generation: AnimationGeneration =
+        animation.fetchStatus === "fetching" && latestProgress
+            ? {
+                  state: "generating",
+                  phase: latestProgress.phase,
+                  completed: latestProgress.completed,
+                  total: latestProgress.total,
+              }
+            : { state: "inactive" };
     const ref = usePreviewActivity(visibilityRef, function (next) {
         setActive(next);
         if (next && canRequestAnimation(kind, true, true)) {
@@ -84,7 +118,51 @@ function useThumbnailPreview(fileName: string, sourceKey: string) {
             setAnimationBroken(true);
         },
     });
-    return { ref, image: image.frame, isLoading: image.isLoading };
+    return {
+        ref,
+        image: image.frame,
+        isLoading: image.isLoading,
+        generation,
+    };
+}
+
+function AnimationProgress({
+    fileName,
+    progress,
+}: {
+    fileName: string;
+    progress: Extract<AnimationGeneration, { state: "generating" }>;
+}): React.ReactNode {
+    const shown =
+        progress.phase === "encoding" ? progress.total : progress.completed;
+    return (
+        <ProgressBar
+            {...cy("dStorage_thumbnail_progress")}
+            value={shown}
+            minValue={0}
+            maxValue={progress.total}
+            aria-label={`Generating animated preview for ${fileName}`}
+            valueLabel={`${shown} of ${progress.total}`}
+            className="absolute inset-x-2 bottom-2 flex items-center gap-2 rounded-md bg-drac-background/80 px-2 py-1"
+        >
+            {function ({ percentage }) {
+                const width = typeof percentage === "number" ? percentage : 0;
+                return (
+                    <>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-drac-selection forced-colors:bg-[Canvas] forced-colors:outline forced-colors:outline-1 forced-colors:outline-[ButtonBorder]">
+                            <div
+                                className="h-full rounded-full bg-drac-red transition-[width] duration-150 forced-colors:bg-[Highlight]"
+                                style={{ width: `${width}%` }}
+                            />
+                        </div>
+                        <span className="font-sans text-xs tabular-nums text-drac-red">
+                            {Math.round(width)}%
+                        </span>
+                    </>
+                );
+            }}
+        </ProgressBar>
+    );
 }
 
 function canRequestAnimation(

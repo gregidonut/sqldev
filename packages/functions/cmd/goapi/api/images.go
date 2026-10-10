@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/gregidonut/sqldev/packages/functions/cmd/goapi/utils"
 	"github.com/gregidonut/sqldev/packages/functions/internal/imagor"
 	"github.com/gregidonut/sqldev/packages/functions/internal/jobs"
+	"github.com/gregidonut/sqldev/packages/functions/internal/status"
 )
 
 func (s *Server) TransformImage(ctx context.Context, request TransformImageRequestObject) (TransformImageResponseObject, error) {
@@ -53,8 +55,14 @@ func (s *Server) RenderImage(ctx context.Context, envelope jobs.Envelope, reques
 	}
 	renderCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
 	defer cancel()
-	image, err := s.Images.Render(renderCtx, request)
+	var report func(imagor.Progress)
+	if request.Preview == imagor.PreviewAnimation {
+		report = s.reportProgress(envelope)
+	}
+	image, err := s.Images.Render(renderCtx, request, envelope.JobID, report)
 	if err != nil {
+		// Render keeps the signed URL out of its errors, so the cause is safe to log.
+		slog.Warn("imagor render", "jobId", envelope.JobID, "preview", request.Preview, "error", err)
 		return outcomeError(err), nil
 	}
 	key, err := imagor.ResultKey(envelope.Claims.Subject, envelope.JobID)
@@ -69,6 +77,22 @@ func (s *Server) RenderImage(ctx context.Context, envelope jobs.Envelope, reques
 			Body:        image.Body,
 		},
 	}, nil
+}
+
+func (s *Server) reportProgress(envelope jobs.Envelope) func(imagor.Progress) {
+	return func(progress imagor.Progress) {
+		if s.Jobs == nil || !progress.Valid() {
+			return
+		}
+		err := s.Jobs.UpdateProgress(context.Background(), envelope.JobID, envelope.Claims.Subject, status.Progress{
+			Phase:     progress.Phase,
+			Completed: progress.Completed,
+			Total:     progress.Total,
+		})
+		if err != nil && !errors.Is(err, status.ErrNotFound) {
+			slog.Warn("imagor progress", "jobId", envelope.JobID, "error", err)
+		}
+	}
 }
 
 func (s *Server) prepareImage(ctx context.Context, envelope jobs.Envelope) (imagor.Request, error) {

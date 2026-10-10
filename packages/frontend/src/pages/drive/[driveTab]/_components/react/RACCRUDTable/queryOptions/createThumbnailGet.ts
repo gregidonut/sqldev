@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { requestJob } from "@/server/requestJob";
+import { requestJob, type JobProgress } from "@/server/requestJob";
 
 const THUMBNAIL_WIDTH = 512;
 const THUMBNAIL_HEIGHT = 320;
@@ -106,6 +106,7 @@ export function dStorageThumbnailQueryKey(
 export default function createThumbnailGetQueryOptions(
     sourceKey: string,
     preview: ThumbnailPreview,
+    onProgress?: (progress: JobProgress) => void,
 ) {
     const request = {
         sourceKey,
@@ -132,7 +133,12 @@ export default function createThumbnailGetQueryOptions(
                         ),
                     },
                 },
-                signal,
+                {
+                    signal,
+                    pollIntervalMs: preview === "animation" ? 200 : undefined,
+                    onProgress:
+                        preview === "animation" ? onProgress : undefined,
+                },
             );
             return parseThumbnail(result);
         },

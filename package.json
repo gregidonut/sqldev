@@ -6,10 +6,12 @@
   ],
   "scripts": {},
   "devDependencies": {
+    "@tanstack/intent": "^0.5.5",
     "@tsconfig/node22": "^22",
     "typescript": "^5"
   },
   "dependencies": {
+    "@clerk/agent-toolkit": "^0.3.15",
     "@tanstack/ai": "^0.54.0",
     "sst": "4.17.1"
   },

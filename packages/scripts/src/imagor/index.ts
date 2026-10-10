@@ -17,8 +17,10 @@ const envArgs = [
     "IMAGOR_SIGNER_TRUNCATE=40",
     "IMAGOR_DISABLE_PARAMS_ENDPOINT=1",
     "HTTP_LOADER_DISABLE=1",
+    "FFMPEG_MAX_ANIMATION_FRAMES=18",
     "AWS_REGION=ap-east-1",
     `S3_LOADER_BUCKET=${bucket}`,
+    "S3_SAFE_CHARS=--",
 ];
 for (const name of ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]) {
     const value = process.env[name];
@@ -29,7 +31,14 @@ for (const name of ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_T
 
 const remove = spawn("docker", ["rm", "-f", "sqldev-imagor"], { stdio: "inherit" });
 remove.on("exit", () => {
-    const args = ["run", "--rm", "--name", "sqldev-imagor", "-p", "127.0.0.1:8000:8000"];
+    const args = [
+        "run",
+        "--rm",
+        "--name",
+        "sqldev-imagor",
+        "-p",
+        "127.0.0.1:8000:8000",
+    ];
     for (const entry of envArgs) {
         args.push("-e", entry);
     }
