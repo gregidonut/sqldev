@@ -17,16 +17,39 @@ type AnimationGeneration =
           readonly total: number;
       };
 
+// Poster readiness is tracked by the current poster URL. Server delivery of a
+// URL is not the same as a successful browser image load, and a broken image
+// can report `complete === true`, so animation only unlocks after a real
+// `onLoad` for the URL that is currently rendered.
+type PosterLoadState =
+    | { readonly state: "idle" }
+    | { readonly state: "loading"; readonly url: string }
+    | { readonly state: "ready"; readonly url: string }
+    | { readonly state: "broken"; readonly url: string };
+
 interface StorageThumbnailProps {
     fileName: string;
     sourceKey: string;
+    // Whether this tile is the grid's single latest-active preview. Undefined
+    // when the grid has no coordinator (e.g. isolated usage); treated as the
+    // legacy self-managed behaviour would never activate without it, so the
+    // coordinator always supplies it in tile view.
+    isActive?: boolean;
+    onActiveChange?: (sourceKey: string, active: boolean) => void;
 }
 
 export function StorageThumbnail({
     fileName,
     sourceKey,
+    isActive = false,
+    onActiveChange,
 }: StorageThumbnailProps): React.ReactNode {
-    const preview = useThumbnailPreview(fileName, sourceKey);
+    const preview = useThumbnailPreview(
+        fileName,
+        sourceKey,
+        isActive,
+        onActiveChange,
+    );
 
     return (
         <div
@@ -45,6 +68,7 @@ export function StorageThumbnail({
                         loading="lazy"
                         decoding="async"
                         className="h-full w-full object-cover"
+                        onLoad={preview.image.onLoad}
                         onError={preview.image.onError}
                     />
                 ) : (
@@ -64,60 +88,156 @@ export function StorageThumbnail({
     );
 }
 
-function useThumbnailPreview(fileName: string, sourceKey: string) {
+function useThumbnailPreview(
+    fileName: string,
+    sourceKey: string,
+    isActive: boolean,
+    onActiveChange: ((sourceKey: string, active: boolean) => void) | undefined,
+) {
     const kind = thumbnailKind(fileName);
     const { ref: visibilityRef, isVisible } = useBecameVisible();
-    const [active, setActive] = useState(false);
-    const [animationReady, setAnimationReady] = useState(false);
-    const [posterBroken, setPosterBroken] = useState(false);
-    const [animationBroken, setAnimationBroken] = useState(false);
-    const [latestProgress, setLatestProgress] = useState<JobProgress | null>(
-        null,
-    );
-    const poster = useQuery({
+    const [poster, setPoster] = useState<PosterLoadState>({ state: "idle" });
+    // Broken animation state is scoped to the URL that failed so a later,
+    // different animation URL for this source can still load.
+    const [brokenAnimationUrl, setBrokenAnimationUrl] = useState<
+        string | null
+    >(null);
+    // Progress is tagged with the attempt that produced it. A stale callback
+    // from a superseded attempt is ignored, and leaving/supersession retires
+    // the attempt so old progress cannot flash on a later activation.
+    const attemptRef = useRef(0);
+    const [progress, setProgress] = useState<{
+        readonly attempt: number;
+        readonly value: JobProgress;
+    } | null>(null);
+
+    const posterQuery = useQuery({
         ...createThumbnailGetQueryOptions(sourceKey, kind ?? "image"),
         enabled: kind !== undefined && isVisible,
     });
+
+    const posterUrl = posterQuery.data?.url;
+
+    // Reset readiness whenever the rendered poster URL changes. A load/error
+    // event is only trusted when it belongs to the URL we are showing now.
+    useEffect(
+        function () {
+            if (posterUrl === undefined) {
+                setPoster({ state: "idle" });
+                return;
+            }
+            setPoster(function (current) {
+                if ("url" in current && current.url === posterUrl) {
+                    return current;
+                }
+                return { state: "loading", url: posterUrl };
+            });
+        },
+        [posterUrl],
+    );
+
+    const posterReady =
+        poster.state === "ready" &&
+        posterUrl !== undefined &&
+        poster.url === posterUrl;
+
+    const animationEnabled =
+        kind === "video" && isVisible && isActive && posterReady;
+
+    // When eligibility turns on, bump the attempt token so results and
+    // progress from any prior attempt are treated as stale. When it turns off
+    // (leave / supersession / gating), retire the visible progress.
+    useEffect(
+        function () {
+            if (animationEnabled) {
+                attemptRef.current += 1;
+            } else {
+                setProgress(null);
+            }
+        },
+        [animationEnabled],
+    );
+
+    const activeAttempt = attemptRef.current;
+    const onProgress = useCallback(
+        function (value: JobProgress) {
+            const attempt = attemptRef.current;
+            setProgress({ attempt, value });
+        },
+        // attemptRef is stable; capture happens at call time.
+        [],
+    );
+
     const animation = useQuery({
-        ...createThumbnailGetQueryOptions(
-            sourceKey,
-            "animation",
-            setLatestProgress,
-        ),
-        enabled: canRequestAnimation(kind, isVisible, animationReady),
+        ...createThumbnailGetQueryOptions(sourceKey, "animation", onProgress),
+        enabled: animationEnabled,
     });
+
+    // Only the active attempt's progress is shown; anything else is stale.
     const generation: AnimationGeneration =
-        animation.fetchStatus === "fetching" && latestProgress
+        isActive &&
+        animationEnabled &&
+        animation.fetchStatus === "fetching" &&
+        progress &&
+        progress.attempt === activeAttempt
             ? {
                   state: "generating",
-                  phase: latestProgress.phase,
-                  completed: latestProgress.completed,
-                  total: latestProgress.total,
+                  phase: progress.value.phase,
+                  completed: progress.value.completed,
+                  total: progress.value.total,
               }
             : { state: "inactive" };
-    const ref = usePreviewActivity(visibilityRef, function (next) {
-        setActive(next);
-        if (next && canRequestAnimation(kind, true, true)) {
-            setAnimationReady(true);
-        }
-    });
+
+    const ref = usePreviewActivity(
+        visibilityRef,
+        sourceKey,
+        onActiveChange,
+    );
+
+    const animationUrl = animation.data?.url;
     const image = displayedThumbnail({
         kind,
-        active,
+        isActive,
         isVisible,
-        posterBroken,
-        animationBroken,
-        posterUrl: poster.data?.url,
-        posterFailed: poster.isError,
-        posterLoading: poster.fetchStatus === "fetching",
-        animationUrl: animation.data?.url,
+        posterState: poster,
+        posterUrl,
+        posterFailed: posterQuery.isError,
+        posterLoading: posterQuery.fetchStatus === "fetching",
+        animationUrl,
+        animationBroken:
+            animationUrl !== undefined && animationUrl === brokenAnimationUrl,
+        onPosterLoad: function (event: React.SyntheticEvent<HTMLImageElement>) {
+            if (posterUrl === undefined) {
+                return;
+            }
+            const loaded = event.currentTarget;
+            // A broken image can still fire load with zero natural size, so
+            // require real dimensions before marking the poster ready.
+            if (loaded.naturalWidth <= 0) {
+                setPoster({ state: "broken", url: posterUrl });
+                return;
+            }
+            setPoster(function (current) {
+                // Ignore a load event that belongs to a replaced URL.
+                if ("url" in current && current.url !== posterUrl) {
+                    return current;
+                }
+                return { state: "ready", url: posterUrl };
+            });
+        },
         onPosterError: function () {
-            setPosterBroken(true);
+            if (posterUrl === undefined) {
+                return;
+            }
+            setPoster({ state: "broken", url: posterUrl });
         },
         onAnimationError: function () {
-            setAnimationBroken(true);
+            if (animationUrl !== undefined) {
+                setBrokenAnimationUrl(animationUrl);
+            }
         },
     });
+
     return {
         ref,
         image: image.frame,
@@ -165,33 +285,34 @@ function AnimationProgress({
     );
 }
 
-function canRequestAnimation(
-    kind: ReturnType<typeof thumbnailKind>,
-    isVisible: boolean,
-    animationReady: boolean,
-): boolean {
-    return kind === "video" && isVisible && animationReady;
-}
-
 function displayedThumbnail(input: {
     kind: ReturnType<typeof thumbnailKind>;
-    active: boolean;
+    isActive: boolean;
     isVisible: boolean;
-    posterBroken: boolean;
-    animationBroken: boolean;
+    posterState: PosterLoadState;
     posterUrl: string | undefined;
     posterFailed: boolean;
     posterLoading: boolean;
     animationUrl: string | undefined;
+    animationBroken: boolean;
+    onPosterLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void;
     onPosterError: () => void;
     onAnimationError: () => void;
 }): {
-    frame: { url: string; selector: string; onError: () => void } | undefined;
+    frame:
+        | {
+              url: string;
+              selector: string;
+              onLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void;
+              onError: () => void;
+          }
+        | undefined;
     isLoading: boolean;
 } {
+    const noop = function () {};
     const showAnimation =
         input.kind === "video" &&
-        input.active &&
+        input.isActive &&
         !input.animationBroken &&
         input.animationUrl !== undefined;
     if (showAnimation && input.animationUrl) {
@@ -199,21 +320,24 @@ function displayedThumbnail(input: {
             frame: {
                 url: input.animationUrl,
                 selector: "dStorage_thumbnail_animation",
+                onLoad: noop,
                 onError: input.onAnimationError,
             },
             isLoading: false,
         };
     }
+    const posterBroken = input.posterState.state === "broken";
     if (
         input.kind !== undefined &&
         !input.posterFailed &&
-        !input.posterBroken &&
+        !posterBroken &&
         input.posterUrl
     ) {
         return {
             frame: {
                 url: input.posterUrl,
                 selector: "dStorage_thumbnail_image",
+                onLoad: input.onPosterLoad,
                 onError: input.onPosterError,
             },
             isLoading: false,
@@ -298,17 +422,23 @@ function useBecameVisible(): {
     return { ref, isVisible };
 }
 
+// Reports pointer-within and focus-within transitions for this tile's preview
+// root to the grid coordinator. Pointer and focus are independent: a pointer
+// leave must not deactivate a focused tile and vice versa, so this emits the
+// combined "any modality active" boolean and lets the coordinator compose
+// across tiles.
 function usePreviewActivity(
     ref: (node: HTMLDivElement | null) => void,
-    onChange: (active: boolean) => void,
+    sourceKey: string,
+    onActiveChange: ((sourceKey: string, active: boolean) => void) | undefined,
 ): (node: HTMLDivElement | null) => void {
     const [node, setNode] = useState<HTMLDivElement | null>(null);
-    const onChangeRef = useRef(onChange);
+    const onChangeRef = useRef(onActiveChange);
     useEffect(
         function () {
-            onChangeRef.current = onChange;
+            onChangeRef.current = onActiveChange;
         },
-        [onChange],
+        [onActiveChange],
     );
     useEffect(
         function () {
@@ -316,29 +446,49 @@ function usePreviewActivity(
             if (!item) {
                 return;
             }
-            const enter = function () {
-                onChangeRef.current(true);
+            let pointerWithin = false;
+            let focusWithin = false;
+            const emit = function () {
+                onChangeRef.current?.(sourceKey, pointerWithin || focusWithin);
             };
-            const leave = function (event: Event) {
+            const pointerEnter = function () {
+                pointerWithin = true;
+                emit();
+            };
+            const pointerLeave = function () {
+                pointerWithin = false;
+                emit();
+            };
+            const focusIn = function () {
+                focusWithin = true;
+                emit();
+            };
+            const focusOut = function (event: Event) {
                 const next =
                     event instanceof FocusEvent ? event.relatedTarget : null;
                 if (next instanceof Node && item.contains(next)) {
                     return;
                 }
-                onChangeRef.current(false);
+                focusWithin = false;
+                emit();
             };
-            item.addEventListener("pointerenter", enter);
-            item.addEventListener("pointerleave", leave);
-            item.addEventListener("focusin", enter);
-            item.addEventListener("focusout", leave);
+            item.addEventListener("pointerenter", pointerEnter);
+            item.addEventListener("pointerleave", pointerLeave);
+            item.addEventListener("focusin", focusIn);
+            item.addEventListener("focusout", focusOut);
             return function () {
-                item.removeEventListener("pointerenter", enter);
-                item.removeEventListener("pointerleave", leave);
-                item.removeEventListener("focusin", enter);
-                item.removeEventListener("focusout", leave);
+                item.removeEventListener("pointerenter", pointerEnter);
+                item.removeEventListener("pointerleave", pointerLeave);
+                item.removeEventListener("focusin", focusIn);
+                item.removeEventListener("focusout", focusOut);
+                // On unmount/detach, report inactive so the coordinator drops
+                // this candidate and cancels any obsolete client work.
+                if (pointerWithin || focusWithin) {
+                    onChangeRef.current?.(sourceKey, false);
+                }
             };
         },
-        [node],
+        [node, sourceKey],
     );
     return useCallback(
         function (next: HTMLDivElement | null) {

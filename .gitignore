@@ -33,6 +33,7 @@ node_modules
 
 # cypress
 packages/e2et/cypress/downloads/
+packages/e2et/cypress/screenshots/
 
 # misc
 .DS_Store
