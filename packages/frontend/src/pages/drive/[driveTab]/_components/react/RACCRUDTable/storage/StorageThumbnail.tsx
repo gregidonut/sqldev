@@ -56,6 +56,10 @@ export function StorageThumbnail({
             {...cy("dStorage_thumbnail")}
             ref={preview.ref}
             className="relative aspect-[8/5] w-full overflow-hidden rounded-md bg-drac-selection"
+            onPointerEnter={preview.activity.onPointerEnter}
+            onPointerLeave={preview.activity.onPointerLeave}
+            onFocus={preview.activity.onFocus}
+            onBlur={preview.activity.onBlur}
         >
             <div aria-hidden className="h-full w-full">
                 {preview.image ? (
@@ -188,11 +192,8 @@ function useThumbnailPreview(
               }
             : { state: "inactive" };
 
-    const ref = usePreviewActivity(
-        visibilityRef,
-        sourceKey,
-        onActiveChange,
-    );
+    const ref = visibilityRef;
+    const activity = usePreviewActivity(sourceKey, onActiveChange);
 
     const animationUrl = animation.data?.url;
     const image = displayedThumbnail({
@@ -240,6 +241,7 @@ function useThumbnailPreview(
 
     return {
         ref,
+        activity,
         image: image.frame,
         isLoading: image.isLoading,
         generation,
@@ -422,17 +424,26 @@ function useBecameVisible(): {
     return { ref, isVisible };
 }
 
-// Reports pointer-within and focus-within transitions for this tile's preview
-// root to the grid coordinator. Pointer and focus are independent: a pointer
-// leave must not deactivate a focused tile and vice versa, so this emits the
-// combined "any modality active" boolean and lets the coordinator compose
-// across tiles.
+// Reports pointer-within and focus-within transitions for this tile to the
+// grid coordinator. Pointer and focus are independent: a pointer leave must
+// not deactivate a focused tile and vice versa, so each modality is tracked
+// separately and the combined "any modality active" boolean is emitted, which
+// lets the coordinator compose latest-active ownership across tiles.
+//
+// Handlers are declarative React props on the thumbnail root rather than
+// native listeners installed in an effect. A listener installed after first
+// paint can miss a very early pointer event (synthetic or real) that lands
+// before the effect runs; a React handler is attached as part of the same
+// commit that renders the element, so no early entry is dropped.
 function usePreviewActivity(
-    ref: (node: HTMLDivElement | null) => void,
     sourceKey: string,
     onActiveChange: ((sourceKey: string, active: boolean) => void) | undefined,
-): (node: HTMLDivElement | null) => void {
-    const [node, setNode] = useState<HTMLDivElement | null>(null);
+): {
+    onPointerEnter: () => void;
+    onPointerLeave: () => void;
+    onFocus: () => void;
+    onBlur: (event: React.FocusEvent<HTMLDivElement>) => void;
+} {
     const onChangeRef = useRef(onActiveChange);
     useEffect(
         function () {
@@ -440,69 +451,63 @@ function usePreviewActivity(
         },
         [onActiveChange],
     );
+    const pointerWithin = useRef(false);
+    const focusWithin = useRef(false);
+    const emit = useCallback(
+        function () {
+            onChangeRef.current?.(
+                sourceKey,
+                pointerWithin.current || focusWithin.current,
+            );
+        },
+        [sourceKey],
+    );
+    // On unmount/detach report inactive so the coordinator drops this
+    // candidate and cancels any obsolete client work.
     useEffect(
         function () {
-            const item = previewRoot(node);
-            if (!item) {
-                return;
-            }
-            let pointerWithin = false;
-            let focusWithin = false;
-            const emit = function () {
-                onChangeRef.current?.(sourceKey, pointerWithin || focusWithin);
-            };
-            const pointerEnter = function () {
-                pointerWithin = true;
-                emit();
-            };
-            const pointerLeave = function () {
-                pointerWithin = false;
-                emit();
-            };
-            const focusIn = function () {
-                focusWithin = true;
-                emit();
-            };
-            const focusOut = function (event: Event) {
-                const next =
-                    event instanceof FocusEvent ? event.relatedTarget : null;
-                if (next instanceof Node && item.contains(next)) {
-                    return;
-                }
-                focusWithin = false;
-                emit();
-            };
-            item.addEventListener("pointerenter", pointerEnter);
-            item.addEventListener("pointerleave", pointerLeave);
-            item.addEventListener("focusin", focusIn);
-            item.addEventListener("focusout", focusOut);
             return function () {
-                item.removeEventListener("pointerenter", pointerEnter);
-                item.removeEventListener("pointerleave", pointerLeave);
-                item.removeEventListener("focusin", focusIn);
-                item.removeEventListener("focusout", focusOut);
-                // On unmount/detach, report inactive so the coordinator drops
-                // this candidate and cancels any obsolete client work.
-                if (pointerWithin || focusWithin) {
+                if (pointerWithin.current || focusWithin.current) {
+                    pointerWithin.current = false;
+                    focusWithin.current = false;
                     onChangeRef.current?.(sourceKey, false);
                 }
             };
         },
-        [node, sourceKey],
+        [sourceKey],
     );
-    return useCallback(
-        function (next: HTMLDivElement | null) {
-            setNode(next);
-            ref(next);
+    const onPointerEnter = useCallback(
+        function () {
+            pointerWithin.current = true;
+            emit();
         },
-        [ref],
+        [emit],
     );
-}
-
-function previewRoot(node: HTMLElement | null): HTMLElement | null {
-    const root = node?.closest("[data-preview-root]");
-    if (root instanceof HTMLElement) {
-        return root;
-    }
-    return node?.parentElement ?? null;
+    const onPointerLeave = useCallback(
+        function () {
+            pointerWithin.current = false;
+            emit();
+        },
+        [emit],
+    );
+    const onFocus = useCallback(
+        function () {
+            focusWithin.current = true;
+            emit();
+        },
+        [emit],
+    );
+    const onBlur = useCallback(
+        function (event: React.FocusEvent<HTMLDivElement>) {
+            // Keep focus-within while focus moves to a descendant of the tile.
+            const next = event.relatedTarget;
+            if (next instanceof Node && event.currentTarget.contains(next)) {
+                return;
+            }
+            focusWithin.current = false;
+            emit();
+        },
+        [emit],
+    );
+    return { onPointerEnter, onPointerLeave, onFocus, onBlur };
 }

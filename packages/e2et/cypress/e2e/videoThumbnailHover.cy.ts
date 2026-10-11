@@ -11,6 +11,13 @@
 // on wall-clock timing. Mock image URLs are served with real JPEG bytes so the
 // browser's genuine load / error events fire; a placeholder string body would
 // never produce a successful onLoad and could not prove the poster gate.
+//
+// Pointer hover is driven with real PointerEvents dispatched as `pointerover`
+// / `pointerout` on the thumbnail element. React derives its declarative
+// `onPointerEnter` / `onPointerLeave` from the bubbling `pointerover` /
+// `pointerout` native events, so those are the events a hover must simulate.
+// Cypress subjects are unsafe after `.trigger()`, so every helper reacquires
+// the element it operates on.
 
 import { isRecord } from "../tasks/narrow.js";
 import { jobIdFrom, waitForJob } from "../support/jobs.js";
@@ -20,9 +27,15 @@ import { rememberPreparedObject } from "../support/preparedObject.js";
 const VIDEO_A = "cypress/fixtures/testFiles/WIN_20251119_00_55_14_Pro.mp4";
 const VIDEO_B = "cypress/fixtures/testFiles/WIN_20251119_00_55_32_Pro.mp4";
 const IMAGE = "cypress/fixtures/testFiles/WIN_20260102_21_30_21_Pro.jpg";
-// Real image bytes returned for every mocked poster/animation URL so the
-// browser fires a genuine load event (and onError only when we force it).
-const IMAGE_BYTES = IMAGE;
+// Fixture path (relative to cypress/fixtures) streamed verbatim as the bytes
+// for every mocked poster/animation URL, so the browser fires a genuine load
+// event with a decodable image (positive naturalWidth).
+const IMAGE_FIXTURE = "testFiles/WIN_20260102_21_30_21_Pro.jpg";
+
+// Shared extended timeout. Uploads commit through a 202 job receipt and the
+// list query is invalidated asynchronously, so rows can take noticeably longer
+// than the 4s default to reach the DOM.
+const LONG = 20000;
 
 function fileNameOf(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
@@ -40,11 +53,13 @@ function namedFixture(
 }
 
 function objectsGrid() {
-  return cy.get("[data-cy='dStorage_objects']:visible", { timeout: 20000 });
+  return cy.get("[data-cy='dStorage_objects']:visible", { timeout: LONG });
 }
 
+// Reacquire the committed tile by its exact file name, retrying with the
+// extended timeout until the asynchronously invalidated list renders it.
 function tile(fileName: string) {
-  return cy.contains("[data-cy='dStorage_item']", fileName);
+  return cy.contains("[data-cy='dStorage_item']", fileName, { timeout: LONG });
 }
 
 function previewOf(
@@ -114,8 +129,18 @@ function uploadThroughDialog(files: readonly Cypress.FileReference[]) {
   for (let i = 0; i < files.length; i++) {
     waitForCommit();
   }
-  cy.get("[role='dialog']", { timeout: 20000 }).should("not.exist");
-  cy.wait("@listObjects", { timeout: 20000 });
+  cy.get("[role='dialog']", { timeout: LONG }).should("not.exist");
+  // The commit receipt is a 202 job; the list query is invalidated
+  // asynchronously afterwards. Treat the exact uploaded name appearing in the
+  // DOM — not merely the list request firing — as proof the row is renderable.
+  cy.wait("@listObjects", { timeout: LONG });
+  for (const file of files) {
+    const name =
+      typeof file === "object" && file !== null && "fileName" in file
+        ? (file as { fileName: string }).fileName
+        : fileNameOf(file as string);
+    objectsGrid().should("contain", name);
+  }
 }
 
 function openTiles() {
@@ -123,19 +148,120 @@ function openTiles() {
   cy.get("[data-cy='dStorage_view_tiles']").click();
 }
 
-// Serve real image bytes for a mocked thumbnail URL so the browser produces a
-// genuine load event. `delayMs` separates "server returned a URL" from "the
-// image actually finished loading", which is the exact gap the poster gate
-// must respect.
-function serveImage(path: string, delayMs?: number) {
-  cy.readFile(IMAGE_BYTES, "base64").then((base64) => {
-    cy.intercept("GET", path, {
-      statusCode: 200,
-      headers: { "content-type": "image/jpeg" },
-      body: Cypress.Buffer.from(base64, "base64"),
-      ...(delayMs ? { delay: delayMs } : {}),
+// React's declarative onPointerEnter / onPointerLeave are synthesized from the
+// bubbling pointerover / pointerout native events, so hover is simulated with
+// those. Events are built as real PointerEvents (eventConstructor) and the
+// element is reacquired first because Cypress subjects are unsafe after
+// `.trigger()`.
+function hoverEnter(fileName: string) {
+  tile(fileName)
+    .find("[data-cy='dStorage_thumbnail']")
+    .trigger("pointerover", { eventConstructor: "PointerEvent", bubbles: true });
+}
+
+function hoverLeave(fileName: string) {
+  tile(fileName)
+    .find("[data-cy='dStorage_thumbnail']")
+    .trigger("pointerout", { eventConstructor: "PointerEvent", bubbles: true });
+}
+
+// A poster/animation image has genuinely loaded only when the current URL is
+// shown AND the browser reports a decoded image: complete === true with a
+// positive naturalWidth. `src` presence alone, or a broken (complete but
+// zero-size) image, must not count as loaded.
+function assertImageLoaded(fileName: string, selector: string, urlPart: string) {
+  tile(fileName)
+    .find(`[data-cy='${selector}']`, { timeout: LONG })
+    .should("have.attr", "src")
+    .and("include", urlPart);
+  tile(fileName)
+    .find(`[data-cy='${selector}']`, { timeout: LONG })
+    .should((element) => {
+      const image = element[0] as HTMLImageElement;
+      expect(image.currentSrc, "image currentSrc").to.include(urlPart);
+      expect(image.complete, "image complete").to.eq(true);
+      expect(image.naturalWidth, "image naturalWidth").to.be.greaterThan(0);
     });
+}
+
+// Serve a real decodable JPEG for a mocked thumbnail URL so the browser
+// produces a genuine load event with a positive naturalWidth. The bytes come
+// from a Cypress fixture: returning a hand-built Buffer body corrupts the
+// payload (the browser decodes it to naturalWidth 0, which the poster gate
+// correctly treats as broken), whereas the `fixture` StaticResponse streams
+// the file verbatim with the right binary encoding. `delayMs` separates
+// "server returned a URL" from "the image actually finished loading", the
+// exact gap the poster gate must respect.
+function serveImage(path: string, delayMs?: number) {
+  cy.intercept("GET", path, {
+    fixture: IMAGE_FIXTURE,
+    ...(delayMs ? { delay: delayMs } : {}),
   });
+}
+
+// Route a transform POST that belongs to one of the test-owned source keys.
+// Unrelated sources (existing objects left over in the account) are passed
+// through to the real backend untouched so they are never misclassified as a
+// test tile. `owners` maps a source-key substring to the poster/animation job
+// ids that source should receive.
+function routeTransform(
+  owners: ReadonlyArray<{
+    includes: string;
+    posterJobId: string;
+    animationJobId?: string;
+  }>,
+  alias: string,
+) {
+  cy.intercept("POST", "/api/images/transform", (req) => {
+    const body: unknown = req.body;
+    if (
+      !isRecord(body) ||
+      typeof body.preview !== "string" ||
+      typeof body.sourceKey !== "string"
+    ) {
+      throw new Error("transform request is missing preview/source");
+    }
+    const sourceKey = body.sourceKey;
+    const owner = owners.find((candidate) => sourceKey.includes(candidate.includes));
+    if (!owner) {
+      // Not a test-owned tile: let the real backend answer it.
+      req.continue();
+      return;
+    }
+    if (body.preview === "animation") {
+      if (!owner.animationJobId) {
+        throw new Error(`unexpected animation request for ${owner.includes}`);
+      }
+      req.reply({
+        statusCode: 202,
+        body: { jobId: owner.animationJobId, status: "pending" },
+      });
+      return;
+    }
+    req.reply({
+      statusCode: 202,
+      body: { jobId: owner.posterJobId, status: "pending" },
+    });
+  }).as(alias);
+}
+
+// A completed-job StaticResponse whose body carries the result URL. Returning
+// a StaticResponse (statusCode + body) is required for BOTH `cy.intercept(url,
+// response)` and `req.reply(response)`: a bare job object would be read as a
+// StaticResponse with unknown keys and yield an empty 200 body.
+function completedPosterJob(jobId: string, path: string) {
+  return {
+    statusCode: 200,
+    body: {
+      jobId,
+      status: "completed",
+      httpStatus: 200,
+      result: {
+        url: `${Cypress.config("baseUrl")}${path}`,
+        contentType: "image/jpeg",
+      },
+    },
+  };
 }
 
 describe("video thumbnail hover", () => {
@@ -144,12 +270,12 @@ describe("video thumbnail hover", () => {
   });
 
   // Task 1: poster-load gating.
-  it("delays poster bytes → no animation request fires before the poster image loads", () => {
+  it("hovers a still-loading video poster → no animation request fires before the poster image loads", () => {
     cy.uniqueRecordName("gate").then((marker) => {
       const video = namedFixture(VIDEO_A, marker);
       const posterJobId = "a1111111-1111-4111-8111-111111111111";
       const animationJobId = "a2222222-2222-4222-8222-222222222222";
-      const posterPath = "/__cypress/gate-poster.jpg";
+      const posterPath = "/mock-thumbs/gate-poster.jpg";
 
       signInAndOpenDrive();
       uploadThroughDialog([video]);
@@ -157,35 +283,21 @@ describe("video thumbnail hover", () => {
       // Poster image arrives slowly so there is a window where the server has
       // returned a URL but the browser has not finished loading it.
       serveImage(posterPath, 1500);
-
-      cy.intercept("POST", "/api/images/transform", (req) => {
-        const body: unknown = req.body;
-        if (!isRecord(body) || typeof body.preview !== "string") {
-          throw new Error("transform request is missing a preview");
-        }
-        const jobId = body.preview === "animation" ? animationJobId : posterJobId;
-        req.reply({ statusCode: 202, body: { jobId, status: "pending" } });
-      }).as("transform");
-      cy.intercept("GET", `/api/jobs/${posterJobId}`, {
-        statusCode: 200,
-        body: {
-          jobId: posterJobId,
-          status: "completed",
-          httpStatus: 200,
-          result: {
-            url: `${Cypress.config("baseUrl")}${posterPath}`,
-            contentType: "image/jpeg",
-          },
-        },
-      });
+      routeTransform(
+        [{ includes: video.fileName, posterJobId, animationJobId }],
+        "transform",
+      );
+      cy.intercept(
+        "GET",
+        `/api/jobs/${posterJobId}`,
+        completedPosterJob(posterJobId, posterPath),
+      );
 
       openTiles();
       tile(video.fileName).scrollIntoView();
 
       // Hover while the poster is still loading. The animation must not start.
-      tile(video.fileName).trigger("pointerenter");
-      // The poster is still "Loading" at this instant; assert no animation POST
-      // has been produced before the image load completes.
+      hoverEnter(video.fileName);
       cy.get("@transform.all").should((interceptions) => {
         expect(
           previewOf(interceptions, "animation", video.fileName),
@@ -193,13 +305,10 @@ describe("video thumbnail hover", () => {
         ).to.have.length(0);
       });
 
-      // Once the poster image finishes loading and the tile is still active,
+      // Once the poster image genuinely loads and the tile is still active,
       // the animation request is allowed.
-      tile(video.fileName)
-        .find("[data-cy='dStorage_thumbnail_image']", { timeout: 20000 })
-        .should("have.attr", "src")
-        .and("include", posterPath);
-      cy.get("@transform.all", { timeout: 20000 }).should((interceptions) => {
+      assertImageLoaded(video.fileName, "dStorage_thumbnail_image", posterPath);
+      cy.get("@transform.all", { timeout: LONG }).should((interceptions) => {
         expect(
           previewOf(interceptions, "animation", video.fileName).length,
           "animation requested only after poster load",
@@ -209,45 +318,33 @@ describe("video thumbnail hover", () => {
   });
 
   // Task 1: leave before load.
-  it("pointer leaves before poster load → delayed load does not start animation", () => {
+  it("pointer leaves before the poster loads → the delayed load does not start animation", () => {
     cy.uniqueRecordName("leave").then((marker) => {
       const video = namedFixture(VIDEO_A, marker);
       const posterJobId = "b1111111-1111-4111-8111-111111111111";
-      const posterPath = "/__cypress/leave-poster.jpg";
+      const animationJobId = "b2222222-2222-4222-8222-222222222222";
+      const posterPath = "/mock-thumbs/leave-poster.jpg";
 
       signInAndOpenDrive();
       uploadThroughDialog([video]);
       serveImage(posterPath, 2000);
-
-      cy.intercept("POST", "/api/images/transform", (req) => {
-        req.reply({
-          statusCode: 202,
-          body: { jobId: posterJobId, status: "pending" },
-        });
-      }).as("transform");
-      cy.intercept("GET", `/api/jobs/${posterJobId}`, {
-        statusCode: 200,
-        body: {
-          jobId: posterJobId,
-          status: "completed",
-          httpStatus: 200,
-          result: {
-            url: `${Cypress.config("baseUrl")}${posterPath}`,
-            contentType: "image/jpeg",
-          },
-        },
-      });
+      routeTransform(
+        [{ includes: video.fileName, posterJobId, animationJobId }],
+        "transform",
+      );
+      cy.intercept(
+        "GET",
+        `/api/jobs/${posterJobId}`,
+        completedPosterJob(posterJobId, posterPath),
+      );
 
       openTiles();
       tile(video.fileName).scrollIntoView();
-      tile(video.fileName).trigger("pointerenter");
-      tile(video.fileName).trigger("pointerleave");
+      hoverEnter(video.fileName);
+      hoverLeave(video.fileName);
 
-      // Let the delayed poster finish and settle.
-      tile(video.fileName)
-        .find("[data-cy='dStorage_thumbnail_image']", { timeout: 20000 })
-        .should("have.attr", "src")
-        .and("include", posterPath);
+      // Let the delayed poster finish and settle, then confirm no animation.
+      assertImageLoaded(video.fileName, "dStorage_thumbnail_image", posterPath);
       cy.get("@transform.all").should((interceptions) => {
         expect(
           previewOf(interceptions, "animation", video.fileName),
@@ -257,13 +354,13 @@ describe("video thumbnail hover", () => {
     });
   });
 
-  // Task 2 + Task 3: latest-active supersession and superseded cancellation.
-  it("rapid A → B hover → only the latest tile generates and polls", () => {
+  // Task 2 + Task 3: one-frame latest-active arbitration and superseded cancellation.
+  it("rapid A → B hover within one frame → only the latest tile generates and polls", () => {
     cy.uniqueRecordName("latest").then((marker) => {
       const a = namedFixture(VIDEO_A, marker);
       const b = namedFixture(VIDEO_B, marker);
-      const posterA = "/__cypress/latest-poster-a.jpg";
-      const posterB = "/__cypress/latest-poster-b.jpg";
+      const posterA = "/mock-thumbs/latest-poster-a.jpg";
+      const posterB = "/mock-thumbs/latest-poster-b.jpg";
       const jobPosterA = "c1111111-1111-4111-8111-111111111111";
       const jobPosterB = "c2222222-2222-4222-8222-222222222222";
       const jobAnimA = "c3333333-3333-4333-8333-333333333333";
@@ -275,39 +372,20 @@ describe("video thumbnail hover", () => {
       uploadThroughDialog([a, b]);
       serveImage(posterA);
       serveImage(posterB);
-
-      cy.intercept("POST", "/api/images/transform", (req) => {
-        const body: unknown = req.body;
-        if (!isRecord(body) || typeof body.sourceKey !== "string") {
-          throw new Error("transform request is missing a source");
-        }
-        const isA = body.sourceKey.includes(a.fileName);
-        const jobId =
-          body.preview === "animation"
-            ? isA
-              ? jobAnimA
-              : jobAnimB
-            : isA
-              ? jobPosterA
-              : jobPosterB;
-        req.reply({ statusCode: 202, body: { jobId, status: "pending" } });
-      }).as("transform");
+      routeTransform(
+        [
+          { includes: a.fileName, posterJobId: jobPosterA, animationJobId: jobAnimA },
+          { includes: b.fileName, posterJobId: jobPosterB, animationJobId: jobAnimB },
+        ],
+        "transform",
+      );
 
       cy.intercept("GET", /\/api\/jobs\//, (req) => {
         const jobId = req.url.split("/").pop() ?? "";
         if (jobId === jobPosterA || jobId === jobPosterB) {
-          req.reply({
-            statusCode: 200,
-            body: {
-              jobId,
-              status: "completed",
-              httpStatus: 200,
-              result: {
-                url: `${Cypress.config("baseUrl")}${jobId === jobPosterA ? posterA : posterB}`,
-                contentType: "image/jpeg",
-              },
-            },
-          });
+          req.reply(
+            completedPosterJob(jobId, jobId === jobPosterA ? posterA : posterB),
+          );
           return;
         }
         if (jobId === jobAnimA) {
@@ -334,37 +412,32 @@ describe("video thumbnail hover", () => {
           });
           return;
         }
-        req.reply({ statusCode: 404, body: { status: "failed" } });
+        req.continue();
       }).as("job");
 
       openTiles();
       tile(a.fileName).scrollIntoView();
       tile(b.fileName).scrollIntoView();
 
-      // Both posters load, then A then B become active in quick succession.
-      tile(a.fileName)
-        .find("[data-cy='dStorage_thumbnail_image']", { timeout: 20000 })
-        .should("have.attr", "src")
-        .and("include", posterA);
-      tile(b.fileName)
-        .find("[data-cy='dStorage_thumbnail_image']", { timeout: 20000 })
-        .should("have.attr", "src")
-        .and("include", posterB);
+      // Both posters must genuinely load before either tile can animate.
+      assertImageLoaded(a.fileName, "dStorage_thumbnail_image", posterA);
+      assertImageLoaded(b.fileName, "dStorage_thumbnail_image", posterB);
 
-      tile(a.fileName).trigger("pointerenter");
-      tile(b.fileName).trigger("pointerenter");
-      tile(a.fileName).trigger("pointerleave");
+      // Enter A then B within the same browser turn, before the coalescing
+      // frame boundary; B is the latest candidate when the frame fires.
+      hoverEnter(a.fileName);
+      hoverEnter(b.fileName);
 
-      // Only B shows progress; A does not.
+      // Only B shows progress; A never does.
       tile(b.fileName)
-        .find("[role='progressbar']", { timeout: 20000 })
+        .find("[role='progressbar']", { timeout: LONG })
         .should("have.attr", "aria-valuenow", "4");
       tile(a.fileName).find("[role='progressbar']").should("not.exist");
 
-      // Record A's poll count at the cancellation boundary, then let B advance.
+      // Record A's poll count at the arbitration boundary, let B advance, and
+      // prove A performed no polls after being superseded in the same frame.
       cy.then(() => {
         const aAtBoundary = aAnimPolls;
-        // Drive several more B polls through retryable assertions.
         return cy
           .wrap(null)
           .then(() => {
@@ -373,16 +446,13 @@ describe("video thumbnail hover", () => {
               .should("have.attr", "aria-valuenow", "4");
           })
           .then(() => {
-            // B keeps polling; A must not poll again after supersession.
             expect(bAnimPolls, "B keeps polling").to.be.greaterThan(0);
-            expect(
-              aAnimPolls,
-              "A stops polling after supersession",
-            ).to.eq(aAtBoundary);
+            expect(aAnimPolls, "A never polls after being superseded").to.eq(
+              aAtBoundary,
+            );
           });
       });
 
-      // Exactly one animation request per source (no duplicate chains).
       cy.get("@transform.all").should((interceptions) => {
         expect(
           previewOf(interceptions, "animation", b.fileName).length,
@@ -392,39 +462,202 @@ describe("video thumbnail hover", () => {
     });
   });
 
-  // Task 4: quiet failure fallback across poster and animation error paths.
+  // Task 3: post-start supersession stops the previous tile's polling.
+  it("A starts polling then B becomes active → A stops polling and only B shows progress", () => {
+    cy.uniqueRecordName("supersede").then((marker) => {
+      const a = namedFixture(VIDEO_A, marker);
+      const b = namedFixture(VIDEO_B, marker);
+      const posterA = "/mock-thumbs/supersede-poster-a.jpg";
+      const posterB = "/mock-thumbs/supersede-poster-b.jpg";
+      const jobPosterA = "f1111111-1111-4111-8111-111111111111";
+      const jobPosterB = "f2222222-2222-4222-8222-222222222222";
+      const jobAnimA = "f3333333-3333-4333-8333-333333333333";
+      const jobAnimB = "f4444444-4444-4444-8444-444444444444";
+      let aAnimPolls = 0;
+      let bAnimPolls = 0;
+
+      signInAndOpenDrive();
+      uploadThroughDialog([a, b]);
+      serveImage(posterA);
+      serveImage(posterB);
+      routeTransform(
+        [
+          { includes: a.fileName, posterJobId: jobPosterA, animationJobId: jobAnimA },
+          { includes: b.fileName, posterJobId: jobPosterB, animationJobId: jobAnimB },
+        ],
+        "transform",
+      );
+      cy.intercept("GET", /\/api\/jobs\//, (req) => {
+        const jobId = req.url.split("/").pop() ?? "";
+        if (jobId === jobPosterA || jobId === jobPosterB) {
+          req.reply(
+            completedPosterJob(jobId, jobId === jobPosterA ? posterA : posterB),
+          );
+          return;
+        }
+        if (jobId === jobAnimA) {
+          aAnimPolls += 1;
+          req.reply({
+            statusCode: 200,
+            body: {
+              jobId,
+              status: "running",
+              progress: { phase: "frames", completed: 3, total: 9 },
+            },
+          });
+          return;
+        }
+        if (jobId === jobAnimB) {
+          bAnimPolls += 1;
+          req.reply({
+            statusCode: 200,
+            body: {
+              jobId,
+              status: "running",
+              progress: { phase: "frames", completed: 6, total: 9 },
+            },
+          });
+          return;
+        }
+        req.continue();
+      }).as("job");
+
+      openTiles();
+      tile(a.fileName).scrollIntoView();
+      tile(b.fileName).scrollIntoView();
+      assertImageLoaded(a.fileName, "dStorage_thumbnail_image", posterA);
+      assertImageLoaded(b.fileName, "dStorage_thumbnail_image", posterB);
+
+      // Hover A alone and let it start polling and showing progress.
+      hoverEnter(a.fileName);
+      tile(a.fileName)
+        .find("[role='progressbar']", { timeout: LONG })
+        .should("have.attr", "aria-valuenow", "3");
+
+      // Now move to B after A has started.
+      hoverLeave(a.fileName);
+      hoverEnter(b.fileName);
+
+      // B owns progress; A's progress disappears.
+      tile(b.fileName)
+        .find("[role='progressbar']", { timeout: LONG })
+        .should("have.attr", "aria-valuenow", "6");
+      tile(a.fileName).find("[role='progressbar']").should("not.exist");
+
+      // After the cancellation boundary A must not poll again while B advances.
+      cy.then(() => {
+        const aAtBoundary = aAnimPolls;
+        return cy
+          .wrap(null)
+          .then(() => {
+            tile(b.fileName)
+              .find("[role='progressbar']")
+              .should("have.attr", "aria-valuenow", "6");
+          })
+          .then(() => {
+            expect(bAnimPolls, "B keeps polling").to.be.greaterThan(0);
+            expect(aAnimPolls, "A stops polling after supersession").to.eq(
+              aAtBoundary,
+            );
+          });
+      });
+    });
+  });
+
+  // Task 3: successful animation data is reusable without a second transform.
+  it("completes an animation, leaves, re-hovers → cached animation reused with no second transform", () => {
+    cy.uniqueRecordName("cache").then((marker) => {
+      const video = namedFixture(VIDEO_A, marker);
+      const posterPath = "/mock-thumbs/cache-poster.jpg";
+      const animationPath = "/mock-thumbs/cache-animation.jpg";
+      const posterJobId = "91111111-1111-4111-8111-111111111111";
+      const animationJobId = "92222222-2222-4222-8222-222222222222";
+
+      signInAndOpenDrive();
+      uploadThroughDialog([video]);
+      serveImage(posterPath);
+      serveImage(animationPath);
+      routeTransform(
+        [{ includes: video.fileName, posterJobId, animationJobId }],
+        "transform",
+      );
+      cy.intercept("GET", /\/api\/jobs\//, (req) => {
+        const jobId = req.url.split("/").pop() ?? "";
+        if (jobId === posterJobId) {
+          req.reply(completedPosterJob(posterJobId, posterPath));
+          return;
+        }
+        if (jobId === animationJobId) {
+          req.reply(completedPosterJob(animationJobId, animationPath));
+          return;
+        }
+        req.continue();
+      }).as("job");
+
+      openTiles();
+      tile(video.fileName).scrollIntoView();
+      assertImageLoaded(video.fileName, "dStorage_thumbnail_image", posterPath);
+
+      // Hover: animation generates and the animated frame appears.
+      hoverEnter(video.fileName);
+      assertImageLoaded(
+        video.fileName,
+        "dStorage_thumbnail_animation",
+        animationPath,
+      );
+      cy.get("@transform.all").should((interceptions) => {
+        expect(
+          previewOf(interceptions, "animation", video.fileName).length,
+          "animation requested once",
+        ).to.eq(1);
+      });
+
+      // Leave: the poster returns (animation hidden on an inactive tile).
+      hoverLeave(video.fileName);
+      tile(video.fileName)
+        .find("[data-cy='dStorage_thumbnail_image']", { timeout: LONG })
+        .should("have.attr", "src")
+        .and("include", posterPath);
+      tile(video.fileName)
+        .find("[data-cy='dStorage_thumbnail_animation']")
+        .should("not.exist");
+
+      // Re-hover: the cached animation reappears with no second transform POST.
+      hoverEnter(video.fileName);
+      assertImageLoaded(
+        video.fileName,
+        "dStorage_thumbnail_animation",
+        animationPath,
+      );
+      cy.get("@transform.all").should((interceptions) => {
+        expect(
+          previewOf(interceptions, "animation", video.fileName).length,
+          "re-hover reuses cache (no second animation transform)",
+        ).to.eq(1);
+      });
+    });
+  });
+
+  // Task 4: quiet failure fallback for a failed animation job.
   it("animation job fails → the poster stays and no error is shown", () => {
     cy.uniqueRecordName("fail").then((marker) => {
       const video = namedFixture(VIDEO_A, marker);
-      const posterPath = "/__cypress/fail-poster.jpg";
+      const posterPath = "/mock-thumbs/fail-poster.jpg";
       const posterJobId = "d1111111-1111-4111-8111-111111111111";
       const animationJobId = "d2222222-2222-4222-8222-222222222222";
 
       signInAndOpenDrive();
       uploadThroughDialog([video]);
       serveImage(posterPath);
-
-      cy.intercept("POST", "/api/images/transform", (req) => {
-        const body: unknown = req.body;
-        if (!isRecord(body) || typeof body.preview !== "string") {
-          throw new Error("transform request is missing a preview");
-        }
-        const jobId =
-          body.preview === "animation" ? animationJobId : posterJobId;
-        req.reply({ statusCode: 202, body: { jobId, status: "pending" } });
-      }).as("transform");
-      cy.intercept("GET", `/api/jobs/${posterJobId}`, {
-        statusCode: 200,
-        body: {
-          jobId: posterJobId,
-          status: "completed",
-          httpStatus: 200,
-          result: {
-            url: `${Cypress.config("baseUrl")}${posterPath}`,
-            contentType: "image/jpeg",
-          },
-        },
-      });
+      routeTransform(
+        [{ includes: video.fileName, posterJobId, animationJobId }],
+        "transform",
+      );
+      cy.intercept(
+        "GET",
+        `/api/jobs/${posterJobId}`,
+        completedPosterJob(posterJobId, posterPath),
+      );
       // The animation render times out on the backend (504-style failure).
       cy.intercept("GET", `/api/jobs/${animationJobId}`, {
         statusCode: 200,
@@ -438,15 +671,12 @@ describe("video thumbnail hover", () => {
 
       openTiles();
       tile(video.fileName).scrollIntoView();
-      tile(video.fileName)
-        .find("[data-cy='dStorage_thumbnail_image']", { timeout: 20000 })
-        .should("have.attr", "src")
-        .and("include", posterPath);
-      tile(video.fileName).trigger("pointerenter");
+      assertImageLoaded(video.fileName, "dStorage_thumbnail_image", posterPath);
+      hoverEnter(video.fileName);
 
       // After the animation fails, the poster remains and no progress persists.
       tile(video.fileName)
-        .find("[data-cy='dStorage_thumbnail_image']", { timeout: 20000 })
+        .find("[data-cy='dStorage_thumbnail_image']", { timeout: LONG })
         .should("have.attr", "src")
         .and("include", posterPath);
       tile(video.fileName).find("[role='progressbar']").should("not.exist");
@@ -456,7 +686,7 @@ describe("video thumbnail hover", () => {
     });
   });
 
-  // Task 5: non-video isolation.
+  // Task 4: non-video isolation.
   it("image and PDF tiles never request an animation", () => {
     cy.uniqueRecordName("isolate").then((marker) => {
       const image = namedFixture(IMAGE, marker);
@@ -467,52 +697,59 @@ describe("video thumbnail hover", () => {
         fileName: `brief-${marker}.pdf`,
         mimeType: "application/pdf",
       };
-      const imagePath = "/__cypress/isolate-image.jpg";
+      const imagePath = "/mock-thumbs/isolate-image.jpg";
       const imageJobId = "e1111111-1111-4111-8111-111111111111";
 
       signInAndOpenDrive();
       uploadThroughDialog([image, pdf]);
       serveImage(imagePath);
 
+      // Image gets a completed poster; PDF transform fails (fallback). Neither
+      // owner declares an animation job, so an animation request would throw.
       cy.intercept("POST", "/api/images/transform", (req) => {
         const body: unknown = req.body;
-        if (!isRecord(body) || typeof body.preview !== "string") {
-          throw new Error("transform request is missing a preview");
+        if (
+          !isRecord(body) ||
+          typeof body.preview !== "string" ||
+          typeof body.sourceKey !== "string"
+        ) {
+          throw new Error("transform request is missing preview/source");
         }
-        if (body.preview === "pdf") {
+        const sourceKey = body.sourceKey;
+        if (sourceKey.includes(image.fileName)) {
+          if (body.preview === "animation") {
+            throw new Error("image must never request an animation");
+          }
+          req.reply({
+            statusCode: 202,
+            body: { jobId: imageJobId, status: "pending" },
+          });
+          return;
+        }
+        if (sourceKey.includes(pdf.fileName)) {
+          if (body.preview === "animation") {
+            throw new Error("pdf must never request an animation");
+          }
           req.reply({ statusCode: 500, body: { message: "preview failed" } });
           return;
         }
-        req.reply({
-          statusCode: 202,
-          body: { jobId: imageJobId, status: "pending" },
-        });
+        req.continue();
       }).as("transform");
-      cy.intercept("GET", `/api/jobs/${imageJobId}`, {
-        statusCode: 200,
-        body: {
-          jobId: imageJobId,
-          status: "completed",
-          httpStatus: 200,
-          result: {
-            url: `${Cypress.config("baseUrl")}${imagePath}`,
-            contentType: "image/jpeg",
-          },
-        },
-      });
+      cy.intercept(
+        "GET",
+        `/api/jobs/${imageJobId}`,
+        completedPosterJob(imageJobId, imagePath),
+      );
 
       openTiles();
       tile(image.fileName).scrollIntoView();
       tile(pdf.fileName).scrollIntoView();
 
-      tile(image.fileName)
-        .find("[data-cy='dStorage_thumbnail_image']", { timeout: 20000 })
-        .should("have.attr", "src")
-        .and("include", imagePath);
+      assertImageLoaded(image.fileName, "dStorage_thumbnail_image", imagePath);
       // Hovering an image or PDF must never request an animation preview.
-      tile(image.fileName).trigger("pointerenter");
-      tile(image.fileName).trigger("pointerleave");
-      tile(pdf.fileName).trigger("pointerenter");
+      hoverEnter(image.fileName);
+      hoverLeave(image.fileName);
+      hoverEnter(pdf.fileName);
 
       cy.get("@transform.all").should((interceptions) => {
         expect(
