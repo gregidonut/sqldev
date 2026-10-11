@@ -4,6 +4,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/gregidonut/sqldev/packages/cli/internal/app"
@@ -19,13 +21,24 @@ func NewRootCommand() *cobra.Command {
 
 // newRootCommand builds the tree with an injectable runner for testing.
 func newRootCommand(runner process.Runner) *cobra.Command {
+	return newRootCommandWithArgs(runner, func() []string { return os.Args[1:] })
+}
+
+// newRootCommandWithArgs lets tests supply the raw argv that passthrough
+// commands use to recover global flags placed before the command name.
+func newRootCommandWithArgs(runner process.Runner, rawArgs func() []string) *cobra.Command {
 	var flags config.Flags
 
 	// a is resolved in PersistentPreRunE and shared with every subcommand via
 	// a closure captured below.
 	var a *app.App
 
-	root := &cobra.Command{
+	// globalPrefix is how many leading args of a passthrough command were
+	// global flags given before the command name (see passthroughArgs).
+	var globalPrefix int
+
+	var root *cobra.Command
+	root = &cobra.Command{
 		Use:           "sqldev",
 		Short:         "SQLDev developer CLI",
 		Long:          "sqldev consolidates SQLDev developer tooling: transparent Supabase and Cypress wrappers, storage maintenance, host operations, and local dev services.",
@@ -35,6 +48,16 @@ func newRootCommand(runner process.Runner) *cobra.Command {
 			// Help and completion do not need configuration or links.
 			if isMetaCommand(cmd) {
 				return nil
+			}
+			// Cobra does not parse any flags for DisableFlagParsing commands,
+			// not even global ones placed before the command name, and leaves
+			// them in args. Parse that prefix here so config sees them.
+			if cmd.DisableFlagParsing {
+				prefix := globalFlagPrefix(rawArgs(), root.PersistentFlags())
+				if err := root.PersistentFlags().Parse(prefix); err != nil {
+					return err
+				}
+				globalPrefix = len(prefix)
 			}
 			root, err := workspace.FindRoot(flags.Root, "")
 			if err != nil {
@@ -59,10 +82,17 @@ func newRootCommand(runner process.Runner) *cobra.Command {
 
 	// appOf returns the resolved App for a running subcommand.
 	appOf := func() *app.App { return a }
+	// passArgs drops the global-flag prefix from a passthrough command's args.
+	passArgs := func(args []string) []string {
+		if globalPrefix > len(args) {
+			return args
+		}
+		return args[globalPrefix:]
+	}
 
 	root.AddCommand(
-		newSupabaseCommand(appOf),
-		newCypressCommand(appOf),
+		newSupabaseCommand(appOf, passArgs),
+		newCypressCommand(appOf, passArgs),
 		newStorageCommand(appOf),
 		newHostCommand(appOf),
 		newDevCommand(appOf),

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"time"
 
@@ -53,6 +54,20 @@ func (RealSleeper) Sleep(ctx context.Context, d time.Duration) error {
 	}
 }
 
+// Dialer opens a single TCP connection. Tests substitute a fake; production
+// uses the zero value which falls back to net.Dialer{Timeout: 1s}.
+type Dialer interface {
+	DialContext(ctx context.Context, network, address string) (net.Conn, error)
+}
+
+// realDialer wraps net.Dialer with a per-attempt timeout.
+type realDialer struct{}
+
+func (realDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	d := net.Dialer{Timeout: time.Second}
+	return d.DialContext(ctx, network, address)
+}
+
 // Manager owns the local dev tmux lifecycle. It never calls app.EnsureLinked;
 // only the panes it launches (and the reset service) acquire links.
 type Manager struct {
@@ -60,6 +75,7 @@ type Manager struct {
 	Tmux   tmux.Client
 	Runner process.Runner
 	Sleep  Sleeper
+	Dial   Dialer // nil → realDialer; set in tests to avoid real network I/O
 
 	// CachedBin is the stable executable path detached panes run. It is
 	// resolved by the caller via tmux.Materialize before Start.
@@ -82,6 +98,13 @@ func (m *Manager) sleeper() Sleeper {
 		return m.Sleep
 	}
 	return RealSleeper{}
+}
+
+func (m *Manager) dialer() Dialer {
+	if m.Dial != nil {
+		return m.Dial
+	}
+	return realDialer{}
 }
 
 func (m *Manager) windowTarget() string {
@@ -192,10 +215,20 @@ func (m *Manager) startLocked(ctx context.Context, cleanupLegacy bool) error {
 	}
 
 	// Wait for SST to publish linked resources before starting dependents.
-	if err := m.waitForLinks(ctx); err != nil {
-		fmt.Fprintf(m.out(), "SST did not report linked resources in time: %v\n", err)
-		fmt.Fprintf(m.out(), "SST pane left running; inspect with: sqldev --stage %s dev attach\n", m.Cfg.Stage)
+	if err := m.waitForLinks(ctx, sstPane); err != nil {
+		fmt.Fprintf(m.out(), "SST did not report linked resources: %v\n", err)
+		fmt.Fprintf(m.out(), "SST pane kept for inspection; run: sqldev --stage %s dev attach\n", m.Cfg.Stage)
 		return err
+	}
+
+	// Nothing else starts local Supabase, and the worker needs it. Start it
+	// (idempotent), then wait for Postgres to accept TCP connections. A start
+	// failure is non-fatal: the worker pane will surface the connection error.
+	if err := m.startSupabase(ctx); err != nil {
+		fmt.Fprintf(m.out(), "local Supabase failed to start: %v\n", err)
+		fmt.Fprintf(m.out(), "the worker needs it; retry with: sqldev --stage %s supabase start\n", m.Cfg.Stage)
+	} else {
+		m.waitForSupabase(ctx)
 	}
 
 	workerPane, err := m.Tmux.SplitPane(ctx, sstPane, tmux.PaneSpec{Dir: m.Cfg.Root, Argv: m.workerArgv()})
@@ -331,11 +364,15 @@ func (m *Manager) baseArgv() []string {
 }
 
 // waitForLinks polls `dev check-links` in separate subprocesses until success
-// or timeout, performing one final probe at the boundary.
-func (m *Manager) waitForLinks(ctx context.Context) error {
+// or timeout, performing one final probe at the boundary. It fails fast when
+// the SST pane has exited, since links can then never appear.
+func (m *Manager) waitForLinks(ctx context.Context, sstPane tmux.PaneID) error {
 	deadline := time.Now().Add(m.Cfg.Tmux.StartupTimeout)
 	var lastErr error
 	for {
+		if err := m.sstPaneExited(ctx, sstPane); err != nil {
+			return err
+		}
 		if err := m.probeLinks(ctx); err == nil {
 			return nil
 		} else {
@@ -359,14 +396,77 @@ func (m *Manager) waitForLinks(ctx context.Context) error {
 	}
 }
 
+// sstPaneExited returns an error when the SST pane is dead. An empty pane ID
+// (no pane to watch) or a failed pane listing is not treated as an exit; the
+// link probe keeps deciding readiness in that case.
+func (m *Manager) sstPaneExited(ctx context.Context, sstPane tmux.PaneID) error {
+	if sstPane == "" {
+		return nil
+	}
+	panes, err := m.Tmux.ListPanes(ctx, m.windowTarget())
+	if err != nil {
+		return nil
+	}
+	for _, p := range panes {
+		if p.ID == sstPane && p.Dead {
+			return fmt.Errorf("the sst pane exited with status %d before linked resources were ready (check AWS credentials / AWS_PROFILE)", p.DeadStatus)
+		}
+	}
+	return nil
+}
+
+// probeLinks runs the hidden check-links command with the same root, stage,
+// and AWS flags the panes get, so a profile given only by flag reaches it.
 func (m *Manager) probeLinks(ctx context.Context) error {
 	return m.Runner.Run(ctx, process.RunRequest{
 		Program: m.CachedBin,
-		Args:    []string{"--root", m.Cfg.Root, "--stage", m.Cfg.Stage, "dev", "check-links"},
+		Args:    append(m.baseArgv()[1:], "dev", "check-links"),
 		Dir:     m.Cfg.Root,
 		Stdout:  io.Discard,
 		Stderr:  io.Discard,
 	})
+}
+
+// startSupabase runs `sqldev supabase start` as a linked subprocess. The
+// command is idempotent: it exits 0 when the stack is already running. Stdout
+// carries the status table with local keys, so it is discarded; stderr shows
+// progress.
+func (m *Manager) startSupabase(ctx context.Context) error {
+	fmt.Fprintln(m.out(), "starting local Supabase (sqldev supabase start)...")
+	return m.Runner.Run(ctx, process.RunRequest{
+		Program: m.CachedBin,
+		Args:    append(m.baseArgv()[1:], "supabase", "start"),
+		Dir:     m.Cfg.Root,
+		Stdout:  io.Discard,
+		Stderr:  m.out(),
+	})
+}
+
+// supabaseAddr is the local Supabase Postgres TCP address. It matches the
+// hardcoded default in RunWorker's DBOS_SYSTEM_DATABASE_URL.
+const supabaseAddr = "127.0.0.1:54322"
+
+// waitForSupabase polls the Supabase TCP port until it accepts connections or
+// the startup timeout expires. A timeout is non-fatal: the worker pane will
+// surface its own error if Supabase is still not ready. This keeps restarts
+// safe when the user has configured a remote DB or disabled local Supabase.
+func (m *Manager) waitForSupabase(ctx context.Context) {
+	deadline := time.Now().Add(m.Cfg.Tmux.StartupTimeout)
+	for {
+		conn, err := m.dialer().DialContext(ctx, "tcp", supabaseAddr)
+		if err == nil {
+			conn.Close()
+			return
+		}
+		if time.Now().After(deadline) {
+			fmt.Fprintf(m.out(), "Supabase at %s not ready after timeout; worker pane may fail to connect\n", supabaseAddr)
+			return
+		}
+		if err := m.sleeper().Sleep(ctx, m.Cfg.Tmux.PollInterval); err != nil {
+			// Context cancelled — bail silently, pane will show its own error.
+			return
+		}
+	}
 }
 
 // Stop gracefully stops the managed session and enforces Imagor cleanup.
@@ -512,7 +612,7 @@ func (m *Manager) RestartService(ctx context.Context, service tmux.ServiceName) 
 		return err
 	}
 	if service == tmux.ServiceSST {
-		if err := m.waitForLinks(ctx); err != nil {
+		if err := m.waitForLinks(ctx, newPane); err != nil {
 			fmt.Fprintf(m.out(), "SST restarted but links are not ready; worker/imagor may need `dev restart`: %v\n", err)
 		}
 	}

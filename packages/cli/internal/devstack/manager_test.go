@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"net"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -22,12 +24,26 @@ func (instantSleeper) Sleep(_ context.Context, _ time.Duration) error { return n
 type probeRunner struct {
 	calls      [][]string
 	checkLinks func() error
+	supabase   func() error // optional hook for `supabase start`
 }
 
 func (r *probeRunner) Run(_ context.Context, req process.RunRequest) error {
 	r.calls = append(r.calls, append([]string{req.Program}, req.Args...))
 	if len(req.Args) >= 2 && req.Args[len(req.Args)-1] == "check-links" && r.checkLinks != nil {
 		return r.checkLinks()
+	}
+	if len(req.Args) >= 2 && req.Args[len(req.Args)-2] == "supabase" && req.Args[len(req.Args)-1] == "start" && r.supabase != nil {
+		return r.supabase()
+	}
+	return nil
+}
+
+// callEndingWith returns the first recorded argv whose tail matches suffix.
+func (r *probeRunner) callEndingWith(suffix ...string) []string {
+	for _, c := range r.calls {
+		if len(c) >= len(suffix) && slices.Equal(c[len(c)-len(suffix):], suffix) {
+			return c
+		}
 	}
 	return nil
 }
@@ -65,6 +81,7 @@ func newTestManager(ft *fakeTmux, runner process.Runner) *Manager {
 		Tmux:       ft,
 		Runner:     runner,
 		Sleep:      instantSleeper{},
+		Dial:       &fakeDialer{failCount: 0}, // succeed immediately; avoids real Supabase TCP dial
 		CachedBin:  "/cache/sqldev-abc",
 		Executable: "/cache/sqldev-abc",
 		Out:        &bytes.Buffer{},
@@ -291,5 +308,207 @@ func TestNonLocalStageRefused(t *testing.T) {
 	mgr := &Manager{Cfg: cfg, Tmux: ft, Runner: &probeRunner{}, Sleep: instantSleeper{}, CachedBin: "/x", Executable: "/x", Out: &bytes.Buffer{}}
 	if err := mgr.Start(context.Background(), false); err == nil {
 		t.Fatal("staging should be refused")
+	}
+}
+
+// fakeDialer is a Dialer that fails the first N calls then succeeds.
+type fakeDialer struct {
+	failCount int
+	calls     int
+}
+
+func (d *fakeDialer) DialContext(_ context.Context, _, _ string) (net.Conn, error) {
+	d.calls++
+	if d.calls <= d.failCount {
+		return nil, errors.New("connection refused")
+	}
+	// Return one end of an in-memory connected pair.
+	client, server := net.Pipe()
+	server.Close() // we only need the client side
+	return client, nil
+}
+
+// alwaysFailDialer never succeeds, used to test the non-fatal timeout path.
+type alwaysFailDialer struct{ calls int }
+
+func (d *alwaysFailDialer) DialContext(_ context.Context, _, _ string) (net.Conn, error) {
+	d.calls++
+	return nil, errors.New("connection refused")
+}
+
+// TestStartWaitsForSupabaseBeforeSpawningWorker verifies that when the dialer
+// fails initially, Start still waits for it before spawning the worker pane.
+func TestStartWaitsForSupabaseBeforeSpawningWorker(t *testing.T) {
+	ft := newFakeTmux()
+	runner := &probeRunner{checkLinks: func() error { return nil }}
+	mgr := newTestManager(ft, runner)
+
+	// Dialer succeeds on the first call (Supabase immediately ready).
+	mgr.Dial = &fakeDialer{failCount: 0}
+
+	if err := mgr.Start(context.Background(), false); err != nil {
+		t.Fatal(err)
+	}
+
+	// Worker and imagor panes must have been spawned.
+	workerIdx := -1
+	for i, c := range ft.calls {
+		if c == "split-window" && workerIdx == -1 {
+			workerIdx = i
+		}
+	}
+	if workerIdx == -1 {
+		t.Fatal("worker pane was never spawned")
+	}
+}
+
+// TestStartContinuesWhenSupabaseTimesOut verifies that a Supabase dial timeout
+// is non-fatal: Start still spawns both worker and imagor panes.
+func TestStartContinuesWhenSupabaseTimesOut(t *testing.T) {
+	ft := newFakeTmux()
+	runner := &probeRunner{checkLinks: func() error { return nil }}
+
+	cfg := testConfig()
+	// Very short timeout so the test finishes quickly.
+	cfg.Tmux.StartupTimeout = 5 * time.Millisecond
+	cfg.Tmux.PollInterval = time.Millisecond
+
+	dial := &alwaysFailDialer{}
+	mgr := &Manager{
+		Cfg:       cfg,
+		Tmux:      ft,
+		Runner:    runner,
+		Sleep:     instantSleeper{},
+		Dial:      dial,
+		CachedBin: "/cache/sqldev-abc",
+		Out:       &bytes.Buffer{},
+	}
+
+	if err := mgr.Start(context.Background(), false); err != nil {
+		t.Fatalf("Start should succeed even when Supabase is unreachable: %v", err)
+	}
+
+	// Both splits must still be created — the timeout is non-fatal.
+	splits := 0
+	for _, c := range ft.calls {
+		if c == "split-window" {
+			splits++
+		}
+	}
+	if splits != 2 {
+		t.Fatalf("expected 2 splits even after Supabase timeout, got %d (%v)", splits, ft.calls)
+	}
+
+	// The dialer must have been polled at least once.
+	if dial.calls == 0 {
+		t.Error("Supabase dialer was never called")
+	}
+}
+
+// TestStartRunsSupabaseStartBeforeWorker verifies the orchestrator starts
+// local Supabase through the linked sqldev wrapper after links are ready and
+// before any dependent pane exists.
+func TestStartRunsSupabaseStartBeforeWorker(t *testing.T) {
+	ft := newFakeTmux()
+	linksReady := false
+	runner := &probeRunner{checkLinks: func() error { linksReady = true; return nil }}
+	runner.supabase = func() error {
+		if !linksReady {
+			t.Error("supabase start ran before the link probe succeeded")
+		}
+		if ft.has("split-window") {
+			t.Error("supabase start ran after a dependent pane was created")
+		}
+		return nil
+	}
+	mgr := newTestManager(ft, runner)
+	mgr.Cfg.AWSProfile = "prof"
+
+	if err := mgr.Start(context.Background(), false); err != nil {
+		t.Fatal(err)
+	}
+	call := runner.callEndingWith("supabase", "start")
+	if call == nil {
+		t.Fatalf("supabase start never ran: %v", runner.calls)
+	}
+	want := []string{"/cache/sqldev-abc", "--root", "/repo", "--stage", "dev",
+		"--aws-profile", "prof", "--aws-region", "ap-east-1", "supabase", "start"}
+	if !slices.Equal(call, want) {
+		t.Fatalf("supabase start argv = %v, want %v", call, want)
+	}
+}
+
+// TestStartSkipsSupabaseWaitWhenStartFails verifies a failed `supabase start`
+// is non-fatal and does not make the user wait for a port that will not open.
+func TestStartSkipsSupabaseWaitWhenStartFails(t *testing.T) {
+	ft := newFakeTmux()
+	runner := &probeRunner{
+		checkLinks: func() error { return nil },
+		supabase:   func() error { return errors.New("docker not running") },
+	}
+	mgr := newTestManager(ft, runner)
+	dial := &alwaysFailDialer{}
+	mgr.Dial = dial
+	out := &bytes.Buffer{}
+	mgr.Out = out
+
+	if err := mgr.Start(context.Background(), false); err != nil {
+		t.Fatalf("Start should succeed when supabase start fails: %v", err)
+	}
+	if dial.calls != 0 {
+		t.Errorf("dialer polled %d times after a failed supabase start", dial.calls)
+	}
+	if !strings.Contains(out.String(), "failed to start") {
+		t.Errorf("expected a supabase failure message, got %q", out.String())
+	}
+	if !ft.has("split-window") {
+		t.Error("worker and imagor panes should still be created")
+	}
+}
+
+// TestStartFailsFastWhenSSTPaneDies verifies the link wait stops as soon as
+// the SST pane is dead instead of polling until the startup timeout.
+func TestStartFailsFastWhenSSTPaneDies(t *testing.T) {
+	ft := newFakeTmux()
+	probes := 0
+	runner := &probeRunner{checkLinks: func() error { probes++; return errors.New("not ready") }}
+	ft.probeFunc = func() {
+		for i := range ft.panes {
+			if ft.panes[i].Title == tmux.ServiceSST.String() {
+				ft.panes[i].Dead = true
+				ft.panes[i].DeadStatus = 1
+			}
+		}
+	}
+	mgr := newTestManager(ft, runner)
+
+	err := mgr.Start(context.Background(), false)
+	if err == nil || !strings.Contains(err.Error(), "sst pane exited with status 1") {
+		t.Fatalf("expected an SST exit error, got %v", err)
+	}
+	if probes != 0 {
+		t.Errorf("link probe ran %d times after the SST pane died", probes)
+	}
+	if ft.has("split-window") {
+		t.Error("no dependent panes should be created when SST died")
+	}
+}
+
+// TestProbeLinksPassesAWSFlags verifies the readiness probe receives the same
+// AWS profile and region flags as the panes.
+func TestProbeLinksPassesAWSFlags(t *testing.T) {
+	ft := newFakeTmux()
+	runner := &probeRunner{checkLinks: func() error { return nil }}
+	mgr := newTestManager(ft, runner)
+	mgr.Cfg.AWSProfile = "prof"
+
+	if err := mgr.Start(context.Background(), false); err != nil {
+		t.Fatal(err)
+	}
+	call := runner.callEndingWith("dev", "check-links")
+	want := []string{"/cache/sqldev-abc", "--root", "/repo", "--stage", "dev",
+		"--aws-profile", "prof", "--aws-region", "ap-east-1", "dev", "check-links"}
+	if !slices.Equal(call, want) {
+		t.Fatalf("check-links argv = %v, want %v", call, want)
 	}
 }

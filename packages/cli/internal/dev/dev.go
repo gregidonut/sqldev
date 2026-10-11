@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -142,6 +143,7 @@ func RemoveOwnedImagor(ctx context.Context, runner process.Runner, stage string)
 	return runner.Run(ctx, process.RunRequest{
 		Program: "docker",
 		Args:    []string{"rm", "-f", imagorContainer},
+		Stdout:  io.Discard, // docker echoes the removed container name
 	})
 }
 
@@ -156,6 +158,7 @@ func inspectImagor(ctx context.Context, runner process.Runner) (managed bool, ow
 			"--format", "{{index .Config.Labels \"io.sqldev.managed\"}}\t{{index .Config.Labels \"io.sqldev.stage\"}}",
 		},
 		Stdout: &out,
+		Stderr: io.Discard, // suppress "Error: No such object" when container is absent
 	})
 	if runErr != nil {
 		// `docker inspect` on a missing container exits nonzero; treat that as
@@ -179,24 +182,23 @@ func inspectImagor(ctx context.Context, runner process.Runner) (managed bool, ow
 // root attached to the current terminal. It does not require linked resources;
 // SST provides them. A non-empty awsProfile or awsRegion is exported to SST so
 // a profile chosen by flag or config reaches it even when the variable is not
-// set in the calling environment.
+// set in the calling environment. CGO_ENABLED defaults to 0 because `sst dev`
+// builds the Go API live function locally, and the local gcc cannot link cgo;
+// with cgo on the build fails and every API request hangs.
 func RunSST(ctx context.Context, runner process.Runner, root, stage, awsProfile, awsRegion string) error {
-	req := process.RunRequest{
+	env := append(os.Environ(), kv("CGO_ENABLED", envOr("CGO_ENABLED", "0")))
+	if awsProfile != "" {
+		env = append(env, kv("AWS_PROFILE", awsProfile))
+	}
+	if awsRegion != "" {
+		env = append(env, kv("AWS_REGION", awsRegion))
+	}
+	return runner.Run(ctx, process.RunRequest{
 		Program: "bunx",
 		Args:    []string{"--no-install", "sst", "--stage", stage, "dev"},
 		Dir:     root,
-	}
-	if awsProfile != "" || awsRegion != "" {
-		env := os.Environ()
-		if awsProfile != "" {
-			env = append(env, kv("AWS_PROFILE", awsProfile))
-		}
-		if awsRegion != "" {
-			env = append(env, kv("AWS_REGION", awsRegion))
-		}
-		req.Env = env
-	}
-	return runner.Run(ctx, req)
+		Env:     env,
+	})
 }
 
 func kv(key, value string) string { return key + "=" + value }
