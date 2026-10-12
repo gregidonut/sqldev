@@ -11,96 +11,19 @@ import type { JobProgress } from "@/server/requestJob";
 import createThumbnailGetQueryOptions, {
     thumbnailKind,
 } from "../queryOptions/createThumbnailGet.ts";
+import {
+    useThumbnailRailStore,
+    type AnimationLifecycle,
+    type PosterLoadState,
+} from "./store/thumbnailRailStore.ts";
 
-// A monotonically increasing attempt identifier scoped to one mounted tile.
-// Every eligibility interval gets a fresh id so results, image events, decode
-// promises, and failure timers from a superseded attempt can be ignored.
-type AnimationAttemptId = number;
-
-// Why a failure happened. Only used to pick an accessible status; the visible
-// rail is identical for every reason. Cancellation is never a failure.
-type AnimationFailureReason =
-    | "request"
-    | "server"
-    | "timeout"
-    | "malformed-result"
-    | "image-load"
-    | "image-decode"
-    | "zero-dimensions";
-
-// The complete lifecycle of one animated-preview attempt. Modelled as a
-// discriminated union so invalid combinations are unrepresentable: a
-// determinate rail cannot exist without frame counts, a ready state cannot
-// exist without a verified URL, and a failed rail cannot exist without a
-// current attempt and dismissal identity.
-type AnimationLifecycle =
-    | { readonly state: "inactive" }
-    | { readonly state: "initial-wait"; readonly attempt: AnimationAttemptId }
-    | {
-          readonly state: "frames";
-          readonly attempt: AnimationAttemptId;
-          readonly completed: number;
-          readonly total: number;
-      }
-    | {
-          readonly state: "final-wait";
-          readonly attempt: AnimationAttemptId;
-          readonly phase: "encoding" | "image-download" | "image-decode";
-      }
-    | {
-          readonly state: "ready";
-          readonly attempt: AnimationAttemptId;
-          readonly url: string;
-      }
-    | {
-          readonly state: "failed";
-          readonly attempt: AnimationAttemptId;
-          readonly reason: AnimationFailureReason;
-          readonly dismissalToken: number;
-      };
-
-// Browser readiness of the current animation URL. A query result URL is only
-// `loading`; it becomes `ready` after a genuine load with positive natural
-// dimensions and (when available) a successful decode for the same attempt and
-// URL. A URL change invalidates events from the old URL.
-type AnimationUrlReadiness =
-    | { readonly state: "absent" }
-    | {
-          readonly state: "loading";
-          readonly attempt: AnimationAttemptId;
-          readonly url: string;
-      }
-    | {
-          readonly state: "decoding";
-          readonly attempt: AnimationAttemptId;
-          readonly url: string;
-      }
-    | {
-          readonly state: "ready";
-          readonly attempt: AnimationAttemptId;
-          readonly url: string;
-      }
-    | {
-          readonly state: "broken";
-          readonly attempt: AnimationAttemptId;
-          readonly url: string;
-          readonly reason: "image-load" | "image-decode" | "zero-dimensions";
-      };
-
-// Poster readiness is tracked by the current poster URL. Server delivery of a
-// URL is not the same as a successful browser image load, and a broken image
-// can report `complete === true`, so animation only unlocks after a real
-// `onLoad` for the URL that is currently rendered.
-type PosterLoadState =
-    | { readonly state: "idle" }
-    | { readonly state: "loading"; readonly url: string }
-    | { readonly state: "ready"; readonly url: string }
-    | { readonly state: "broken"; readonly url: string };
-
-// A failure rail is held for this long and then dismissed by timer. The timer
-// is authoritative because reduced-motion removes the shake animation, so an
-// `animationend` event may never fire.
-const FAILURE_VISIBLE_MS = 1000;
+// The lifecycle/readiness/poster unions, the attempt/failure-reason types, the
+// `FAILURE_VISIBLE_MS` constant, the attempt/dismissal-token counters, and the
+// failure timer now live in the per-tile Zustand store
+// (`./store/thumbnailRailStore.ts`). This component consumes the store's
+// `AnimationLifecycle` (for `railView`/`RailView` below) and `PosterLoadState`,
+// and bridges React/TanStack Query/DOM events into store actions. See
+// `.kiro/specs/loading-bar-zustand-store/design.md`.
 
 interface StorageThumbnailProps {
     fileName: string;
@@ -250,20 +173,22 @@ function useThumbnailPreview(
     const kind = thumbnailKind(fileName);
     const isVideo = kind === "video";
     const { ref: visibilityRef, isVisible } = useBecameVisible();
-    const [poster, setPoster] = useState<PosterLoadState>({ state: "idle" });
 
-    // Attempt ownership. The ref is the authoritative current attempt id; the
-    // lifecycle/readiness state mirror it. A new attempt is minted only when
-    // eligibility turns on.
-    const attemptRef = useRef<AnimationAttemptId>(0);
-    const [lifecycle, setLifecycle] = useState<AnimationLifecycle>({
-        state: "inactive",
-    });
-    const [readiness, setReadiness] = useState<AnimationUrlReadiness>({
-        state: "absent",
-    });
-    const dismissalTokenRef = useRef(0);
-    const failureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    // All rail/poster lifecycle state now lives in the per-tile store, keyed by
+    // sourceKey. Subscribe to this tile's entry and select the actions we need.
+    // Actions are selected individually to keep each reference stable.
+    const tile = useThumbnailRailStore((s) => s.getTile(sourceKey));
+    const beginAttempt = useThumbnailRailStore((s) => s.beginAttempt);
+    const endAttempt = useThumbnailRailStore((s) => s.endAttempt);
+    const reportProgress = useThumbnailRailStore((s) => s.reportProgress);
+    const urlArrived = useThumbnailRailStore((s) => s.urlArrived);
+    const imageLoaded = useThumbnailRailStore((s) => s.imageLoaded);
+    const imageDecoded = useThumbnailRailStore((s) => s.imageDecoded);
+    const imageBroken = useThumbnailRailStore((s) => s.imageBroken);
+    const failAttempt = useThumbnailRailStore((s) => s.failAttempt);
+    const posterReset = useThumbnailRailStore((s) => s.posterReset);
+    const posterLoaded = useThumbnailRailStore((s) => s.posterLoaded);
+    const posterBroken = useThumbnailRailStore((s) => s.posterBroken);
 
     const posterQuery = useQuery({
         ...createThumbnailGetQueryOptions(sourceKey, kind ?? "image"),
@@ -272,24 +197,18 @@ function useThumbnailPreview(
 
     const posterUrl = posterQuery.data?.url;
 
-    // Reset readiness whenever the rendered poster URL changes. A load/error
-    // event is only trusted when it belongs to the URL we are showing now.
+    // Reset poster readiness whenever the rendered poster URL changes. A
+    // load/error event is only trusted when it belongs to the URL we are
+    // showing now. The store's `posterReset` is a reference-stable no-op when
+    // the poster already targets this URL.
     useEffect(
         function () {
-            if (posterUrl === undefined) {
-                setPoster({ state: "idle" });
-                return;
-            }
-            setPoster(function (current) {
-                if ("url" in current && current.url === posterUrl) {
-                    return current;
-                }
-                return { state: "loading", url: posterUrl };
-            });
+            posterReset(sourceKey, posterUrl);
         },
-        [posterUrl],
+        [posterReset, sourceKey, posterUrl],
     );
 
+    const poster = tile.poster;
     const posterReady =
         poster.state === "ready" &&
         posterUrl !== undefined &&
@@ -297,70 +216,36 @@ function useThumbnailPreview(
 
     const animationEnabled = isVideo && isVisible && isActive && posterReady;
 
-    const clearFailureTimer = useCallback(function () {
-        if (failureTimerRef.current !== null) {
-            clearTimeout(failureTimerRef.current);
-            failureTimerRef.current = null;
-        }
-    }, []);
-
-    // Mint a new attempt and reset lifecycle/readiness on the eligibility
-    // edge. A monotonic attempt id must survive re-renders within one
-    // eligibility interval, and minting it plus scheduling the animation query
-    // is a genuine side effect, so this is an effect keyed on the derived
-    // eligibility boolean. When eligibility turns off (leave / supersession /
-    // gating / poster not ready) the tile returns straight to the inactive
-    // baseline; cancellation is never a failure.
+    // Mint a new attempt on the eligibility edge and reset to the inactive
+    // baseline when eligibility turns off; the cleanup also runs `endAttempt`
+    // on unmount, which clears any pending failure timer. The store owns the
+    // monotonic attempt id, so this effect only signals the transition.
     useEffect(
         function () {
-            clearFailureTimer();
             if (animationEnabled) {
-                attemptRef.current += 1;
-                setLifecycle({
-                    state: "initial-wait",
-                    attempt: attemptRef.current,
-                });
-                setReadiness({ state: "absent" });
+                beginAttempt(sourceKey);
             } else {
-                setLifecycle({ state: "inactive" });
-                setReadiness({ state: "absent" });
+                endAttempt(sourceKey);
             }
+            return function () {
+                endAttempt(sourceKey);
+            };
         },
-        [animationEnabled, clearFailureTimer],
+        [animationEnabled, sourceKey, beginAttempt, endAttempt],
     );
 
-    // Clear any pending failure timer on unmount.
-    useEffect(
-        function () {
-            return clearFailureTimer;
+    // Progress bridge: reference-stable so the query options stay stable. The
+    // current attempt is read from the live store entry at call time (never a
+    // stale closure); the store action also guards on attempt internally.
+    const onProgress = useCallback(
+        function (value: JobProgress) {
+            const attempt = useThumbnailRailStore
+                .getState()
+                .getTile(sourceKey).attempt;
+            reportProgress(sourceKey, attempt, value);
         },
-        [clearFailureTimer],
+        [reportProgress, sourceKey],
     );
-
-    // Progress callbacks are closed over the attempt that created the query so
-    // a late callback from a superseded attempt is a no-op.
-    const onProgress = useCallback(function (value: JobProgress) {
-        const attempt = attemptRef.current;
-        setLifecycle(function (current) {
-            // Only the current attempt may advance, and only out of waiting
-            // states (never regress from ready/failed).
-            if (!("attempt" in current) || current.attempt !== attempt) {
-                return current;
-            }
-            if (current.state === "ready" || current.state === "failed") {
-                return current;
-            }
-            if (value.phase === "frames") {
-                return {
-                    state: "frames",
-                    attempt,
-                    completed: value.completed,
-                    total: value.total,
-                };
-            }
-            return { state: "final-wait", attempt, phase: "encoding" };
-        });
-    }, []);
 
     const animation = useQuery({
         ...createThumbnailGetQueryOptions(sourceKey, "animation", onProgress),
@@ -370,77 +255,20 @@ function useThumbnailPreview(
     const animationUrl = animation.data?.url;
     const animationError = animation.isError;
 
-    // When the query produces a URL, move into the final wait (image download)
-    // and start browser readiness tracking for the current attempt.
+    // When the query produces a URL, hand it to the store, which starts browser
+    // readiness tracking and moves the lifecycle into the image-download final
+    // wait for the current attempt.
     useEffect(
         function () {
             if (!animationEnabled || animationUrl === undefined) {
                 return;
             }
-            const attempt = attemptRef.current;
-            setReadiness(function (current) {
-                if (
-                    current.state !== "absent" &&
-                    current.attempt === attempt &&
-                    current.url === animationUrl
-                ) {
-                    return current;
-                }
-                return { state: "loading", attempt, url: animationUrl };
-            });
-            setLifecycle(function (current) {
-                if (!("attempt" in current) || current.attempt !== attempt) {
-                    return current;
-                }
-                if (current.state === "ready" || current.state === "failed") {
-                    return current;
-                }
-                return {
-                    state: "final-wait",
-                    attempt,
-                    phase: "image-download",
-                };
-            });
+            const attempt = useThumbnailRailStore
+                .getState()
+                .getTile(sourceKey).attempt;
+            urlArrived(sourceKey, attempt, animationUrl);
         },
-        [animationEnabled, animationUrl],
-    );
-
-    const enterFailure = useCallback(
-        function (attempt: AnimationAttemptId, reason: AnimationFailureReason) {
-            // Compute the dismissal token outside the updater so the updater
-            // stays pure (React may invoke it more than once).
-            dismissalTokenRef.current += 1;
-            const token = dismissalTokenRef.current;
-            setLifecycle(function (current) {
-                if (!("attempt" in current) || current.attempt !== attempt) {
-                    return current;
-                }
-                if (current.state === "failed") {
-                    return current;
-                }
-                return {
-                    state: "failed",
-                    attempt,
-                    reason,
-                    dismissalToken: token,
-                };
-            });
-            clearFailureTimer();
-            failureTimerRef.current = setTimeout(function () {
-                failureTimerRef.current = null;
-                setLifecycle(function (current) {
-                    if (
-                        current.state === "failed" &&
-                        current.attempt === attempt &&
-                        current.dismissalToken === token
-                    ) {
-                        return { state: "inactive" };
-                    }
-                    return current;
-                });
-            }, FAILURE_VISIBLE_MS);
-        },
-        [clearFailureTimer],
+        [animationEnabled, animationUrl, sourceKey, urlArrived],
     );
 
     // A rejected animation query (request/server/timeout/malformed) fails the
@@ -451,128 +279,94 @@ function useThumbnailPreview(
             if (!animationEnabled || !animationError) {
                 return;
             }
-            enterFailure(attemptRef.current, "server");
+            const attempt = useThumbnailRailStore
+                .getState()
+                .getTile(sourceKey).attempt;
+            failAttempt(sourceKey, attempt, "server");
         },
-        [animationEnabled, animationError, enterFailure],
+        [animationEnabled, animationError, sourceKey, failAttempt],
     );
 
     // --- Animation image browser-readiness handlers (attempt + URL scoped) ---
 
-    const markReady = useCallback(function (
-        attempt: AnimationAttemptId,
-        url: string,
-    ) {
-        setReadiness(function (current) {
-            if (
-                current.state === "absent" ||
-                current.attempt !== attempt ||
-                current.url !== url
-            ) {
-                return current;
-            }
-            return { state: "ready", attempt, url };
-        });
-        setLifecycle(function (current) {
-            if (!("attempt" in current) || current.attempt !== attempt) {
-                return current;
-            }
-            if (current.state === "failed") {
-                return current;
-            }
-            return { state: "ready", attempt, url };
-        });
-    }, []);
-
-    const markBroken = useCallback(function (
-        attempt: AnimationAttemptId,
-        url: string,
-        reason: "image-load" | "image-decode" | "zero-dimensions",
-    ) {
-        setReadiness(function (current) {
-            if (
-                current.state === "absent" ||
-                current.attempt !== attempt ||
-                current.url !== url
-            ) {
-                return current;
-            }
-            return { state: "broken", attempt, url, reason };
-        });
-    }, []);
-
     const onAnimationLoad = useCallback(
         function (event: React.SyntheticEvent<HTMLImageElement>) {
-            const attempt = attemptRef.current;
             if (animationUrl === undefined) {
                 return;
             }
+            const attempt = useThumbnailRailStore
+                .getState()
+                .getTile(sourceKey).attempt;
             const img = event.currentTarget;
-            if (img.naturalWidth <= 0 || img.naturalHeight <= 0) {
-                markBroken(attempt, animationUrl, "zero-dimensions");
-                enterFailure(attempt, "zero-dimensions");
+            const naturalWidth = img.naturalWidth;
+            const naturalHeight = img.naturalHeight;
+            // The store's `imageLoaded` records readiness; for zero dimensions
+            // it marks the url broken and delegates to `failAttempt` itself, so
+            // we only report the load here and stop.
+            imageLoaded(sourceKey, attempt, animationUrl, {
+                naturalWidth,
+                naturalHeight,
+            });
+            if (naturalWidth <= 0 || naturalHeight <= 0) {
                 return;
             }
-            setLifecycle(function (current) {
-                if (!("attempt" in current) || current.attempt !== attempt) {
-                    return current;
-                }
-                if (current.state === "ready" || current.state === "failed") {
-                    return current;
-                }
-                return { state: "final-wait", attempt, phase: "image-decode" };
-            });
-            // Prefer a genuine decode; fall back to positive-dimension success
-            // when decode is unavailable.
+            // Positive dimensions: the store has set readiness=decoding and the
+            // image-decode final wait. Prefer a genuine decode; fall back to
+            // positive-dimension success when decode is unavailable.
             if (typeof img.decode === "function") {
-                setReadiness(function (current) {
-                    if (
-                        current.state === "absent" ||
-                        current.attempt !== attempt ||
-                        current.url !== animationUrl
-                    ) {
-                        return current;
-                    }
-                    return { state: "decoding", attempt, url: animationUrl };
-                });
                 img.decode().then(
                     function () {
-                        markReady(attempt, animationUrl);
+                        imageDecoded(sourceKey, attempt, animationUrl);
                     },
                     function () {
-                        markBroken(attempt, animationUrl, "image-decode");
-                        enterFailure(attempt, "image-decode");
+                        imageBroken(
+                            sourceKey,
+                            attempt,
+                            animationUrl,
+                            "image-decode",
+                        );
+                        failAttempt(sourceKey, attempt, "image-decode");
                     },
                 );
             } else {
-                markReady(attempt, animationUrl);
+                imageDecoded(sourceKey, attempt, animationUrl);
             }
         },
-        [animationUrl, enterFailure, markReady, markBroken],
+        [
+            animationUrl,
+            sourceKey,
+            imageLoaded,
+            imageDecoded,
+            imageBroken,
+            failAttempt,
+        ],
     );
 
     const onAnimationError = useCallback(
         function () {
-            const attempt = attemptRef.current;
             if (animationUrl === undefined) {
                 return;
             }
-            markBroken(attempt, animationUrl, "image-load");
-            enterFailure(attempt, "image-load");
+            const attempt = useThumbnailRailStore
+                .getState()
+                .getTile(sourceKey).attempt;
+            imageBroken(sourceKey, attempt, animationUrl, "image-load");
+            failAttempt(sourceKey, attempt, "image-load");
         },
-        [animationUrl, markBroken, enterFailure],
+        [animationUrl, sourceKey, imageBroken, failAttempt],
     );
 
     const ref = visibilityRef;
     const activity = usePreviewActivity(sourceKey, isVideo, onActiveChange);
 
     // The animation layer is only revealed when readiness is verified for the
-    // current attempt and URL.
+    // current attempt and URL and the lifecycle has reached ready.
     const animationRevealed =
-        readiness.state === "ready" &&
+        tile.readiness.state === "ready" &&
+        tile.lifecycle.state === "ready" &&
         animationUrl !== undefined &&
-        readiness.url === animationUrl &&
-        readiness.attempt === attemptRef.current &&
-        lifecycle.state === "ready";
+        tile.readiness.url === animationUrl &&
+        tile.readiness.attempt === tile.attempt;
 
     const poster_ = displayedPoster({
         kind,
@@ -586,22 +380,13 @@ function useThumbnailPreview(
                 return;
             }
             const loaded = event.currentTarget;
-            if (loaded.naturalWidth <= 0) {
-                setPoster({ state: "broken", url: posterUrl });
-                return;
-            }
-            setPoster(function (current) {
-                if ("url" in current && current.url !== posterUrl) {
-                    return current;
-                }
-                return { state: "ready", url: posterUrl };
-            });
+            posterLoaded(sourceKey, posterUrl, loaded.naturalWidth);
         },
         onPosterError: function () {
             if (posterUrl === undefined) {
                 return;
             }
-            setPoster({ state: "broken", url: posterUrl });
+            posterBroken(sourceKey, posterUrl);
         },
     });
 
@@ -625,7 +410,7 @@ function useThumbnailPreview(
         poster: poster_.frame,
         isLoading: poster_.isLoading,
         animation: animationFrame,
-        rail: railView(lifecycle, fileName),
+        rail: railView(tile.lifecycle, fileName),
     };
 }
 

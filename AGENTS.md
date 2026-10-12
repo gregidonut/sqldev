@@ -13,3 +13,7 @@ Before editing files for a substantial task:
 ## Required project context
 
 Before every repository task, read and follow `packages/agent-skills/skills/understanding-sqldev/SKILL.md`.
+
+## Loading bar / thumbnail rail state
+
+The "loading bar" is the thumbnail progress rail (`ThumbnailProgressRail` + `railView` in `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/StorageThumbnail.tsx`). Its lifecycle state lives in a per-`sourceKey` Zustand store at `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/store/thumbnailRailStore.ts` (no longer local React state). See `packages/frontend/AGENTS.md` for details.

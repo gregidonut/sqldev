@@ -59,6 +59,7 @@
         "eslint": "^10.1.0",
         "eslint-plugin-astro": "^1.6.0",
         "eslint-plugin-jsx-a11y": "^6.10.2",
+        "fast-check": "^4.10.2",
         "jiti": "^2.6.1",
         "prettier": "^3.8.1",
         "prettier-plugin-astro": "^0.14.1"
