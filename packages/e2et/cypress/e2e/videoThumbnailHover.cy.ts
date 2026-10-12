@@ -850,9 +850,41 @@ function jobBody(
   }
 }
 
+// Fake only setTimeout/clearTimeout. rAF must stay real (the latest-active
+// coordinator promotes via requestAnimationFrame) and Date/intervals must
+// stay real for Clerk. Install AFTER setup so no page load sees the clock.
+function installTimerClock() {
+  cy.clock(0, ["setTimeout", "clearTimeout"]);
+}
+
+// cy.wait("@alias") resolves when Cypress sends the response, not when the
+// app has handled it, so a timer the app schedules in reaction (TanStack's
+// retry, notifyManager's setTimeout(cb, 0)) may not exist yet when the next
+// cy.tick runs. Tick `ms`, give the app a short real-time window to react,
+// and repeat until `done` holds. Bounded so a real regression still fails.
+function tickUntil(
+  ms: number,
+  done: () => Cypress.Chainable<boolean>,
+  label: string,
+  attempt = 0,
+): void {
+  cy.tick(ms, { log: false });
+  cy.wait(50, { log: false });
+  done().then((reached) => {
+    if (reached) return;
+    if (attempt >= 40) {
+      throw new Error(`tickUntil(${ms}) never reached: ${label}`);
+    }
+    tickUntil(ms, done, label, attempt + 1);
+  });
+}
+
 // Dispatch a real touch PointerEvent sequence. React Aria's useLongPress
-// listens to pointerdown/pointerup with pointerType "touch"; the hold duration
-// is advanced with cy.clock()/cy.tick() so 499ms vs 500ms is exact.
+// listens to pointerdown/pointerup with pointerType "touch" and schedules its
+// threshold with global setTimeout on pointerdown. The hold duration is
+// advanced with cy.tick() on the late, narrow clock from installTimerClock()
+// (setTimeout/clearTimeout only, installed after setup), so 499ms vs 500ms is
+// exact.
 function touchDown(fileName: string) {
   tile(fileName).find("[data-cy='dStorage_thumbnail']").trigger("pointerdown", {
     eventConstructor: "PointerEvent",
@@ -1098,7 +1130,6 @@ describe("stable thumbnail preview progress", () => {
   // Task 4: a failed animation job quietly restores the poster, shows a brief
   // failure rail, and dismisses it by timer without an animationend event.
   it("shows a brief failure rail then restores the poster when the animation job fails", () => {
-    cy.clock();
     cy.uniqueRecordName("failrail").then((marker) => {
       const video = namedFixture(VIDEO_A, marker);
       const posterPath = "/mock-thumbs/failrail-poster.jpg";
@@ -1124,12 +1155,55 @@ describe("stable thumbnail preview progress", () => {
           httpStatus: 504,
           message: "Image processing timed out",
         }),
-      });
+      }).as("animationJob");
 
       openTiles();
       tile(video.fileName).scrollIntoView();
       assertImageLoaded(video.fileName, "dStorage_thumbnail_image", posterPath);
+
+      // Setup ran under real time. Fake only setTimeout/clearTimeout from here
+      // so the dismissal timer is driven solely by cy.tick.
+      installTimerClock();
       hoverEnter(video.fileName);
+
+      // First failed job GET. The animation query has retry: 1 with the default
+      // 1000ms delay, so it schedules a fake retry timer instead of failing.
+      cy.wait("@animationJob");
+      // Fire the retry: second transform POST and job GET. If the app had not
+      // yet scheduled the retry when the first tick ran, the next 1000ms tick
+      // fires it. Advancing extra here is harmless: the dismissal timer does
+      // not exist until the second failure is delivered.
+      tickUntil(
+        1000,
+        () =>
+          cy
+            .get<{ request: { body?: unknown } }[]>("@transform.all", {
+              log: false,
+            })
+            .then(
+              (interceptions) =>
+                previewOf(interceptions, "animation", video.fileName).length >=
+                2,
+            ),
+        "animation retry POST",
+      );
+      cy.wait("@animationJob");
+      // TanStack's notifyManager delivers the error via setTimeout(cb, 0),
+      // which may be scheduled only after the browser handles the response.
+      // Flush with 0ms ticks (no fake time passes, so the 999/1000 contract
+      // below stays exact) until the effect calls failAttempt and the failed
+      // rail renders. Its 1000ms dismissal timer then starts at a known time.
+      tickUntil(
+        0,
+        () =>
+          tile(video.fileName).then(
+            ($tile) =>
+              $tile.find(
+                "[data-cy='dStorage_thumbnail_progress'][data-rail-state='failed']",
+              ).length > 0,
+          ),
+        "failed rail",
+      );
 
       // A failure status rail appears (role=status, error state) with no value.
       tile(video.fileName)
@@ -1227,7 +1301,6 @@ describe("stable thumbnail preview progress", () => {
   // Task 5: touch press-and-hold activates only at the 500ms threshold and not
   // before, and does not select the row.
   it("activates on a 500ms touch hold but not at 499ms, and does not select the row", () => {
-    cy.clock();
     cy.viewport("iphone-x");
     cy.uniqueRecordName("hold").then((marker) => {
       const video = namedFixture(VIDEO_A, marker);
@@ -1261,6 +1334,14 @@ describe("stable thumbnail preview progress", () => {
       tile(video.fileName).scrollIntoView();
       assertImageLoaded(video.fileName, "dStorage_thumbnail_image", posterPath);
 
+      // Guard: the row is selectable and currently unselected, so the
+      // post-release "not selected" check cannot pass vacuously.
+      tile(video.fileName).should("have.attr", "aria-selected", "false");
+
+      // Setup ran under real time. Fake only setTimeout/clearTimeout from here
+      // so the long-press threshold is driven solely by cy.tick.
+      installTimerClock();
+
       // Hold for only 499ms then release: no animation request.
       touchDown(video.fileName);
       cy.tick(499);
@@ -1285,8 +1366,8 @@ describe("stable thumbnail preview progress", () => {
       // Releasing the completed hold must not select the row.
       touchUp(video.fileName);
       tile(video.fileName)
-        .find("[data-cy='dStorage_item']")
-        .should("not.have.attr", "aria-selected", "true");
+        .should("not.have.attr", "aria-selected", "true")
+        .and("not.have.attr", "data-selected");
     });
   });
 });
