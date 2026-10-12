@@ -253,3 +253,120 @@
     --clerk-border-radius: 0rem;
     --clerk-color-ring: #8BE9FD;
 }
+
+
+/*
+ * Stable thumbnail preview progress rail.
+ *
+ * A ~2px indicator painted as an absolute overlay along the TOP edge of the
+ * thumbnail. It is excluded from normal flow and uses paint containment so its
+ * appearance, phase changes, failure shake, and removal can never alter the
+ * thumbnail or enclosing tile box. Motion is x-axis only; y translation stays
+ * at 0. Reduced motion removes the animations; a JS timer remains the
+ * authoritative dismissal for the failure state.
+ */
+.thumbnail-preview-rail {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    width: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    contain: paint;
+    background-color: color-mix(in srgb, var(--color-drac-selection) 70%, transparent);
+    z-index: 2;
+}
+
+.thumbnail-preview-rail__fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    height: 100%;
+    background-color: var(--color-drac-red);
+    will-change: transform;
+}
+
+/* Determinate: width is set inline from frame progress; a left origin keeps
+   growth on the x-axis only. */
+.thumbnail-preview-rail__fill--determinate {
+    transform-origin: left center;
+    transition: width 150ms linear;
+}
+
+/* Indeterminate: a short segment sweeps across the x-axis. */
+.thumbnail-preview-rail__fill--indeterminate {
+    width: 40%;
+    transform: translateX(-100%);
+    animation: thumbnail-preview-indeterminate 1100ms ease-in-out infinite;
+}
+
+/* Failure: error-coloured rail that shakes briefly on the x-axis only. */
+.thumbnail-preview-rail--failed {
+    background-color: color-mix(in srgb, var(--color-drac-red) 30%, transparent);
+    animation: thumbnail-preview-failure 300ms ease-in-out 1;
+}
+
+.thumbnail-preview-rail__fill--failed {
+    width: 100%;
+    background-color: var(--color-drac-red);
+}
+
+@keyframes thumbnail-preview-indeterminate {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(250%);
+    }
+}
+
+/* Short horizontal shake bounded to +/-4px, no y displacement. */
+@keyframes thumbnail-preview-failure {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    20% {
+        transform: translateX(-4px);
+    }
+    40% {
+        transform: translateX(4px);
+    }
+    60% {
+        transform: translateX(-4px);
+    }
+    80% {
+        transform: translateX(4px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .thumbnail-preview-rail__fill--indeterminate {
+        animation: none;
+        transform: none;
+        width: 100%;
+        /* Distinguish an in-progress waiting rail from the error rail without
+           motion. */
+        background-color: color-mix(in srgb, var(--color-drac-red) 55%, transparent);
+    }
+
+    .thumbnail-preview-rail--failed {
+        animation: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .thumbnail-preview-rail {
+        background-color: Canvas;
+        outline: 1px solid ButtonBorder;
+    }
+
+    .thumbnail-preview-rail__fill--determinate,
+    .thumbnail-preview-rail__fill--indeterminate {
+        background-color: Highlight;
+    }
+
+    .thumbnail-preview-rail--failed,
+    .thumbnail-preview-rail__fill--failed {
+        background-color: Mark;
+    }
+}

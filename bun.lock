@@ -71,6 +71,7 @@
         "lucide-react": "^1.11.0",
         "mqtt": "^5.15.1",
         "react": "^19.2.5",
+        "react-aria": "3.52.1",
         "react-aria-components": "^1.17.0",
         "react-dom": "^19.2.5",
         "react-hook-form": "^7.72.0",
