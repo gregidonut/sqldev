@@ -17,3 +17,11 @@ Before every repository task, read and follow `packages/agent-skills/skills/unde
 ## Loading bar / thumbnail rail state
 
 The "loading bar" is the thumbnail progress rail (`ThumbnailProgressRail` + `railView` in `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/StorageThumbnail.tsx`). Its lifecycle state lives in a per-`sourceKey` Zustand store at `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/store/thumbnailRailStore.ts` (no longer local React state). See `packages/frontend/AGENTS.md` for details.
+
+## MDX editor demo
+
+The authenticated Markdown editor demo at `/components/mdxEditor` has its own
+state-ownership and sanitization invariants. Before changing that page, its
+editors, its render path, or the Go `/renderMd` handler, load the
+`packages/agent-skills/skills/mdx-editor-demo/SKILL.md` skill and see
+`packages/frontend/AGENTS.md` for details.

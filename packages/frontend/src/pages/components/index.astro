@@ -5,7 +5,7 @@ import { requirePageAuth } from "@/utils/clerk/requireAuth";
 const redirect = requirePageAuth(Astro);
 if (redirect) return redirect;
 
-return Astro.redirect("/components/basicFileUpload", 302);
+return Astro.redirect("/components/basicForm", 302);
 ---
 
 <ComponentPage>

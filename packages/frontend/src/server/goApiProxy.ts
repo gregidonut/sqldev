@@ -1,4 +1,5 @@
 import { Resource } from "sst";
+import { mapBrowserApiPath } from "./mapBrowserApiPath.ts";
 
 const goApiURL = Resource.GoApi.url.replace(/\/+$/, "");
 
@@ -27,6 +28,7 @@ export async function proxyAuthenticatedApi(
     }
 
     const incoming = new URL(request.url);
+    const upstreamPath = mapBrowserApiPath(incoming.pathname);
     const headers = new Headers();
     const contentType = request.headers.get("Content-Type");
     if (contentType) {
@@ -54,7 +56,7 @@ export async function proxyAuthenticatedApi(
     let upstream: Response;
     try {
         upstream = await fetch(
-            `${goApiURL}${incoming.pathname}${incoming.search}`,
+            `${goApiURL}${upstreamPath}${incoming.search}`,
             init,
         );
     } catch {
