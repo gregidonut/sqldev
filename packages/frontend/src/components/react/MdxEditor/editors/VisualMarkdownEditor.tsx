@@ -28,7 +28,8 @@ import {
     MARKDOWN_EDITOR_LABEL,
     type MarkdownEditorHandle,
     type MarkdownEditorProps,
-} from "./MarkdownEditor.ts";
+} from "../types.ts";
+import { handleSubmitShortcut } from "./submitShortcut.ts";
 
 /**
  * Plugin set limited to constructs that round-trip to default (unextended)
@@ -50,6 +51,8 @@ function goldmarkPlugins() {
         }),
         markdownShortcutPlugin(),
         toolbarPlugin({
+            // Wraps controls so a full-width toolbar never scrolls horizontally.
+            toolbarClassName: "sqldev-mdx-editor__toolbar",
             toolbarContents: () => (
                 <>
                     <UndoRedo />
@@ -72,7 +75,7 @@ function goldmarkPlugins() {
 }
 
 /**
- * MDXEditor adapted to the shared controlled contract. React Hook Form owns the
+ * MDXEditor adapted to the shared controlled contract. The caller owns the
  * draft; MDXEditor is initialized from `value` and reports edits via `onChange`.
  * External value changes are pushed through `setMarkdown` only when they differ
  * from the current serialized Markdown, preventing feedback loops.
@@ -81,7 +84,7 @@ export const VisualMarkdownEditor = React.forwardRef<
     MarkdownEditorHandle,
     MarkdownEditorProps
 >(function VisualMarkdownEditor(
-    { value, onChange, onBlur, ariaLabel },
+    { value, onChange, onBlur, ariaLabel, sizing, onSubmitShortcut },
     ref,
 ): React.JSX.Element {
     const editorRef = React.useRef<MDXEditorMethods | null>(null);
@@ -90,7 +93,7 @@ export const VisualMarkdownEditor = React.forwardRef<
         focus: () => editorRef.current?.focus(),
     }));
 
-    // Sync external RHF changes into MDXEditor only when they differ.
+    // Sync external value changes into MDXEditor only when they differ.
     React.useEffect(() => {
         const current = editorRef.current?.getMarkdown();
         if (current !== undefined && current !== value) {
@@ -98,11 +101,21 @@ export const VisualMarkdownEditor = React.forwardRef<
         }
     }, [value]);
 
+    const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        handleSubmitShortcut(
+            event,
+            () => event.preventDefault(),
+            onSubmitShortcut,
+        );
+    };
+
     return (
         <div
             data-cy="mdx-visual-editor"
-            className="mdx-visual-editor h-full w-full overflow-auto"
+            className="mdx-visual-editor sqldev-mdx-editor__surface h-full w-full"
+            data-sizing={sizing.mode}
             onBlur={onBlur}
+            onKeyDown={onKeyDown}
         >
             <MDXEditor
                 ref={editorRef}

@@ -259,4 +259,40 @@ describe("mdxEditor demo", () => {
       );
     });
   });
+
+  // Added for the reusable-editor extraction.
+  describe("reusable editor extraction", () => {
+    beforeEach(openDemo);
+
+    it("mounts the editor inside the reusable fixed-sizing shell", () => {
+      cy.get("[data-cy='mdx-editor']", { timeout: 20000 })
+        .should("exist")
+        .and("have.attr", "data-sizing", "fixed");
+    });
+
+    it("Ctrl+Enter inside the editor renders without clicking the button", () => {
+      cy.intercept("POST", "/api/renderMd").as("render");
+      cy.get("[data-cy='mdx-visual-editor']", { timeout: 20000 }).should(
+        "exist",
+      );
+      cy.get("[data-cy='mdx-visual-editor'] .mdx-visual-editor__content")
+        .click()
+        .type("{ctrl+enter}");
+      cy.wait("@render");
+      cy.get("@render.all").should("have.length", 1);
+    });
+
+    it("loads the Vim editor chunk only after Vim mode is requested", () => {
+      // The Vim adapter is a separate lazy chunk; its module request must not
+      // happen until the toggle is activated.
+      cy.intercept("GET", "**/VimMarkdownEditor*.js").as("vimChunk");
+      cy.get("[data-cy='mdx-visual-editor']", { timeout: 20000 }).should(
+        "exist",
+      );
+      cy.get("[data-cy='mdx-vim-editor']").should("not.exist");
+
+      cy.get("[data-cy='mdx-vim-toggle']").click();
+      cy.get("[data-cy='mdx-vim-editor']", { timeout: 20000 }).should("exist");
+    });
+  });
 });

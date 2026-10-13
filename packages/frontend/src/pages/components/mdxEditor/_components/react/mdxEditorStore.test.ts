@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { SanitizedHtml } from "./renderMarkdownClient.ts";
+import type { SanitizedHtml } from "@/components/react/MdxEditor";
 import {
     DEFAULT_UI_STATE,
     useMdxEditorUiStore,

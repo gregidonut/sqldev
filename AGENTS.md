@@ -18,10 +18,18 @@ Before every repository task, read and follow `packages/agent-skills/skills/unde
 
 The "loading bar" is the thumbnail progress rail (`ThumbnailProgressRail` + `railView` in `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/StorageThumbnail.tsx`). Its lifecycle state lives in a per-`sourceKey` Zustand store at `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/store/thumbnailRailStore.ts` (no longer local React state). See `packages/frontend/AGENTS.md` for details.
 
-## MDX editor demo
+## MDX editor
 
-The authenticated Markdown editor demo at `/components/mdxEditor` has its own
-state-ownership and sanitization invariants. Before changing that page, its
-editors, its render path, or the Go `/renderMd` handler, load the
+The reusable Markdown editor lives at
+`packages/frontend/src/components/react/MdxEditor/`. It is a controlled
+Visual/Vim editor (`MdxEditor.tsx`), an RHF field adapter (`MdxEditorField.tsx`),
+a valid-state sizing union plus pure helpers (`types.ts`), scoped authoring CSS
+(`mdxEditor.css`), lazy per-mode adapters under `editors/`, and the pure
+TanStack Query option factories under `queryOptions/` (render client plus
+Instagram create/fetch-one/update). The authenticated demo at
+`/components/mdxEditor` is its first consumer; `/instagreg/home` post creation
+(`PostArea/FormSection`) and the DDrvList edit form (`ItemEditForm`) reuse it.
+Before changing that component, its demo, its render path, or the Go
+`/renderMd` handler, load the
 `packages/agent-skills/skills/mdx-editor-demo/SKILL.md` skill and see
 `packages/frontend/AGENTS.md` for details.

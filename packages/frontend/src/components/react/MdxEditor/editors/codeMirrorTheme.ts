@@ -23,13 +23,18 @@ const drac = {
     yellow: "#f1fa8c",
 } as const;
 
-/** Editor surface, gutter, caret, selection, and focus styling. */
+/**
+ * Editor surface, gutter, caret, selection, and focus styling.
+ *
+ * Height and scroller overflow are intentionally NOT set here; they are owned
+ * by the sizing compartment in the Vim adapter so the same theme serves both
+ * fixed (internal scroll) and content (page scroll) modes.
+ */
 export const draculaEditorTheme: Extension = EditorView.theme(
     {
         "&": {
             color: drac.foreground,
             backgroundColor: drac.background,
-            height: "100%",
         },
         ".cm-content": {
             caretColor: drac.cyan,
@@ -61,9 +66,6 @@ export const draculaEditorTheme: Extension = EditorView.theme(
         ".cm-matchingBracket, &.cm-focused .cm-matchingBracket": {
             outline: `1px solid ${drac.cyan}`,
             backgroundColor: "transparent",
-        },
-        ".cm-scroller": {
-            overflow: "auto",
         },
     },
     { dark: true },

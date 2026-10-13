@@ -5,27 +5,27 @@ import { Form } from "react-aria-components";
 import { ToggleButton } from "react-aria-components";
 import { Button } from "@/components/ui/Button.tsx";
 import {
-    LazyVimMarkdownEditor,
-    LazyVisualMarkdownEditor,
-} from "./editors/LazyEditors.tsx";
-import {
+    MdxEditor,
     MARKDOWN_EDITOR_LABEL,
-    type MarkdownEditorHandle,
-} from "./editors/MarkdownEditor.ts";
-import { OutputTabs } from "./OutputTabs.tsx";
-import {
-    renderMarkdown,
+    createRenderMarkdownMutationOptions,
     RenderMarkdownError,
+    type EditorSizing,
+    type MarkdownEditorHandle,
     type RenderMarkdownData,
     type RenderMarkdownVariables,
-} from "./renderMarkdownClient.ts";
+} from "@/components/react/MdxEditor";
+import { OutputTabs } from "./OutputTabs.tsx";
 import { useMdxEditorUiStore } from "./mdxEditorStore.ts";
 import { SAMPLE_MARKDOWN } from "./sampleMarkdown.ts";
 
 type DraftForm = { markdown: string };
 
+// The demo editor fills its reserved, bounded authoring slot and scrolls
+// internally, preserving the prior layout.
+const DEMO_SIZING = { mode: "fixed", height: "100%" } satisfies EditorSizing;
+
 export function MdxEditorDemo(): React.JSX.Element {
-    const { control, handleSubmit, getValues } = useForm<DraftForm>({
+    const { control, handleSubmit } = useForm<DraftForm>({
         defaultValues: { markdown: SAMPLE_MARKDOWN },
     });
 
@@ -46,10 +46,10 @@ export function MdxEditorDemo(): React.JSX.Element {
 
     const mutation = useMutation<
         RenderMarkdownData,
-        unknown,
+        RenderMarkdownError,
         RenderMarkdownVariables
     >({
-        mutationFn: (variables) => renderMarkdown(variables),
+        ...createRenderMarkdownMutationOptions(),
         onMutate: () => {
             setErrorMessage(null);
             setStatusMessage("Rendering Markdown…");
@@ -71,18 +71,6 @@ export function MdxEditorDemo(): React.JSX.Element {
         },
     });
 
-    // Move focus into the newly mounted editor after a mode switch.
-    const prevModeRef = React.useRef(editorMode);
-    React.useEffect(() => {
-        if (prevModeRef.current !== editorMode) {
-            prevModeRef.current = editorMode;
-            const id = window.requestAnimationFrame(() =>
-                editorRef.current?.focus(),
-            );
-            return () => window.cancelAnimationFrame(id);
-        }
-    }, [editorMode]);
-
     React.useEffect(() => {
         if (errorMessage) {
             errorRef.current?.focus();
@@ -96,6 +84,8 @@ export function MdxEditorDemo(): React.JSX.Element {
         inFlightRef.current = true;
         mutation.mutate({ text: values.markdown });
     };
+
+    const submitDraft = () => void handleSubmit(onSubmit)();
 
     return (
         <section className="flex w-full flex-col gap-4" data-cy="mdx-editor-demo">
@@ -153,25 +143,19 @@ export function MdxEditorDemo(): React.JSX.Element {
                         <Controller
                             control={control}
                             name="markdown"
-                            render={({ field }) =>
-                                editorMode === "vim" ? (
-                                    <LazyVimMarkdownEditor
-                                        ref={editorRef}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        onBlur={field.onBlur}
-                                        ariaLabel={MARKDOWN_EDITOR_LABEL}
-                                    />
-                                ) : (
-                                    <LazyVisualMarkdownEditor
-                                        ref={editorRef}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        onBlur={field.onBlur}
-                                        ariaLabel={MARKDOWN_EDITOR_LABEL}
-                                    />
-                                )
-                            }
+                            render={({ field }) => (
+                                <MdxEditor
+                                    ref={editorRef}
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    mode={editorMode}
+                                    sizing={DEMO_SIZING}
+                                    toolbarWidth="100%"
+                                    ariaLabel={MARKDOWN_EDITOR_LABEL}
+                                    onSubmitShortcut={submitDraft}
+                                />
+                            )}
                         />
                     </div>
 

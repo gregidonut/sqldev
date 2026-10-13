@@ -1,11 +1,15 @@
 /**
- * Browser render client for the MDX Editor Demo.
+ * Browser render client for the reusable MDX editor.
  *
  * Sends the submitted Markdown to the authenticated same-origin endpoint
  * `/api/renderMd` and validates the response before producing a branded
  * {@link SanitizedHtml} value. The brand records that the HTML came from a
  * successfully validated server response; it never makes an arbitrary string
- * safe. Only the single preview sink accepts a branded value.
+ * safe. Only a single preview sink should accept a branded value.
+ *
+ * This module is the trust-boundary provenance for rendered Markdown HTML. It
+ * performs no React or Zustand access and is safe to call from a mutation
+ * function configured by {@link createRenderMarkdownMutationOptions}.
  */
 
 declare const sanitizedHtmlBrand: unique symbol;

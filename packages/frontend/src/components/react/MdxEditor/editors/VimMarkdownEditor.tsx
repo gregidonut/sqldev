@@ -6,7 +6,12 @@ import {
     syntaxHighlighting,
     defaultHighlightStyle,
 } from "@codemirror/language";
-import { Annotation, EditorState, type Extension } from "@codemirror/state";
+import {
+    Annotation,
+    Compartment,
+    EditorState,
+    type Extension,
+} from "@codemirror/state";
 import {
     EditorView,
     keymap,
@@ -18,31 +23,72 @@ import {
 import { vim } from "@replit/codemirror-vim";
 import {
     MARKDOWN_EDITOR_LABEL,
+    type EditorSizing,
     type MarkdownEditorHandle,
     type MarkdownEditorProps,
-} from "./MarkdownEditor.ts";
+} from "../types.ts";
 import { draculaCodeMirror } from "./codeMirrorTheme.ts";
+import { isSubmitShortcut } from "./submitShortcut.ts";
 
-/** Marks a transaction that originated from an external RHF value sync. */
+/** Marks a transaction that originated from an external value sync. */
 const externalSync = Annotation.define<boolean>();
+
+/** Reconfigurable sizing extension so mode/size changes never rebuild the view. */
+const sizingCompartment = new Compartment();
+
+/**
+ * Builds the sizing extension for the current {@link EditorSizing}. Fixed mode
+ * gives the editor a bounded 100% height and an internally scrolling scroller;
+ * content mode lets the editor grow with the document and defers vertical
+ * scrolling to the page.
+ */
+export function sizingExtension(sizing: EditorSizing): Extension {
+    if (sizing.mode === "fixed") {
+        return EditorView.theme({
+            "&": { height: "100%" },
+            ".cm-scroller": { overflow: "auto" },
+        });
+    }
+    return EditorView.theme({
+        "&": { height: "auto" },
+        ".cm-scroller": { overflowY: "visible" },
+    });
+}
 
 /**
  * Builds the CodeMirror extensions in a fixed order. `vim()` MUST come before
- * every other keymap so Vim bindings take precedence in each mode.
+ * every other keymap so Vim bindings take precedence in each mode. The submit
+ * shortcut is registered after `vim()` as a plain keymap, so Vim keeps priority
+ * while Ctrl/Cmd+Enter still submits when Vim does not consume it.
  */
 export function buildVimExtensions(
     onDocChange: (next: string) => void,
     onBlur: (() => void) | undefined,
+    onSubmitShortcut: (() => void) | undefined,
+    sizing: EditorSizing,
 ): Extension[] {
     return [
         // 1. Vim first, before any other keymap.
         vim(),
-        // 2. History + default editing keymaps (insert mode etc.).
+        // 2. Submit shortcut (Ctrl/Cmd+Enter) after vim, before defaults.
+        keymap.of([
+            {
+                key: "Mod-Enter",
+                run: () => {
+                    if (onSubmitShortcut) {
+                        onSubmitShortcut();
+                        return true;
+                    }
+                    return false;
+                },
+            },
+        ]),
+        // 3. History + default editing keymaps (insert mode etc.).
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        // 3. Markdown language support.
+        // 4. Markdown language support.
         markdown(),
-        // 4. Editor behaviour.
+        // 5. Editor behaviour.
         lineNumbers(),
         highlightActiveLine(),
         highlightActiveLineGutter(),
@@ -50,9 +96,11 @@ export function buildVimExtensions(
         drawSelection(),
         EditorView.lineWrapping,
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        // 5. Dracula theme + Markdown syntax colours.
+        // 6. Dracula theme + Markdown syntax colours.
         draculaCodeMirror,
-        // 6. Report user edits to React Hook Form.
+        // 7. Reconfigurable sizing.
+        sizingCompartment.of(sizingExtension(sizing)),
+        // 8. Report user edits to the controlled owner.
         EditorView.updateListener.of((update) => {
             if (
                 update.docChanged &&
@@ -69,23 +117,25 @@ export function buildVimExtensions(
 
 /**
  * A CodeMirror 6 Markdown source editor with Vim bindings. It owns one
- * `EditorView` per mount, mirrors the React Hook Form value, and reports user
- * edits without feeding external syncs back into the form.
+ * `EditorView` per mount, mirrors the controlled value, reports user edits
+ * without feeding external syncs back, and reconfigures sizing in place.
  */
 export const VimMarkdownEditor = React.forwardRef<
     MarkdownEditorHandle,
     MarkdownEditorProps
 >(function VimMarkdownEditor(
-    { value, onChange, onBlur, ariaLabel },
+    { value, onChange, onBlur, ariaLabel, sizing, onSubmitShortcut },
     ref,
 ): React.JSX.Element {
     const hostRef = React.useRef<HTMLDivElement | null>(null);
     const viewRef = React.useRef<EditorView | null>(null);
-    // Keep the latest onChange without re-creating the editor each render.
+    // Keep the latest callbacks without re-creating the editor each render.
     const onChangeRef = React.useRef(onChange);
     const onBlurRef = React.useRef(onBlur);
+    const onSubmitShortcutRef = React.useRef(onSubmitShortcut);
     onChangeRef.current = onChange;
     onBlurRef.current = onBlur;
+    onSubmitShortcutRef.current = onSubmitShortcut;
 
     React.useImperativeHandle(ref, () => ({
         focus: () => viewRef.current?.focus(),
@@ -102,6 +152,8 @@ export const VimMarkdownEditor = React.forwardRef<
                 extensions: buildVimExtensions(
                     (next) => onChangeRef.current(next),
                     () => onBlurRef.current?.(),
+                    () => onSubmitShortcutRef.current?.(),
+                    sizing,
                 ),
             }),
         });
@@ -114,11 +166,11 @@ export const VimMarkdownEditor = React.forwardRef<
             view.destroy();
             viewRef.current = null;
         };
-        // Mount once; value syncing is handled by the effect below.
+        // Mount once; value and sizing are synced by the effects below.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Apply external RHF value changes without creating a feedback loop.
+    // Apply external value changes without creating a feedback loop.
     React.useEffect(() => {
         const view = viewRef.current;
         if (!view) {
@@ -133,16 +185,28 @@ export const VimMarkdownEditor = React.forwardRef<
         }
     }, [value]);
 
+    // Reconfigure sizing in place; never recreate the EditorView.
+    React.useEffect(() => {
+        const view = viewRef.current;
+        if (!view) {
+            return;
+        }
+        view.dispatch({
+            effects: sizingCompartment.reconfigure(sizingExtension(sizing)),
+        });
+    }, [sizing]);
+
     return (
         <div
             ref={hostRef}
             data-cy="mdx-vim-editor"
-            className="h-full w-full overflow-hidden"
+            className="mdx-vim-editor sqldev-mdx-editor__surface h-full w-full"
+            data-sizing={sizing.mode}
         />
     );
 });
 
 VimMarkdownEditor.displayName = "VimMarkdownEditor";
 
-export { MARKDOWN_EDITOR_LABEL };
+export { MARKDOWN_EDITOR_LABEL, isSubmitShortcut };
 export default VimMarkdownEditor;

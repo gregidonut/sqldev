@@ -2,7 +2,7 @@ import React from "react";
 import { Tabs, TabList, Tab, TabPanel } from "react-aria-components";
 import type { Key } from "react-aria-components";
 import type { LastSuccess, OutputTab } from "./mdxEditorStore.ts";
-import type { SanitizedHtml } from "./renderMarkdownClient.ts";
+import type { SanitizedHtml } from "@/components/react/MdxEditor";
 
 const EMPTY_PLACEHOLDER = "Render Markdown to create output";
 

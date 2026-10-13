@@ -1,70 +1,14 @@
 /*
- * Feature-scoped Dracula theming for the MDX Editor Demo.
+ * Demo-local preview styling for the MDX Editor Demo output.
  *
- * All colours derive from the existing --color-drac-* tokens declared in
- * src/styles/global.css. MDXEditor ships light-theme defaults, so these rules
- * map its surfaces onto the Dracula palette. Every override is scoped beneath
- * the demo root (.mdx-visual-editor) so it cannot leak to other pages.
+ * The reusable editor's authoring styles live with the component in
+ * `src/components/react/MdxEditor/mdxEditor.css`. These rules are preview-only
+ * (`.mdx-preview`): they theme the single sanitized-HTML preview sink and must
+ * stay with the demo, since the reusable authoring component intentionally
+ * exposes no HTML sink. All colours derive from the --color-drac-* tokens in
+ * src/styles/global.css.
  */
 
-.mdx-visual-editor {
-    background-color: var(--color-drac-background);
-    color: var(--color-drac-foreground);
-}
-
-/* MDXEditor root + toolbar */
-.mdx-visual-editor .mdxeditor {
-    --accentBase: var(--color-drac-background);
-    --accentBorder: var(--color-drac-selection);
-    background-color: var(--color-drac-background);
-    color: var(--color-drac-foreground);
-}
-
-.mdx-visual-editor .mdxeditor-toolbar {
-    background-color: var(--color-drac-selection);
-    color: var(--color-drac-foreground);
-    border-bottom: 1px solid var(--color-drac-current-line);
-}
-
-.mdx-visual-editor .mdxeditor-toolbar button {
-    color: var(--color-drac-foreground);
-}
-
-.mdx-visual-editor .mdxeditor-toolbar button:hover {
-    background-color: var(--color-drac-current-line);
-}
-
-/* Editable content area */
-.mdx-visual-editor__content {
-    color: var(--color-drac-foreground);
-    caret-color: var(--color-drac-cyan);
-}
-
-.mdx-visual-editor__content :is(h1, h2, h3, h4, h5, h6) {
-    color: var(--color-drac-purple);
-}
-
-.mdx-visual-editor__content a {
-    color: var(--color-drac-cyan);
-}
-
-.mdx-visual-editor__content code,
-.mdx-visual-editor__content pre {
-    background-color: var(--color-drac-selection);
-    color: var(--color-drac-foreground);
-}
-
-.mdx-visual-editor__content blockquote {
-    border-left: 3px solid var(--color-drac-comment);
-    color: var(--color-drac-comment);
-}
-
-.mdx-visual-editor :focus-visible {
-    outline: 2px solid var(--color-drac-cyan);
-    outline-offset: -2px;
-}
-
-/* Rendered preview panel */
 .mdx-preview {
     color: var(--color-drac-foreground);
 }
@@ -94,7 +38,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .mdx-visual-editor *,
     .mdx-preview * {
         animation: none !important;
         transition: none !important;

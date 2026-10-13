@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SanitizedHtml } from "./renderMarkdownClient.ts";
+import type { SanitizedHtml } from "@/components/react/MdxEditor";
 
 /** Which editing surface is mounted. */
 export type EditorMode = "visual" | "vim";

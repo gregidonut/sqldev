@@ -1,6 +1,7 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MdxEditorDemo } from "./MdxEditorDemo.tsx";
+import "@/components/react/MdxEditor/mdxEditor.css";
 import "./mdxEditorDemo.css";
 
 // Module-scoped client for this island. No devtools in the demo bundle.

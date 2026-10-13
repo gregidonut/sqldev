@@ -4,17 +4,22 @@ import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 import { Button } from "@/components/ui/Button.tsx";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
-import createOneGetQueryOptions from "@/components/react/DDrvList/queryOptions/createOneGet.ts";
+import { listQueryClient } from "@/components/react/DDrvList/queryClient.ts";
+import { MutationForm, SubmitButton } from "@/components/react/MutationForm";
 import {
-    MutationForm,
-    TextAreaField,
-    SubmitButton,
-    createOnePatchMutationOptions,
-} from "@/components/react/MutationForm";
+    MdxEditorField,
+    getIgPostQueryOptions,
+    updateIgPostMutationOptions,
+    type EditorSizing,
+} from "@/components/react/MdxEditor";
 import type { UpdateIgPostArgs } from "@/utils/supabase/models/aliases.ts";
 import { cy } from "@/utils/cy";
 
 type UpdateIgPostFormValues = Pick<UpdateIgPostArgs, "p_text_content">;
+
+// Content-growing editor with a four-row minimum and a full-width wrapping
+// toolbar, matching the create form.
+const EDIT_SIZING = { mode: "content", minRows: 4 } satisfies EditorSizing;
 
 function LoadingFallback() {
     return (
@@ -28,16 +33,18 @@ export default function ItemEditForm({ postId }: { postId: string }) {
     const { userId } = useStore($authStore);
     const { currentView: view, setIsEditing } = useListStore();
     const resolvedUserId = userId ?? "";
-    const oneGetOptions = createOneGetQueryOptions<"igPosts">(
-        postId,
-        resolvedUserId,
-    );
+    const oneGetOptions = getIgPostQueryOptions({
+        view: "igPosts",
+        userId: resolvedUserId,
+        itemId: postId,
+    });
     const { data, isLoading, error } = useQuery({
         ...oneGetOptions,
         enabled: view === "igPosts",
     });
-    const mutationOptions = createOnePatchMutationOptions({
-        view: view ?? "igPosts",
+    const mutationOptions = updateIgPostMutationOptions({
+        queryClient: listQueryClient,
+        view: "igPosts",
         userId: resolvedUserId,
     });
 
@@ -90,12 +97,15 @@ export default function ItemEditForm({ postId }: { postId: string }) {
             className="w-full p-4"
             {...cy("edit_ig_post_form")}
         >
-            <TextAreaField<UpdateIgPostFormValues>
+            <MdxEditorField<UpdateIgPostFormValues>
                 name="p_text_content"
                 rules={{ required: "Post content cannot be empty." }}
                 isRequired
                 autoFocus
                 stopArrowKeyPropagation
+                sizing={EDIT_SIZING}
+                toolbarWidth="100%"
+                ariaLabel="Post content"
                 className="flex-col-start-start gap-1"
                 dataCy="edit_p_text_content_field"
             />

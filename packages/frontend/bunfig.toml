@@ -1,0 +1,4 @@
+[test]
+# Register a DOM (happy-dom) before component tests so React can render.
+# Pure-logic tests are unaffected by the global registration.
+preload = ["./test/setup.ts"]

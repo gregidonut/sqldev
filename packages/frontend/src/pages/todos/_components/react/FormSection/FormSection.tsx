@@ -11,6 +11,7 @@ import { listQueryClient } from "@/components/react/DDrvList/queryClient.ts";
 
 function FormSection() {
     const mutationOptions = createViewItemMutationOptions({
+        queryClient: listQueryClient,
         view: "tdsTodoSpaces",
     });
 

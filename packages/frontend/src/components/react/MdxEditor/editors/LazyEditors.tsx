@@ -1,8 +1,5 @@
 import React from "react";
-import type {
-    MarkdownEditorHandle,
-    MarkdownEditorProps,
-} from "./MarkdownEditor.ts";
+import type { MarkdownEditorHandle, MarkdownEditorProps } from "../types.ts";
 
 type LazyEditorProps = MarkdownEditorProps &
     React.RefAttributes<MarkdownEditorHandle>;
@@ -10,12 +7,22 @@ type LazyEditorProps = MarkdownEditorProps &
 const LazyVisual = React.lazy(() => import("./VisualMarkdownEditor.tsx"));
 const LazyVim = React.lazy(() => import("./VimMarkdownEditor.tsx"));
 
-/** Stable, height-preserving fallback so chunk loading never collapses the row. */
-function EditorFallback(): React.JSX.Element {
+/**
+ * Stable, dimension-preserving fallback. It carries the shell surface class and
+ * sizing data attribute so the reserved height (fixed) or minimum height
+ * (content) is identical to the mounted adapter, preventing layout shift while
+ * a chunk loads.
+ */
+function EditorFallback({
+    sizingMode,
+}: {
+    sizingMode: "fixed" | "content";
+}): React.JSX.Element {
     return (
         <div
             data-cy="mdx-editor-loading"
-            className="flex h-full min-h-80 w-full items-center justify-center bg-drac-background text-drac-comment"
+            data-sizing={sizingMode}
+            className="sqldev-mdx-editor__surface sqldev-mdx-editor__fallback flex h-full w-full items-center justify-center bg-drac-background text-drac-comment"
         >
             Loading editor…
         </div>
@@ -27,7 +34,7 @@ export const LazyVisualMarkdownEditor = React.forwardRef<
     MarkdownEditorProps
 >(function LazyVisualMarkdownEditor(props, ref): React.JSX.Element {
     return (
-        <React.Suspense fallback={<EditorFallback />}>
+        <React.Suspense fallback={<EditorFallback sizingMode={props.sizing.mode} />}>
             <LazyVisual {...(props as LazyEditorProps)} ref={ref} />
         </React.Suspense>
     );
@@ -39,7 +46,7 @@ export const LazyVimMarkdownEditor = React.forwardRef<
     MarkdownEditorProps
 >(function LazyVimMarkdownEditor(props, ref): React.JSX.Element {
     return (
-        <React.Suspense fallback={<EditorFallback />}>
+        <React.Suspense fallback={<EditorFallback sizingMode={props.sizing.mode} />}>
             <LazyVim {...(props as LazyEditorProps)} ref={ref} />
         </React.Suspense>
     );

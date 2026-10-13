@@ -4,7 +4,7 @@ import { MoreHorizontal } from "lucide-react";
 import { useStore } from "@nanostores/react";
 import { $authStore } from "@clerk/astro/client";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
-import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
+import type { ViewMap } from "@/components/react/DDrvList/viewMap.types.ts";
 import { cy } from "@/utils/cy";
 
 export default function MenuButton<K extends keyof ViewMap>({

@@ -72,17 +72,38 @@ export function MutationForm<
         });
     }
 
+    // The single guarded submission entry point. RHF's handleSubmit runs
+    // validation and only calls onSubmit with valid values; onSubmit holds the
+    // in-flight guard. Native submit, the submit button, and the editor
+    // keyboard shortcut all funnel through this one function.
+    const guardedSubmit = React.useMemo(
+        () => methods.handleSubmit(onSubmit),
+        // handleSubmit is stable for a given form; onSubmit closes over stable
+        // refs and callbacks. Recreating on each render is also safe.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [methods],
+    );
+
+    const submit = React.useCallback(() => {
+        void guardedSubmit();
+    }, [guardedSubmit]);
+
+    const contextValue = React.useMemo(
+        () => ({ isPending, submit }),
+        [isPending, submit],
+    );
+
     if (isPending && pendingFallback) {
         return pendingFallback;
     }
 
     return (
         <FormProvider {...methods}>
-            <MutationFormStateContext.Provider value={{ isPending }}>
+            <MutationFormStateContext.Provider value={contextValue}>
                 <Form
                     {...formProps}
                     validationBehavior="aria"
-                    onSubmit={methods.handleSubmit(onSubmit)}
+                    onSubmit={guardedSubmit}
                 >
                     {children}
                 </Form>

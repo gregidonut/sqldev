@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ViewMap } from "@/components/react/DDrvList/viewMap.ts";
+import type { ViewMap } from "@/components/react/DDrvList/viewMap.types.ts";
 
 interface ListStore {
     currentView: keyof ViewMap | null;

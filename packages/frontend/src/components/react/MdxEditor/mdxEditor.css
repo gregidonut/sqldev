@@ -1,0 +1,156 @@
+/*
+ * Scoped styling and sizing for the reusable MDX editor.
+ *
+ * All colours derive from the existing --color-drac-* tokens declared in
+ * src/styles/global.css. MDXEditor ships light-theme defaults, so these rules
+ * map its surfaces onto the Dracula palette. Every override is scoped beneath
+ * `.sqldev-mdx-editor` (and the legacy `.mdx-visual-editor` surface class) so
+ * it cannot leak to other pages.
+ *
+ * This file is authoring-only: it contains NO preview (`.mdx-preview`) rules
+ * and introduces no HTML sink. Preview styling stays with the demo.
+ */
+
+.sqldev-mdx-editor {
+    box-sizing: border-box;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    --mdx-editor-line-height: 1.5rem;
+    --mdx-editor-block-padding: 1rem;
+    --mdx-editor-toolbar-min-height: 2.5rem;
+}
+
+/* Toolbar: honour the configured width and always wrap instead of scrolling. */
+.sqldev-mdx-editor .sqldev-mdx-editor__toolbar,
+.sqldev-mdx-editor .mdxeditor-toolbar {
+    box-sizing: border-box;
+    inline-size: var(--mdx-editor-toolbar-width, 100%);
+    max-inline-size: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    overflow-x: visible;
+}
+
+/* ----- Fixed sizing: bounded height, internal scrolling ----- */
+
+.sqldev-mdx-editor[data-sizing="fixed"] {
+    block-size: var(--mdx-editor-height);
+    min-block-size: 0;
+    overflow: hidden;
+}
+
+.sqldev-mdx-editor[data-sizing="fixed"] .sqldev-mdx-editor__surface,
+.sqldev-mdx-editor[data-sizing="fixed"] .mdxeditor,
+.sqldev-mdx-editor[data-sizing="fixed"] .cm-editor {
+    block-size: 100%;
+    min-block-size: 0;
+}
+
+.sqldev-mdx-editor[data-sizing="fixed"] .mdx-visual-editor {
+    overflow: auto;
+}
+
+/* ----- Content sizing: grow with content, page-level scrolling ----- */
+
+.sqldev-mdx-editor[data-sizing="content"] {
+    min-block-size: calc(
+        var(--mdx-editor-toolbar-min-height) +
+            var(--mdx-editor-min-rows, 4) * var(--mdx-editor-line-height) +
+            var(--mdx-editor-block-padding)
+    );
+    block-size: auto;
+    overflow: visible;
+}
+
+.sqldev-mdx-editor[data-sizing="content"] .sqldev-mdx-editor__surface,
+.sqldev-mdx-editor[data-sizing="content"] .mdxeditor,
+.sqldev-mdx-editor[data-sizing="content"] .cm-editor {
+    block-size: auto;
+    min-block-size: inherit;
+    overflow-y: visible;
+}
+
+.sqldev-mdx-editor[data-sizing="content"] .mdx-visual-editor {
+    overflow: visible;
+}
+
+.sqldev-mdx-editor[data-sizing="content"]
+    .mdx-visual-editor__content {
+    min-block-size: calc(
+        var(--mdx-editor-min-rows, 4) * var(--mdx-editor-line-height)
+    );
+}
+
+/* The content-mode fallback reserves the shared minimum so loading is stable. */
+.sqldev-mdx-editor[data-sizing="content"] .sqldev-mdx-editor__fallback {
+    min-block-size: calc(
+        var(--mdx-editor-toolbar-min-height) +
+            var(--mdx-editor-min-rows, 4) * var(--mdx-editor-line-height) +
+            var(--mdx-editor-block-padding)
+    );
+}
+
+/* ----- Dracula theming for the MDXEditor surface ----- */
+
+.mdx-visual-editor {
+    background-color: var(--color-drac-background);
+    color: var(--color-drac-foreground);
+}
+
+.mdx-visual-editor .mdxeditor {
+    --accentBase: var(--color-drac-background);
+    --accentBorder: var(--color-drac-selection);
+    background-color: var(--color-drac-background);
+    color: var(--color-drac-foreground);
+}
+
+.mdx-visual-editor .mdxeditor-toolbar {
+    background-color: var(--color-drac-selection);
+    color: var(--color-drac-foreground);
+    border-bottom: 1px solid var(--color-drac-current-line);
+}
+
+.mdx-visual-editor .mdxeditor-toolbar button {
+    color: var(--color-drac-foreground);
+}
+
+.mdx-visual-editor .mdxeditor-toolbar button:hover {
+    background-color: var(--color-drac-current-line);
+}
+
+.mdx-visual-editor__content {
+    color: var(--color-drac-foreground);
+    caret-color: var(--color-drac-cyan);
+}
+
+.mdx-visual-editor__content :is(h1, h2, h3, h4, h5, h6) {
+    color: var(--color-drac-purple);
+}
+
+.mdx-visual-editor__content a {
+    color: var(--color-drac-cyan);
+}
+
+.mdx-visual-editor__content code,
+.mdx-visual-editor__content pre {
+    background-color: var(--color-drac-selection);
+    color: var(--color-drac-foreground);
+}
+
+.mdx-visual-editor__content blockquote {
+    border-left: 3px solid var(--color-drac-comment);
+    color: var(--color-drac-comment);
+}
+
+.mdx-visual-editor :focus-visible {
+    outline: 2px solid var(--color-drac-cyan);
+    outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sqldev-mdx-editor * {
+        animation: none !important;
+        transition: none !important;
+    }
+}

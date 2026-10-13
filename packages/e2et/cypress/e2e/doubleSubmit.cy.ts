@@ -31,7 +31,7 @@ describe("double submit", () => {
     cy.viewport("iphone-6");
   });
 
-  it("presses Enter then Submit on a new post → one create request", () => {
+  it("fires Ctrl+Enter then Submit on a new post → one create request", () => {
     cy.uniqueRecordName("post").then((postText) => {
 
     signIn();
@@ -44,12 +44,16 @@ describe("double submit", () => {
 
     delayMutation("POST", "/api/views/igPosts/new/item", "createPost");
 
-    // Enter submits the text field. The follow-up click is forced because the
-    // submit button is disabled while that request is still in flight, and
-    // Cypress would otherwise retry the click until the form resets.
-    cy.get("[data-cy='p_text_content_field'] > input", { timeout: 20000 }).type(
-      `${postText}{enter}`,
-    );
+    // The editor submits via Ctrl+Enter (plain Enter inserts a newline). The
+    // follow-up click is forced because the submit button is disabled while
+    // that request is still in flight, and Cypress would otherwise retry the
+    // click until the form resets.
+    cy.get(
+      "[data-cy='p_text_content_field'] .mdx-visual-editor__content",
+      { timeout: 20000 },
+    )
+      .click()
+      .type(`${postText}{ctrl+enter}`);
     cy.get("[data-cy='create_ig_post_submit']").click({ force: true });
 
       cy.wait("@createPost").its("response.statusCode").should("eq", 202);
@@ -86,14 +90,17 @@ describe("double submit", () => {
       .click();
     cy.get("[data-cy='ig_post_edit']").click();
 
-    cy.get("[data-cy='edit_p_text_content_field'] textarea", { timeout: 20000 })
-      .should("have.value", postText)
-      .clear()
+    cy.get(
+      "[data-cy='edit_p_text_content_field'] .mdx-visual-editor__content",
+      { timeout: 20000 },
+    )
+      .should("contain.text", postText)
+      .type("{selectall}{del}")
       .type(`edited-${postText}`);
 
     delayMutation("PATCH", "/api/views/igPosts/one/patch", "updatePost");
 
-    // Enter in the textarea inserts a newline, and the pending fallback
+    // Plain Enter in the editor inserts a newline, and the pending fallback
     // unmounts the form, so a second click cannot overlap the patch. Two
     // requestSubmit calls in one turn can.
     cy.get("[data-cy='edit_ig_post_form']").then(($form) => {

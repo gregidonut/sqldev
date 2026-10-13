@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { requestJob } from "@/server/requestJob";
-import type { ViewMap } from "@/components/react/DDrvList/viewMap";
+import type { ViewMap } from "@/components/react/DDrvList/viewMap.types.ts";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
 
 export default function createListGetQueryOptions<K extends keyof ViewMap>(

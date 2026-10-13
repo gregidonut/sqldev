@@ -8,4 +8,3 @@ export { TextAreaField } from "./fields/TextAreaField.tsx";
 export { SubmitButton } from "./fields/SubmitButton.tsx";
 export { default as createViewItemMutationOptions } from "./queryOptions/createViewItem.ts";
 export { default as createTdsTodoMutationOptions } from "./queryOptions/createTdsTodo.ts";
-export { default as createOnePatchMutationOptions } from "./queryOptions/createOnePatch.ts";
