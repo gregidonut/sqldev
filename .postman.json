@@ -1,0 +1,469 @@
+{
+  "info": {
+    "name": "SQLDev API",
+    "description": "Browser-facing SQLDev Go API. Generated from packages/functions/cmd/goapi/api.yaml (OpenAPI 2.0.0). Protected operations send the caller's Clerk session JWT as a bearer token. Most write and list operations return 202 with a job receipt; poll GET /api/jobs/{jobId} for the result.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_sqldev_source": "packages/functions/cmd/goapi/api.yaml"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{clerkJwt}}", "type": "string" }]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4321",
+      "type": "string",
+      "description": "Dev server origin. The frontend proxies /api/** and /renderMd to the Go API."
+    },
+    {
+      "key": "clerkJwt",
+      "value": "",
+      "type": "string",
+      "description": "Clerk session JWT for protected endpoints."
+    },
+    {
+      "key": "notifySecret",
+      "value": "",
+      "type": "string",
+      "description": "x-notify-secret header value for POST /notify."
+    },
+    { "key": "userId", "value": "", "type": "string" },
+    { "key": "view", "value": "igPosts", "type": "string" },
+    { "key": "itemId", "value": "", "type": "string" },
+    { "key": "todoSpaceId", "value": "", "type": "string" },
+    { "key": "bucketName", "value": "", "type": "string" },
+    { "key": "jobId", "value": "", "type": "string" },
+    { "key": "objectKey", "value": "", "type": "string" },
+    { "key": "fileName", "value": "example.txt", "type": "string" },
+    {
+      "key": "idempotencyKey",
+      "value": "{{$guid}}",
+      "type": "string",
+      "description": "Fresh per request; required on all non-GET mutating endpoints."
+    }
+  ],
+  "item": [
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get a Clerk user profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/get/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "get", "{{userId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200/401/404', () => pm.expect([200,401,404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Views",
+      "item": [
+        {
+          "name": "List rows in a view",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/views/{{view}}/list/get",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "views", "{{view}}", "list", "get"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted or auth error', () => pm.expect([202,400,401,500]).to.include(pm.response.code));",
+                  "if (pm.response.code === 202) { const b = pm.response.json(); pm.collectionVariables.set('jobId', b.jobId); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get one view row",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/views/{{view}}/one/get/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "views", "{{view}}", "one", "get", "{{itemId}}"]
+            }
+          }
+        },
+        {
+          "name": "Create a view item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "p_text_content", "value": "hello from postman", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/views/{{view}}/new/item",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "views", "{{view}}", "new", "item"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted or client error', () => pm.expect([202,400,401,403,500]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update a view item",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "p_post_id", "value": "{{itemId}}", "type": "text" },
+                { "key": "p_text_content", "value": "edited from postman", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/views/{{view}}/one/patch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "views", "{{view}}", "one", "patch"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Todos",
+      "item": [
+        {
+          "name": "Get a todo tree",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/views/tdsTodos/{{todoSpaceId}}/tree/get",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "views", "tdsTodos", "{{todoSpaceId}}", "tree", "get"]
+            }
+          }
+        },
+        {
+          "name": "Move todo items",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "payload", "value": "{}", "type": "text" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/views/tdsTodos/{{todoSpaceId}}/tree/move/patch",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "views", "tdsTodos", "{{todoSpaceId}}", "tree", "move", "patch"]
+            }
+          }
+        },
+        {
+          "name": "Create a todo item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "p_title", "value": "new todo", "type": "text" }]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/views/tdsTodos/{{todoSpaceId}}/new/post",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "views", "tdsTodos", "{{todoSpaceId}}", "new", "post"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Read a job owned by the caller",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "jobs", "{{jobId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200/401/404', () => pm.expect([200,401,404,500]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Images",
+      "item": [
+        {
+          "name": "Queue a typed media preview",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sourceKey\": \"example/object/key\",\n  \"width\": 512,\n  \"height\": 320,\n  \"fit\": \"cover\",\n  \"format\": \"webp\",\n  \"quality\": 80,\n  \"preview\": \"image\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/images/transform",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "images", "transform"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Storage",
+      "item": [
+        {
+          "name": "Check the linked bucket",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}"]
+            }
+          }
+        },
+        {
+          "name": "List storage objects for a tab",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}/objects?tab=public",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}", "objects"],
+              "query": [{ "key": "tab", "value": "public" }]
+            }
+          }
+        },
+        {
+          "name": "Delete objects",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keys\": [\"example/object/key\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}/objects?bypassGovernance=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}", "objects"],
+              "query": [{ "key": "bypassGovernance", "value": "false" }]
+            }
+          }
+        },
+        {
+          "name": "Prepare an upload (presign PUT)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}/objects/presign?fileName={{fileName}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}", "objects", "presign"],
+              "query": [{ "key": "fileName", "value": "{{fileName}}" }]
+            }
+          }
+        },
+        {
+          "name": "Commit a prepared upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storageObjectId\": \"00000000-0000-0000-0000-000000000000\",\n  \"storageObjectDataId\": \"00000000-0000-0000-0000-000000000000\",\n  \"fileName\": \"{{fileName}}\",\n  \"isNewObject\": true,\n  \"s3ObjectKey\": \"example/object/key\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}/objects/commit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}", "objects", "commit"]
+            }
+          }
+        },
+        {
+          "name": "Abort a prepared upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"storageObjectId\": \"00000000-0000-0000-0000-000000000000\",\n  \"storageObjectDataId\": \"00000000-0000-0000-0000-000000000000\",\n  \"fileName\": \"{{fileName}}\",\n  \"isNewObject\": true,\n  \"s3ObjectKey\": \"example/object/key\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}/objects/abort",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}", "objects", "abort"]
+            }
+          }
+        },
+        {
+          "name": "Download an object",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}/objects/download?key={{objectKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}", "objects", "download"],
+              "query": [{ "key": "key", "value": "{{objectKey}}" }]
+            }
+          }
+        },
+        {
+          "name": "Copy an object",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destinationBucket\": \"{{bucketName}}\",\n  \"destinationFileName\": \"copy-of-example.txt\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}/objects/copy?key={{objectKey}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}", "objects", "copy"],
+              "query": [{ "key": "key", "value": "{{objectKey}}" }]
+            }
+          }
+        },
+        {
+          "name": "Delete one object",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Idempotency-Key", "value": "{{idempotencyKey}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/buckets/{{bucketName}}/objects/object?key={{objectKey}}&bypassGovernance=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "storage", "buckets", "{{bucketName}}", "objects", "object"],
+              "query": [
+                { "key": "key", "value": "{{objectKey}}" },
+                { "key": "bypassGovernance", "value": "false" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Public",
+      "item": [
+        {
+          "name": "Render Markdown to HTML",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"# Hello\\n\\nA safe [link](https://example.com).\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/renderMd",
+              "host": ["{{baseUrl}}"],
+              "path": ["renderMd"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('renders or rejects', () => pm.expect([200,400]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { pm.test('returns html string', () => pm.expect(pm.response.json().html).to.be.a('string')); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publish a notification (internal)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-notify-secret", "value": "{{notifySecret}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"view\": \"igPosts\",\n  \"message\": \"new_post_content\",\n  \"visibility\": \"public\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["notify"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
