@@ -122,7 +122,14 @@ export const VisualMarkdownEditor = React.forwardRef<
                 markdown={value}
                 onChange={onChange}
                 plugins={goldmarkPlugins()}
-                contentEditableClassName="mdx-visual-editor__content"
+                // Use the EXACT prose classes the posted article uses as its
+                // render sink (ListItemUI.tsx:
+                // `prose prose-invert text-drac-foreground prose-stone`) so the
+                // editable surface is true WYSIWYG — a heading looks the same
+                // (white) while authoring as it will once posted. `max-w-none`
+                // lets it fill the editor width. No per-element colour overrides
+                // live in mdxEditor.css anymore; prose owns the typography.
+                contentEditableClassName="mdx-visual-editor__content prose prose-invert text-drac-foreground prose-stone max-w-none"
                 aria-label={ariaLabel}
             />
         </div>

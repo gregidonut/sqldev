@@ -125,28 +125,19 @@
     /* The editable typing area is the darkest token, a clear inset against the
      * lighter chrome/toolbar. */
     background-color: var(--color-drac-background);
-    color: var(--color-drac-foreground);
     caret-color: var(--color-drac-cyan);
 }
 
-.mdx-visual-editor__content :is(h1, h2, h3, h4, h5, h6) {
-    color: var(--color-drac-purple);
-}
-
-.mdx-visual-editor__content a {
-    color: var(--color-drac-cyan);
-}
-
-.mdx-visual-editor__content code,
-.mdx-visual-editor__content pre {
-    background-color: var(--color-drac-selection);
-    color: var(--color-drac-foreground);
-}
-
-.mdx-visual-editor__content blockquote {
-    border-left: 3px solid var(--color-drac-comment);
-    color: var(--color-drac-comment);
-}
+/*
+ * The content area carries the SAME Tailwind Typography classes as the posted
+ * article render sink (ListItemUI.tsx:
+ * `prose prose-invert text-drac-foreground prose-stone`), set in
+ * VisualMarkdownEditor's contentEditableClassName. Those classes own every
+ * typographic colour (white headings, body, links, code, quotes), so the
+ * editor renders identically to a posted article — true WYSIWYG. Intentionally
+ * NO `--tw-prose-*` overrides here: adding them (e.g. purple headings) would
+ * make authoring diverge from the posted result, which is the bug this fixes.
+ */
 
 .mdx-visual-editor :focus-visible {
     outline: 2px solid var(--color-drac-cyan);
