@@ -47,6 +47,7 @@ The editor is now a reusable component; the demo is one consumer.
 | MDXEditor adapter (Goldmark subset) | `.../MdxEditor/editors/VisualMarkdownEditor.tsx` |
 | CodeMirror Vim adapter | `.../MdxEditor/editors/VimMarkdownEditor.tsx` (`vim()` first, `Mod-Enter` after, sizing `Compartment`) |
 | Submit-shortcut classifier | `.../MdxEditor/editors/submitShortcut.ts` |
+| Vim Ex commands (`:w`/`:wq`/`:x`) + per-view registry | `.../MdxEditor/editors/vimExCommands.ts` (pure `dispatchExCommand`, one-time `Vim.defineEx`, `WeakMap<EditorView,{submit,close}>`) |
 | Lazy per-mode boundaries | `.../MdxEditor/editors/LazyEditors.tsx` |
 | CodeMirror Dracula theme | `.../MdxEditor/editors/codeMirrorTheme.ts` |
 | Scoped authoring CSS | `.../MdxEditor/mdxEditor.css` (no preview sink) |
@@ -57,7 +58,7 @@ The editor is now a reusable component; the demo is one consumer.
 | Instagram edit consumer | `packages/frontend/src/components/react/DDrvList/DDrvListUI/ItemEditForm.tsx` |
 | Exact proxy rewrite | `packages/frontend/src/server/mapBrowserApiPath.ts`, applied in `goApiProxy.ts` |
 | Go render + sanitize | `packages/functions/cmd/goapi/api/renderMd.go` |
-| Cypress E2E | `packages/e2et/cypress/e2e/mdxEditor.cy.ts`, `.../mdxEditorLayout.cy.ts`, `.../instagreg.cy.ts`, `.../doubleSubmit.cy.ts` |
+| Cypress E2E | `packages/e2et/cypress/e2e/mdxEditor.cy.ts`, `.../mdxEditorLayout.cy.ts`, `.../mdxEditorVimEx.cy.ts`, `.../instagreg.cy.ts`, `.../doubleSubmit.cy.ts` |
 
 ## Invariants
 
@@ -103,6 +104,32 @@ The editor is now a reusable component; the demo is one consumer.
   Ctrl/Cmd+Enter all route through the single `MutationForm` context `submit`:
   validate once, admit at most one unsettled mutation, reset on success, release
   the duplicate guard on settlement. Plain Enter stays a newline.
+- **Vim Ex commands are module-global; dispatch is per-view.** `:w`, `:wq`, and
+  `:x` are registered via `Vim.defineEx` **exactly once** for the module (it is
+  global across every `EditorView`). Each mounted Vim view records its
+  `{ submit, close }` handlers in a `WeakMap<EditorView, …>` keyed by the view;
+  the one registered `ExFn` resolves the triggering view through `cm.cm6`, looks
+  up its handlers, and defers to the pure `dispatchExCommand`. Handlers read the
+  component refs at call time, so the `EditorView` is never recreated for a
+  callback change, and a view's entry is deleted on unmount (otherwise GC'd),
+  preventing stale dispatch. `:w` → guarded `submit`; `:wq`/`:x` → `submit` then
+  the optional `onCloseRequest`, strictly in that order. Because these are Ex
+  commands and not keymaps, the `vim()`-first / `Mod-Enter`-after ordering is
+  untouched. The create consumer omits `onCloseRequest`; the DDrvList edit
+  consumer wires it to `setIsEditing(false)`.
+- **Field header title reuses `label`.** The start of the `MdxEditorField`
+  header row renders the optional `label` prop as the visible title (there is no
+  separate title prop; the generic signature is unchanged). Create passes
+  `label="Create post"`, edit passes `label="Edit post"`. The Vim toggle is a
+  compact two-line React Aria `ToggleButton` ("vim" over "mode") whose
+  accessible name stays "Vim source mode" and which remains the end child of the
+  header row.
+- **Editable-surface contrast is token-only.** `--color-drac-background`
+  (`#282a36`) is already the darkest token, so the editable typing area keeps it
+  while the surrounding chrome uses `--color-drac-selection` (`#44475a`) to read
+  as a darker inset — Vim via `editors/codeMirrorTheme.ts` (`.cm-content` /
+  `.cm-scroller` background, `&` frame / `.cm-gutters` selection), visual via
+  `mdxEditor.css` (`.mdx-visual-editor__content` background, chrome selection).
 - **Pure query factories.** The `MdxEditor/queryOptions/` builders take explicit
   `QueryClient`/view/user/item dependencies and perform no React hook call or
   Zustand read. Instagram invalidation uses the caller-supplied

@@ -94,14 +94,16 @@
 /* ----- Dracula theming for the MDXEditor surface ----- */
 
 .mdx-visual-editor {
-    background-color: var(--color-drac-background);
+    /* Chrome band around the editable content uses the lighter selection token
+     * so the content region below reads as a darker inset. */
+    background-color: var(--color-drac-selection);
     color: var(--color-drac-foreground);
 }
 
 .mdx-visual-editor .mdxeditor {
     --accentBase: var(--color-drac-background);
     --accentBorder: var(--color-drac-selection);
-    background-color: var(--color-drac-background);
+    background-color: var(--color-drac-selection);
     color: var(--color-drac-foreground);
 }
 
@@ -120,6 +122,9 @@
 }
 
 .mdx-visual-editor__content {
+    /* The editable typing area is the darkest token, a clear inset against the
+     * lighter chrome/toolbar. */
+    background-color: var(--color-drac-background);
     color: var(--color-drac-foreground);
     caret-color: var(--color-drac-cyan);
 }

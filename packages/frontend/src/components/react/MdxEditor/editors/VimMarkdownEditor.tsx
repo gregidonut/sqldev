@@ -29,6 +29,16 @@ import {
 } from "../types.ts";
 import { draculaCodeMirror } from "./codeMirrorTheme.ts";
 import { isSubmitShortcut } from "./submitShortcut.ts";
+import {
+    registerVimExCommandsOnce,
+    setVimExHandlers,
+    clearVimExHandlers,
+} from "./vimExCommands.ts";
+
+// Register the :w / :wq / :x Ex commands exactly once for the module. The
+// commands dispatch through a per-view registry (see vimExCommands.ts), so this
+// side effect is safe at import time and never captures a single mount's state.
+registerVimExCommandsOnce();
 
 /** Marks a transaction that originated from an external value sync. */
 const externalSync = Annotation.define<boolean>();
@@ -124,7 +134,7 @@ export const VimMarkdownEditor = React.forwardRef<
     MarkdownEditorHandle,
     MarkdownEditorProps
 >(function VimMarkdownEditor(
-    { value, onChange, onBlur, ariaLabel, sizing, onSubmitShortcut },
+    { value, onChange, onBlur, ariaLabel, sizing, onSubmitShortcut, onCloseRequest },
     ref,
 ): React.JSX.Element {
     const hostRef = React.useRef<HTMLDivElement | null>(null);
@@ -133,9 +143,11 @@ export const VimMarkdownEditor = React.forwardRef<
     const onChangeRef = React.useRef(onChange);
     const onBlurRef = React.useRef(onBlur);
     const onSubmitShortcutRef = React.useRef(onSubmitShortcut);
+    const onCloseRequestRef = React.useRef(onCloseRequest);
     onChangeRef.current = onChange;
     onBlurRef.current = onBlur;
     onSubmitShortcutRef.current = onSubmitShortcut;
+    onCloseRequestRef.current = onCloseRequest;
 
     React.useImperativeHandle(ref, () => ({
         focus: () => viewRef.current?.focus(),
@@ -162,7 +174,16 @@ export const VimMarkdownEditor = React.forwardRef<
         content.setAttribute("aria-multiline", "true");
         content.setAttribute("aria-label", ariaLabel);
         viewRef.current = view;
+        // Record this view's Ex-command handlers. The arrow functions read the
+        // refs at call time, so the entry is written once and never needs
+        // refreshing when callback identities change — the EditorView is never
+        // recreated for a callback change.
+        setVimExHandlers(view, {
+            submit: () => onSubmitShortcutRef.current?.(),
+            close: () => onCloseRequestRef.current?.(),
+        });
         return () => {
+            clearVimExHandlers(view);
             view.destroy();
             viewRef.current = null;
         };

@@ -106,7 +106,9 @@ export default function ItemEditForm({ postId }: { postId: string }) {
                 sizing={EDIT_SIZING}
                 toolbarWidth="100%"
                 ariaLabel="Post content"
-                className="flex-col-start-start gap-1"
+                label="Edit post"
+                onCloseRequest={() => setIsEditing(false)}
+                className="w-full flex-col-start-start gap-1"
                 dataCy="edit_p_text_content_field"
             />
             <div className="flex gap-3 mt-4 justify-end">

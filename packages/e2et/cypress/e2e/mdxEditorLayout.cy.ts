@@ -144,4 +144,70 @@ describe("mdx editor layout contracts", () => {
         });
     });
   });
+
+  // Feature: mdx-editor-ui-refinements, Requirement 2 — the DDrvList edit-state
+  // editor fills the full available width of its container.
+  describe("Requirement 2: DDrvList edit-state editor fills container width", () => {
+    function ownerId() {
+      return cy
+        .env<{ test_users: [Cypress.TestUser, Cypress.TestUser] }>([
+          "test_users",
+        ])
+        .then(({ test_users }) => {
+          const owner = test_users[0];
+          if (!owner) {
+            throw new Error("test_users[0] is missing");
+          }
+          return owner.user_id;
+        });
+    }
+
+    beforeEach(() => {
+      cy.viewport(1280, 900);
+    });
+
+    it("the edit editor's width matches its container's content width", () => {
+      cy.uniqueRecordName("post").then((postText) => {
+        ownerId().then((identifier) => {
+          cy.task("createIgPostAsUser", {
+            identifier,
+            p_text_content: postText,
+            p_public: true,
+          });
+        });
+
+        cy.signInAsUser(0);
+        cy.visit("/instagreg");
+        cy.waitForClerkLoaded();
+
+        cy.contains("[data-cy='igPosts_list'] article", postText, {
+          timeout: 20000,
+        })
+          .find("[data-cy='ig_post_actions']")
+          .click();
+        cy.get("[data-cy='ig_post_edit']").click();
+
+        cy.get(
+          "[data-cy='edit_p_text_content_field'] [data-cy='mdx-editor']",
+          { timeout: 20000 },
+        ).should("exist");
+
+        // The editor shell fills the field wrapper's content box (its width
+        // equals the wrapper's client width minus horizontal padding).
+        cy.get("[data-cy='edit_p_text_content_field']").then(($field) => {
+          const field = $field.get(0);
+          const style = window.getComputedStyle(field);
+          const padX =
+            parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+          const contentWidth = field.clientWidth - padX;
+          cy.get(
+            "[data-cy='edit_p_text_content_field'] [data-cy='mdx-editor']",
+          ).then(($editor) => {
+            const editorWidth = $editor.get(0).getBoundingClientRect().width;
+            expect(Math.abs(editorWidth - contentWidth)).to.be.lessThan(2);
+          });
+        });
+      });
+    });
+  });
 });

@@ -32,6 +32,7 @@ export type MdxEditorFieldProps<TFieldValues extends FieldValues> = Readonly<{
     stopArrowKeyPropagation?: boolean;
     className?: string;
     dataCy?: string;
+    onCloseRequest?: () => void;
 }>;
 
 /**
@@ -57,6 +58,7 @@ export function MdxEditorField<TFieldValues extends FieldValues>({
     stopArrowKeyPropagation,
     className,
     dataCy,
+    onCloseRequest,
 }: MdxEditorFieldProps<TFieldValues>) {
     const { control } = useFormContext<TFieldValues>();
     const { isPending, submit } = useMutationFormState();
@@ -104,7 +106,7 @@ export function MdxEditorField<TFieldValues extends FieldValues>({
                     : undefined
             }
         >
-            <div className="flex flex-row items-center justify-between gap-2">
+            <div className="flex w-full flex-row items-center justify-between gap-2">
                 {label ? (
                     <span className="text-drac-foreground">{label}</span>
                 ) : (
@@ -118,13 +120,15 @@ export function MdxEditorField<TFieldValues extends FieldValues>({
                     isSelected={mode === "vim"}
                     isDisabled={isPending}
                     onChange={(selected) => setMode(selected ? "vim" : "visual")}
-                    className="cursor-default rounded-lg border border-drac-selection px-3 py-1.5 text-drac-foreground outline-none selected:bg-drac-purple selected:text-drac-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-drac-cyan"
+                    className="flex cursor-default flex-col items-center justify-center rounded-md border border-drac-selection px-2 py-1 text-[0.625rem] leading-tight text-drac-foreground outline-none selected:bg-drac-purple selected:text-drac-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-drac-cyan"
                 >
-                    Vim source mode
+                    <span aria-hidden="true">vim</span>
+                    <span aria-hidden="true">mode</span>
                 </ToggleButton>
             </div>
 
             <div
+                className="w-full"
                 aria-invalid={invalid || undefined}
                 aria-required={isRequired || undefined}
                 aria-describedby={describedBy}
@@ -139,10 +143,11 @@ export function MdxEditorField<TFieldValues extends FieldValues>({
                     toolbarWidth={toolbarWidth}
                     ariaLabel={ariaLabel}
                     onSubmitShortcut={submit}
+                    onCloseRequest={onCloseRequest}
                 />
             </div>
 
-            <p id={instructionsId} className="text-xs text-drac-comment">
+            <p id={instructionsId} className="text-[0.625rem] text-drac-comment">
                 Press Ctrl+Enter or Cmd+Enter to submit.
             </p>
 

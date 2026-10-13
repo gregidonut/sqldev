@@ -37,6 +37,7 @@ function PostArea() {
                 sizing={CREATE_SIZING}
                 toolbarWidth="100%"
                 ariaLabel="Post content"
+                label="Create post"
                 dataCy="p_text_content_field"
             />
             <SubmitButton dataCy="create_ig_post_submit">Submit</SubmitButton>

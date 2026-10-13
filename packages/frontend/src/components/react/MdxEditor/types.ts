@@ -36,6 +36,12 @@ export type MarkdownEditorProps = Readonly<{
     ariaLabel: string;
     sizing: EditorSizing;
     onSubmitShortcut?: () => void;
+    /**
+     * Optional imperative affordance (never form state) invoked when the
+     * surface requests the editor be closed — for example, the Vim adapter's
+     * `:wq` Ex command. Adapters without a close gesture ignore it.
+     */
+    onCloseRequest?: () => void;
 }>;
 
 export interface MarkdownEditorHandle {
@@ -57,6 +63,7 @@ export type MdxEditorProps = Readonly<{
     toolbarWidth: ToolbarWidth;
     ariaLabel: string;
     onSubmitShortcut?: () => void;
+    onCloseRequest?: () => void;
     className?: string;
 }>;
 

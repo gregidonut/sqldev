@@ -34,6 +34,7 @@ export const MdxEditor = React.forwardRef<MarkdownEditorHandle, MdxEditorProps>(
             toolbarWidth,
             ariaLabel,
             onSubmitShortcut,
+            onCloseRequest,
             className,
         },
         ref,
@@ -69,6 +70,7 @@ export const MdxEditor = React.forwardRef<MarkdownEditorHandle, MdxEditorProps>(
             ariaLabel,
             sizing,
             onSubmitShortcut,
+            onCloseRequest,
         } as const;
 
         return (

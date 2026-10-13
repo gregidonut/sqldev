@@ -34,10 +34,18 @@ export const draculaEditorTheme: Extension = EditorView.theme(
     {
         "&": {
             color: drac.foreground,
+            // The editor chrome (frame around the typing area) uses the lighter
+            // selection token so the content area below reads as a darker inset.
+            backgroundColor: drac.selection,
+        },
+        ".cm-scroller": {
+            // The scrolling typing surface is the darkest token, making the
+            // editable region visibly distinct from its surrounding chrome.
             backgroundColor: drac.background,
         },
         ".cm-content": {
             caretColor: drac.cyan,
+            backgroundColor: drac.background,
             fontFamily:
                 "'JetBrains Mono Variable', ui-monospace, SFMono-Regular, monospace",
         },
@@ -53,7 +61,8 @@ export const draculaEditorTheme: Extension = EditorView.theme(
                 backgroundColor: drac.selection,
             },
         ".cm-gutters": {
-            backgroundColor: drac.background,
+            // Gutters sit in the chrome band, lighter than the typing area.
+            backgroundColor: drac.selection,
             color: drac.comment,
             border: "none",
         },
