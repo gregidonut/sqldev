@@ -34,6 +34,12 @@ node_modules
 # cypress
 packages/e2et/cypress/downloads/
 packages/e2et/cypress/screenshots/
+# Legacy Cypress test-user file: test users now come from the CyTestUsersJson
+# SST secret via `sqldev cypress`. Keep this file and any backup out of VCS so
+# Clerk identifiers never re-enter the repository.
+packages/e2et/cypress.env.json
+packages/e2et/cypress.env.json.*
+patches/*
 
 # misc
 .DS_Store

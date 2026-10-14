@@ -1,3 +1,4 @@
+import { createIgPostViaApi, seedsThroughGoApi } from "./apiSeed.js";
 import { firstStringField, withUserSupabase } from "./actorSupabase.js";
 
 export interface CreateIgPostAsUserArgs {
@@ -15,6 +16,13 @@ export async function createIgPostAsUser({
   p_text_content,
   p_public = true,
 }: CreateIgPostAsUserArgs): Promise<CreateIgPostAsUserResult> {
+  // Deployed stages (staging) have a private Supabase, so seed through the
+  // public Go API, which also sends the MQTT notify. Local stages keep the
+  // direct RPC path below.
+  if (seedsThroughGoApi()) {
+    const post_id = await createIgPostViaApi(identifier, p_text_content, p_public);
+    return { post_id };
+  }
   return withUserSupabase(identifier, async (supabase) => {
     const { data, error } = await supabase.rpc("create_ig_post", {
       p_text_content,

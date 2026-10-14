@@ -10,3 +10,5 @@ export const supabaseUrl = new sst.Secret(
 );
 export const clerkJWKSPublicKey = new sst.Secret("ClerkJWKSPublicKey", "");
 export const notifySecret = new sst.Secret("NotifySecret", "");
+export const cyTestUsersJSON = new sst.Secret("CyTestUsersJson", "");
+

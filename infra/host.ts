@@ -336,6 +336,10 @@ bash /opt/sqldev/bootstrap.sh
     },
     tags: {
       Name: `${$app.name}-${$app.stage}-supabase`,
+      // Explicit identity tags let `sqldev e2e reset` prove it is commanding the
+      // intended staging host before any destructive operation.
+      Application: $app.name,
+      Stage: $app.stage,
     },
   });
   // Detach the data disk before attaching it to a replacement instance.

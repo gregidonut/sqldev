@@ -26,6 +26,10 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "CyTestUsersJson": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "FeAcmCertArn": {
       "type": "sst.sst.Secret"
       "value": string
@@ -37,6 +41,10 @@ declare module "sst" {
     "GoApi": {
       "type": "sst.aws.ApiGatewayV1"
       "url": string
+    }
+    "HostConfigBucket": {
+      "name": string
+      "type": "sst.aws.Bucket"
     }
     "JobDeadLetter": {
       "type": "sst.aws.Queue"
@@ -86,6 +94,10 @@ declare module "sst" {
     "SupabaseUrl": {
       "type": "sst.sst.Secret"
       "value": string
+    }
+    "sqldevSupabaseVPC": {
+      "bastion": string
+      "type": "sst.aws.Vpc"
     }
   }
 }

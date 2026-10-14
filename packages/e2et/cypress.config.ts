@@ -1,5 +1,7 @@
 import { defineConfig } from "cypress";
 import { clerkSetup } from "@clerk/testing/cypress";
+import { consumeRuntimeEnvironment } from "./cypress/config/runtime.js";
+import { mergeHarnessEnvironment } from "./cypress/config/harnessEnv.js";
 import { createClerkSignInToken } from "./cypress/tasks/createClerkSignInToken.js";
 import { createIgPostAsUser } from "./cypress/tasks/createIgPostAsUser.js";
 import type { CreateIgPostAsUserArgs } from "./cypress/tasks/createIgPostAsUser.js";
@@ -17,15 +19,27 @@ import { createRunId } from "./cypress/tasks/runLock.js";
 import { finishSuite, initializeSuite } from "./cypress/tasks/suiteInit.js";
 import { supabaseDbReset } from "./cypress/tasks/supabaseDbReset.js";
 
+// The sqldev Go CLI injects the stage-aware runtime (target origin + the raw
+// CyTestUsersJson secret) into this process. We consume and validate it once;
+// the raw secret key is deleted from process.env before Cypress starts, and
+// only the validated tuple reaches config.env.
+const runtime = consumeRuntimeEnvironment(process.env);
+
 export default defineConfig({
   e2e: {
+    // Stage-selected base URL: localhost for dev, deployed origin for staging.
+    baseUrl: runtime.expectedOrigin,
     // before:run / after:run also fire for `cypress open` when this is set.
     experimentalInteractiveRunEvents: true,
     async setupNodeEvents(on, config) {
       const runId = createRunId();
-      config.env.E2E_RUN_ID = runId;
 
-      on("before:run", (details) => initializeSuite(details, runId));
+      on("before:run", (details) =>
+        initializeSuite(details, runId, {
+          stage: runtime.stage,
+          expectedOrigin: runtime.expectedOrigin,
+        }),
+      );
       on("after:run", () => finishSuite());
 
       on("task", {
@@ -41,7 +55,9 @@ export default defineConfig({
         createTdsTodosAsUser(args: CreateTdsTodosAsUserArgs) {
           return createTdsTodosAsUser(args);
         },
-        // Manual maintenance only. Specs delete the exact keys they prepare.
+        // Manual maintenance only, and local stages only. Specs delete the
+        // exact keys they prepare; this whole-bucket task must never run
+        // against a deployed stage such as staging.
         emptyBucket() {
           return emptyBucket();
         },
@@ -53,11 +69,17 @@ export default defineConfig({
         },
       });
 
-      const next = await clerkSetup({ config });
-      next.env = { ...next.env, E2E_RUN_ID: runId };
-      return next;
+      // clerkSetup consumes the stage Clerk credentials and returns Cypress env
+      // entries (frontend API, testing token). Preserve every entry it returns
+      // and add only the harness-owned keys.
+      const withClerk = await clerkSetup({ config });
+      withClerk.env = mergeHarnessEnvironment(
+        withClerk.env ?? {},
+        runtime,
+        runId,
+      );
+      return withClerk;
     },
-    baseUrl: "http://localhost:4321",
     taskTimeout: 120000,
   },
 });

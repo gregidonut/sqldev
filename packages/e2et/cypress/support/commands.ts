@@ -71,6 +71,23 @@ Cypress.Commands.add("waitForClerkLoaded", function () {
   });
 });
 
+// Asserts the current page is on the stage-selected origin. The Go CLI injects
+// E2E_EXPECTED_ORIGIN (localhost for dev, the deployed origin for staging), so
+// a silent redirect to a different deployment fails loudly. The message names
+// only origins, never a user or token.
+Cypress.Commands.add("assertExpectedOrigin", function () {
+  cy.env<{ E2E_EXPECTED_ORIGIN: string }>(["E2E_EXPECTED_ORIGIN"]).then(
+    ({ E2E_EXPECTED_ORIGIN }) => {
+      if (!E2E_EXPECTED_ORIGIN) {
+        throw new Error("E2E_EXPECTED_ORIGIN is missing from the Cypress environment");
+      }
+      cy.location().should((loc) => {
+        expect(loc.origin, "page origin").to.eq(E2E_EXPECTED_ORIGIN);
+      });
+    },
+  );
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -133,6 +150,7 @@ Cypress.Commands.add("signInAsUser", function (user: 0 | 1) {
 
           cy.task("createClerkSignInToken", user_id).then((ticket) => {
             cy.visit("/");
+            cy.assertExpectedOrigin();
             // visit() only waits for the document load event. Clerk.loaded stays
             // false until FAPI /v1/client finishes, which exceeds the 4s default.
             cy.waitForClerkLoaded();
@@ -176,6 +194,7 @@ Cypress.Commands.add("signInAsUser", function (user: 0 | 1) {
           cacheAcrossSpecs: true,
           validate() {
             cy.visit("/");
+            cy.assertExpectedOrigin();
             cy.waitForClerkLoaded();
             cy.window().should((win) => {
               expect(

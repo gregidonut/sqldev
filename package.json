@@ -19,5 +19,8 @@
     "skills": [
       "*"
     ]
+  },
+  "patchedDependencies": {
+    "@tanstack/devtools-event-client@0.4.4": "patches/@tanstack%2Fdevtools-event-client@0.4.4.patch"
   }
 }

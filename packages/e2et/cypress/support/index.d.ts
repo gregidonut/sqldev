@@ -9,6 +9,7 @@ declare namespace Cypress {
     signInAsUser(user: 0 | 1): Chainable<void>;
     uniqueRecordName(label: string): Chainable<string>;
     waitForClerkLoaded(): Chainable<Window>;
+    assertExpectedOrigin(): Chainable<void>;
     task(event: "createClerkSignInToken", identifier: string): Chainable<string>;
     task(
       event: "createIgPostAsUser",

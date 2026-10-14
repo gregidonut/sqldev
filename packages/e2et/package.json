@@ -8,7 +8,11 @@
     "cypress": "^16.0.0",
     "sst": "*"
   },
+  "scripts": {
+    "test": "bun test"
+  },
   "devDependencies": {
-    "@clerk/testing": "^2.2.33"
+    "@clerk/testing": "^2.2.33",
+    "fast-check": "4.10.2"
   }
 }

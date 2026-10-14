@@ -96,6 +96,7 @@ func newRootCommandWithArgs(runner process.Runner, rawArgs func() []string) *cob
 		newStorageCommand(appOf),
 		newHostCommand(appOf),
 		newDevCommand(appOf),
+		newE2ECommand(appOf),
 	)
 	return root
 }

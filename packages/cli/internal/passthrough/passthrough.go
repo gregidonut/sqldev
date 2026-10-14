@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/gregidonut/sqldev/packages/cli/internal/app"
+	"github.com/gregidonut/sqldev/packages/cli/internal/e2econfig"
 	"github.com/gregidonut/sqldev/packages/cli/internal/process"
 	"github.com/gregidonut/sqldev/packages/cli/internal/sst"
 )
@@ -111,6 +112,14 @@ func RunCypress(ctx context.Context, a *app.App, args []string) error {
 	if err != nil {
 		return err
 	}
+	// Resolve the stage-aware runtime (target origin + raw test-user secret)
+	// and carry it only in the child environment. The raw secret never enters
+	// argv or logs; the Cypress config validates it.
+	runtime, err := e2econfig.ResolveRuntime(a.Cfg.Stage, res)
+	if err != nil {
+		return err
+	}
+	extra = append(extra, runtime.CypressEnvironment()...)
 	return a.Runner.Run(ctx, process.RunRequest{
 		Program: "bunx",
 		Args:    append([]string{"--no-install", "cypress"}, args...),

@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readCanonicalResetSql } from "./canonicalResetSql.js";
 import { isNodeError, isRecord } from "./narrow.js";
 
 const supabaseDir = fileURLToPath(
@@ -12,46 +13,11 @@ const configPath = join(supabaseDir, "config.toml");
 const LOCAL_STAGES = new Set(["dev", "local", "development"]);
 
 /**
- * Explicit test-owned tables. Lookup tables such as `*_permissions` stay.
- * No CASCADE: a new foreign key should fail this reset instead of being erased.
- * No RESTART IDENTITY: these tables use UUID primary keys.
+ * The audited application table list and TRUNCATE statement now live in the
+ * single canonical SQL asset shared with the Go CLI
+ * (`packages/cli/internal/e2ereset/application_reset.sql`). This adapter reads
+ * that exact file so the local and staging table sets cannot drift.
  */
-const TEST_TABLES = [
-  "public.users",
-  "public.user_status",
-  "public.ig_posts",
-  "public.ig_bio",
-  "public.ig_followers",
-  "public.ig_hashtags",
-  "public.ig_mentions",
-  "public.ig_post_attachment_info",
-  "public.ig_post_comment_attachment_info",
-  "public.ig_post_comment_likes",
-  "public.ig_post_comment_text_content",
-  "public.ig_post_comments",
-  "public.ig_post_config",
-  "public.ig_post_likes",
-  "public.ig_post_text_content",
-  "public.ig_posts_roles",
-  "public.tds_todo_spaces",
-  "public.tds_todo_space_data",
-  "public.tds_todo_items",
-  "public.tds_todo_item_data",
-  "public.tds_todo_space_config",
-  "public.tds_todo_spaces_roles",
-  "public.d_storage_objects",
-  "public.d_storage_object_data",
-  "public.d_storage_object_config",
-  "public.d_storage_objects_roles",
-] as const;
-
-const TRUNCATE_SQL = `BEGIN;
-SET LOCAL lock_timeout = '5s';
-SET LOCAL statement_timeout = '30s';
-TRUNCATE TABLE
-${TEST_TABLES.map((table) => `  ${table}`).join(",\n")};
-COMMIT;
-`;
 
 export function assertLocalDevStage(): string {
   const stage = process.env.STAGE ?? process.env.SST_STAGE;
@@ -102,7 +68,7 @@ function sameLoopbackEndpoint(left: URL, right: URL): boolean {
   );
 }
 
-function assertLocalApiUrl(supabaseUrl: string, apiPort: number): URL {
+export function assertLocalApiUrl(supabaseUrl: string, apiPort: number): URL {
   const url = new URL(supabaseUrl);
   assertLoopback(url, "SUPABASE_URL");
   if (Number(url.port) !== apiPort) {
@@ -113,7 +79,7 @@ function assertLocalApiUrl(supabaseUrl: string, apiPort: number): URL {
   return url;
 }
 
-function assertDirectLocalDbUrl(
+export function assertDirectLocalDbUrl(
   dbUrl: string,
   dbPort: number,
   poolerPort: number | undefined,
@@ -244,6 +210,8 @@ export async function truncateLocalTestData(): Promise<null> {
 
   assertDirectLocalDbUrl(dbUrl, dbPort, poolerPort);
 
+  const truncateSql = readCanonicalResetSql();
+
   try {
     await spawnText("psql", [
       "-d",
@@ -253,7 +221,7 @@ export async function truncateLocalTestData(): Promise<null> {
       "-v",
       "ON_ERROR_STOP=1",
       "-c",
-      TRUNCATE_SQL,
+      truncateSql,
     ]);
   } catch (err) {
     const message = err instanceof Error ? err.message : "psql failed";

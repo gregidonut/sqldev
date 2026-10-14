@@ -1,5 +1,5 @@
-import { assertLocalDevStage } from "./localDbReset.js";
 import { isRecord } from "./narrow.js";
+import { currentStage } from "./stage.js";
 import { runSqldev } from "./sqldevCli.js";
 
 export interface PreparedObjectRef {
@@ -36,7 +36,14 @@ export async function deleteRegisteredObjects(): Promise<null> {
   if (keys.length === 0) {
     return null;
   }
-  assertLocalDevStage();
+  // Exact-key cleanup is allowed on dev and staging but never on production.
+  // The underlying `sqldev storage delete` also refuses exact prod/production.
+  const stage = currentStage();
+  if (/prod/i.test(stage)) {
+    throw new Error(
+      `Refusing prepared-object cleanup for production-like stage ${stage}.`,
+    );
+  }
   await runSqldev(["--output", "json", "storage", "delete", "--", ...keys]);
   prepared.length = 0;
   return null;

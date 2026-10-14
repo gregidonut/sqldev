@@ -1,4 +1,9 @@
 import { createClerkClient } from "@clerk/backend";
+import {
+  exchangeSignInTicket,
+  fapiHostFromPublishableKey,
+  isLiveClerkKey,
+} from "./clerkFapi.js";
 import { isRecord } from "./narrow.js";
 
 type ClerkClient = ReturnType<typeof createClerkClient>;
@@ -24,16 +29,73 @@ function jwtFromToken(token: unknown): string {
   throw new Error("Clerk supabase JWT was empty");
 }
 
-export async function getActorSupabaseJwt(identifier: string): Promise<string> {
-  const clerk = getClerkClient();
+/**
+ * Creates the session an actor's `supabase` JWT is minted from.
+ *
+ * Development instances allow the Backend API `createSession`. A production
+ * (`sk_live_`) instance rejects it with `request_invalid_for_environment`, so
+ * there the actor exchanges a one-time sign-in token through the Frontend API.
+ * Either way the resulting session is cached and revoked in `after:run`.
+ */
+async function createActorSessionId(
+  clerk: ClerkClient,
+  userId: string,
+): Promise<string> {
+  const secretKey = process.env.CLERK_SECRET_KEY ?? "";
+  if (!isLiveClerkKey(secretKey)) {
+    const session = await clerk.sessions.createSession({ userId });
+    return session.id;
+  }
+
+  const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+  const origin = process.env.SQLDEV_E2E_EXPECTED_ORIGIN;
+  if (!publishableKey || !origin) {
+    throw new Error(
+      "CLERK_PUBLISHABLE_KEY and SQLDEV_E2E_EXPECTED_ORIGIN are required for a live Clerk instance; run Cypress through `sqldev cypress`.",
+    );
+  }
+  const ticket = await withClerkRetry(() =>
+    clerk.signInTokens.createSignInToken({ userId, expiresInSeconds: 60 }),
+  );
+  const { sessionId } = await exchangeSignInTicket(
+    fapiHostFromPublishableKey(publishableKey),
+    origin,
+    ticket.token,
+  );
+  return sessionId;
+}
+
+async function actorSessionId(
+  clerk: ClerkClient,
+  identifier: string,
+): Promise<string> {
   const userId = await resolveClerkUserId(clerk, identifier);
   let actor = actorSessions.get(userId);
   if (!actor) {
-    const session = await clerk.sessions.createSession({ userId });
-    actor = { sessionId: session.id };
+    actor = { sessionId: await createActorSessionId(clerk, userId) };
     actorSessions.set(userId, actor);
   }
-  const token = await clerk.sessions.getToken(actor.sessionId, "supabase");
+  return actor.sessionId;
+}
+
+export async function getActorSupabaseJwt(identifier: string): Promise<string> {
+  const clerk = getClerkClient();
+  const sessionId = await actorSessionId(clerk, identifier);
+  const token = await clerk.sessions.getToken(sessionId, "supabase");
+  return jwtFromToken(token);
+}
+
+/**
+ * The actor's native Clerk session token (no JWT template). This is the token
+ * the deployed frontend's same-origin `/api/*` proxy forwards to the Go API, so
+ * it is what authenticates seeding calls on stages whose Supabase and API
+ * Gateway are not reachable from a developer machine. Tokens are short-lived;
+ * callers mint a fresh one per request.
+ */
+export async function getActorSessionToken(identifier: string): Promise<string> {
+  const clerk = getClerkClient();
+  const sessionId = await actorSessionId(clerk, identifier);
+  const token = await clerk.sessions.getToken(sessionId);
   return jwtFromToken(token);
 }
 

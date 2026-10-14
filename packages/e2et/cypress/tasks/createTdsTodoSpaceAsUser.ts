@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  createTodoSpaceViaApi,
+  createTodoViaApi,
+  seedsThroughGoApi,
+} from "./apiSeed.js";
 import { firstStringField, withUserSupabase } from "./actorSupabase.js";
 
 export interface CreateTdsTodoSpaceAsUserArgs {
@@ -33,6 +38,10 @@ export async function createTdsTodoSpaceAsUser({
   p_name,
   p_public = false,
 }: CreateTdsTodoSpaceAsUserArgs): Promise<CreateTdsTodoSpaceAsUserResult> {
+  if (seedsThroughGoApi()) {
+    const todo_space_id = await createTodoSpaceViaApi(identifier, p_name, p_public);
+    return { todo_space_id };
+  }
   return withUserSupabase(identifier, async (supabase) => {
     const todo_space_id = await insertTodoSpace(supabase, p_name, p_public);
     return { todo_space_id };
@@ -45,6 +54,23 @@ export async function createTdsTodosAsUser({
   p_public = false,
   todos,
 }: CreateTdsTodosAsUserArgs): Promise<CreateTdsTodosAsUserResult> {
+  if (seedsThroughGoApi()) {
+    const todo_space_id = await createTodoSpaceViaApi(identifier, p_name, p_public);
+    const todo_ids: string[] = [];
+    // Awaited one at a time: the job queue does not guarantee ordering across
+    // concurrently submitted jobs, and specs may depend on creation order.
+    for (const todo of todos) {
+      todo_ids.push(
+        await createTodoViaApi(
+          identifier,
+          todo_space_id,
+          todo.p_title,
+          todo.p_description,
+        ),
+      );
+    }
+    return { todo_space_id, todo_ids };
+  }
   return withUserSupabase(identifier, async (supabase) => {
     const todo_space_id = await insertTodoSpace(supabase, p_name, p_public);
     const todo_ids: string[] = [];

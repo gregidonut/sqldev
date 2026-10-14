@@ -1,0 +1,11 @@
+{
+  // Typecheck configuration for the Bun unit/property tests. It adds bun-types
+  // so `bun:test` resolves, without affecting the Cypress build tsconfig.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "bun-types"],
+    "noEmit": true
+  },
+  "include": ["cypress/config/**/*.ts", "cypress/tasks/**/*.ts"],
+  "exclude": []
+}
