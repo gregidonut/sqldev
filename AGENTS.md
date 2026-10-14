@@ -33,3 +33,18 @@ Before changing that component, its demo, its render path, or the Go
 `/renderMd` handler, load the
 `packages/agent-skills/skills/mdx-editor-demo/SKILL.md` skill and see
 `packages/frontend/AGENTS.md` for details.
+
+Cypress specs for the editor must use the helpers in
+`packages/e2et/cypress/support/mdxEditor.ts` (`visualEditable`,
+`replaceVisualText`, `runExCommand`), not ad-hoc selectors. MDXEditor 4.3.2
+applies `contentEditableClassName` to both the real contenteditable and the
+empty-state placeholder, so target
+`.mdx-visual-editor__content[contenteditable='true']`. Click the fixed-height
+demo editor with `.click("top")`; replace text with one
+`type("{selectall}<text>")`; send Vim `:w`/`:wq` through `runExCommand`. Run one
+spec with `sqldev --stage dev cypress run --headless --browser chrome --spec cypress/e2e/<file>.cy.ts`
+(path relative to `packages/e2et`). `drive.cy.ts`'s first-file upload test can
+flake in `sst dev` when `GET /api/jobs/:id` returns 500 from the live-Lambda
+bridge (`pollJob` in `src/server/requestJob.ts` does not retry non-2xx); it is
+unrelated to the editor and is not a product bug. Details are in the
+`mdx-editor-demo` skill.

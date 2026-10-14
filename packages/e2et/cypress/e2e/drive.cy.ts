@@ -84,8 +84,98 @@ function tileColumnCount(element: HTMLElement): number {
     .filter((column) => column.trim().length > 0).length;
 }
 
+type RecordedFailure = {
+  method: string;
+  url: string;
+  status: number;
+  bodyPrefix: string;
+};
+
+const BODY_PREFIX_LENGTH = 200;
+
+// Plain in-memory record of every /api response with status >= 400 seen in
+// the current test. It is only read when the upload dialog assertion fails
+// (see surfaceRecordedFailuresOnDialogFailure); a passing test never prints
+// it, so intentional >= 400 responses cannot turn into failures. Nothing is
+// filtered: Imagor thumbnail 406s are included because they only appear on
+// failure.
+let recordedFailures: RecordedFailure[] = [];
+let dialogAssertionActive = false;
+
+function bodyPrefixOf(body: unknown): string {
+  if (typeof body === "string") {
+    return body.slice(0, BODY_PREFIX_LENGTH);
+  }
+  if (body === undefined || body === null) {
+    return "";
+  }
+  try {
+    const text = JSON.stringify(body);
+    return (text ?? "").slice(0, BODY_PREFIX_LENGTH);
+  } catch {
+    return "[unserializable body]";
+  }
+}
+
+// Passive observer: it never replies, stubs, or modifies the request or the
+// response. Handlers run in reverse definition order, and because this one is
+// registered first in signInAndOpenDrive it runs after every alias or stub
+// registered later; requests that a later handler replies to or continues
+// itself are never seen here, which is intentional.
+function recordFailedApiResponses() {
+  recordedFailures = [];
+  cy.intercept({ url: "**/api/**" }, (req) => {
+    req.on("response", (res) => {
+      if (res.statusCode >= 400) {
+        recordedFailures.push({
+          method: req.method,
+          url: req.url,
+          status: res.statusCode,
+          bodyPrefix: bodyPrefixOf(res.body),
+        });
+      }
+    });
+  });
+}
+
+function describeRecordedFailures(): string {
+  if (recordedFailures.length === 0) {
+    return "no /api responses with status >= 400 were recorded";
+  }
+  return recordedFailures
+    .map(
+      (entry) =>
+        `${entry.method} ${entry.url} -> ${entry.status} ${JSON.stringify(entry.bodyPrefix)}`,
+    )
+    .join("\n  ");
+}
+
+// Cypress cannot attach a custom message to `should("not.exist")` without
+// changing how it retries, so the assertion stays untouched and the failure
+// is annotated here instead. The handler is active only between
+// markDialogAssertion(true) and markDialogAssertion(false), and always
+// rethrows so the failure is never swallowed.
+function surfaceRecordedFailuresOnDialogFailure() {
+  cy.on("fail", (error: Error) => {
+    if (dialogAssertionActive) {
+      dialogAssertionActive = false;
+      error.message = `${error.message}\n\nRecorded /api responses with status >= 400:\n  ${describeRecordedFailures()}`;
+    }
+    throw error;
+  });
+}
+
+function markDialogAssertion(active: boolean) {
+  cy.then(() => {
+    dialogAssertionActive = active;
+  });
+}
+
 function signInAndOpenDrive() {
   cy.signInAsUser(0);
+
+  recordFailedApiResponses();
+  surfaceRecordedFailuresOnDialogFailure();
 
   cy.intercept({
     method: "GET",
@@ -146,7 +236,9 @@ function uploadThroughDialog(files: readonly Cypress.FileReference[]) {
     waitForAccepted("@commitObject");
   }
 
+  markDialogAssertion(true);
   cy.get("[role='dialog']", { timeout: 20000 }).should("not.exist");
+  markDialogAssertion(false);
   // Wait for the list refetch before reading a row.
   cy.wait("@listObjects", { timeout: 20000 });
 

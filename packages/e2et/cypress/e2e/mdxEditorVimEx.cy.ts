@@ -11,6 +11,8 @@
 // These exercise the real CodeMirror/Vim engine and the live Instagram API, so
 // they belong in Cypress rather than the Bun unit suite.
 
+import { runExCommand } from "../support/mdxEditor.js";
+
 function ownerId() {
   return cy
     .env<{ test_users: [Cypress.TestUser, Cypress.TestUser] }>(["test_users"])
@@ -45,15 +47,6 @@ function replaceDocument(text: string) {
   cy.focused().type("i", { delay: 0 });
   cy.focused().type(text, { delay: 0, parseSpecialCharSequences: false });
   cy.focused().type("{esc}");
-}
-
-// Types an Ex command (e.g. ":w") from normal mode and submits it with Enter.
-function runExCommand(command: string) {
-  cy.focused().type("{esc}");
-  cy.focused().type(`:${command}{enter}`, {
-    delay: 0,
-    parseSpecialCharSequences: false,
-  });
 }
 
 describe("Feature: mdx-editor-ui-refinements — Vim :w / :wq", () => {
@@ -108,7 +101,7 @@ describe("Feature: mdx-editor-ui-refinements — Vim :w / :wq", () => {
       cy.viewport("iphone-6");
     });
 
-    function seedAndOpenEdit(postText: string) {
+    function seedAndOpenEdit(postText: string, patchDelayMs = 0) {
       ownerId().then((identifier) => {
         cy.task("createIgPostAsUser", {
           identifier,
@@ -118,7 +111,13 @@ describe("Feature: mdx-editor-ui-refinements — Vim :w / :wq", () => {
       });
 
       cy.signInAsUser(0);
-      cy.intercept("PATCH", "/api/views/igPosts/one/patch").as("updatePost");
+      cy.intercept("PATCH", "/api/views/igPosts/one/patch", (req) => {
+        if (patchDelayMs > 0) {
+          req.continue((res) => {
+            res.setDelay(patchDelayMs);
+          });
+        }
+      }).as("updatePost");
       cy.visit("/instagreg");
 
       cy.contains("[data-cy='igPosts_list'] article", postText, {
@@ -147,20 +146,29 @@ describe("Feature: mdx-editor-ui-refinements — Vim :w / :wq", () => {
       });
     });
 
-    it(":w submits the edit but stays in edit mode (no close)", () => {
+    it(":w submits the edit without the Close_Signal; the form closes only via onSuccess", () => {
       cy.uniqueRecordName("post").then((postText) => {
-        seedAndOpenEdit(postText);
+        // Hold the PATCH so the in-flight state is observable.
+        seedAndOpenEdit(postText, 2500);
 
         enterVimMode("edit_p_text_content_field");
         replaceDocument(`### ${postText}`);
         runExCommand("w");
 
+        // Contract: ":w" only submits. It does not fire the Close_Signal
+        // (that is ":wq"), so while the update is in flight MutationForm
+        // renders ItemEditForm's pending fallback instead of closing the edit
+        // state. The edit state still always closes on mutation success
+        // (ItemEditForm passes onSuccess={() => setIsEditing(false)}).
+        cy.contains("Loading post content...").should("be.visible");
+
         cy.wait("@updatePost").its("response.statusCode").should("eq", 202);
-        // ":w" does not close: on a successful mutation the MutationForm resets,
-        // but the edit form remains mounted (setIsEditing was never called).
-        cy.get("[data-cy='edit_p_text_content_field']", {
-          timeout: 20000,
-        }).should("exist");
+        // onSuccess closed edit mode: the field is gone and the list shows h3.
+        cy.get("[data-cy='edit_p_text_content_field']").should("not.exist");
+        cy.get("[data-cy='ig_post_body'] h3", { timeout: 20000 }).should(
+          "contain",
+          postText,
+        );
       });
     });
   });

@@ -6,6 +6,8 @@
 // behavior, synchronized output tabs, failure resilience, responsive layout,
 // keyboard accessibility, and server-side sanitization through one live path.
 
+import { visualEditable } from "../support/mdxEditor.js";
+
 const DEMO_PATH = "/components/mdxEditor";
 
 function openDemo() {
@@ -275,9 +277,9 @@ describe("mdxEditor demo", () => {
       cy.get("[data-cy='mdx-visual-editor']", { timeout: 20000 }).should(
         "exist",
       );
-      cy.get("[data-cy='mdx-visual-editor'] .mdx-visual-editor__content")
-        .click()
-        .type("{ctrl+enter}");
+      // The contenteditable is taller than the fixed-height shell, so its
+      // centre is clipped and covered by a sibling; click a visible position.
+      visualEditable().click("top").type("{ctrl+enter}");
       cy.wait("@render");
       cy.get("@render.all").should("have.length", 1);
     });

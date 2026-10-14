@@ -6,6 +6,8 @@
 // real browser for computed geometry, so they live in Cypress rather than the
 // Bun unit suite.
 
+import { visualEditable } from "../support/mdxEditor.js";
+
 const DEMO_PATH = "/components/mdxEditor";
 
 function openDemo() {
@@ -39,8 +41,13 @@ describe("mdx editor layout contracts", () => {
         .invoke("outerHeight")
         .then((before) => {
           // Typing many lines must not expand the fixed authoring section.
-          cy.get("[data-cy='mdx-visual-editor'] .mdx-visual-editor__content")
-            .click()
+          // Click a visible position: the contenteditable is taller than the
+          // fixed-height shell, so its centre is clipped and covered.
+          cy.get("[data-cy='mdx-visual-editor']", { timeout: 20000 }).should(
+            "exist",
+          );
+          visualEditable()
+            .click("top")
             .type("line{enter}".repeat(40), { delay: 0 });
           cy.get(
             "[data-cy='mdx-editor-demo'] section[aria-labelledby='mdx-authoring-heading']",
@@ -70,9 +77,7 @@ describe("mdx editor layout contracts", () => {
       cy.get("[data-cy='p_text_content_field'] [data-cy='mdx-editor']")
         .invoke("outerHeight")
         .then((before) => {
-          cy.get(
-            "[data-cy='p_text_content_field'] .mdx-visual-editor__content",
-          )
+          visualEditable("p_text_content_field")
             .click()
             .type("line{enter}".repeat(20), { delay: 0 });
 

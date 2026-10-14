@@ -59,6 +59,7 @@ The editor is now a reusable component; the demo is one consumer.
 | Exact proxy rewrite | `packages/frontend/src/server/mapBrowserApiPath.ts`, applied in `goApiProxy.ts` |
 | Go render + sanitize | `packages/functions/cmd/goapi/api/renderMd.go` |
 | Cypress E2E | `packages/e2et/cypress/e2e/mdxEditor.cy.ts`, `.../mdxEditorLayout.cy.ts`, `.../mdxEditorVimEx.cy.ts`, `.../instagreg.cy.ts`, `.../doubleSubmit.cy.ts` |
+| Cypress helpers | `packages/e2et/cypress/support/mdxEditor.ts` (`visualEditable`, `replaceVisualText`, `runExCommand`); specs import them instead of writing selectors |
 
 ## Invariants
 
@@ -130,6 +131,37 @@ The editor is now a reusable component; the demo is one consumer.
   as a darker inset — Vim via `editors/codeMirrorTheme.ts` (`.cm-content` /
   `.cm-scroller` background, `&` frame / `.cm-gutters` selection), visual via
   `mdxEditor.css` (`.mdx-visual-editor__content` background, chrome selection).
+- **Cypress patterns.** Always use the `support/mdxEditor.ts` helpers.
+  (1) `visualEditable(fieldCy?)` resolves
+  `.mdx-visual-editor__content[contenteditable='true']` inside
+  `[data-cy='mdx-visual-editor']` (optionally scoped by the field's `data-cy`,
+  e.g. `p_text_content_field` / `edit_p_text_content_field`) and asserts length
+  1: MDXEditor 4.3.2 applies `contentEditableClassName` to both the real
+  contenteditable and the empty-state placeholder, so the bare class matches 2
+  elements while the document is empty (`cy.click()` rejects multiple
+  subjects). Bare `[contenteditable='true']` is not unique either (CodeMirror
+  code blocks carry it). (2) In the fixed-height demo the contenteditable is
+  taller than its scroll shell, so the default centre click lands on a sibling;
+  use `.click("top")`. (3) `replaceVisualText` is ONE
+  `type("{selectall}<text>")`: `{selectall}{del}` then a separate `type()` does
+  not delete (Lexical ignores the simulated Delete) and the next `type()`
+  appends. (4) `runExCommand` types `:w`/`:wq` with
+  `parseSpecialCharSequences: false`, then a SEPARATE parsed `type("{enter}")`;
+  `:w{enter}` with sequences off types a literal "{enter}". (5) Edit-state
+  contract: `ItemEditForm` always closes edit state on update success
+  (`onSuccess={() => setIsEditing(false)}`); `:w` only submits (no close
+  signal; `MutationForm` shows the "Loading post content..." pending fallback
+  while pending), whereas `:wq`/`:x` also fire `onCloseRequest` immediately.
+  (6) Single spec: `sqldev --stage dev cypress run --headless --browser chrome
+  --spec cypress/e2e/<file>.cy.ts`, path relative to `packages/e2et` (the CLI
+  runs Cypress from that directory, so a workspace-root path finds no specs).
+  (7) `drive.cy.ts`'s first-file upload test is intermittently flaky in dev
+  only (~1 in 15 isolated runs): the browser `GET /api/jobs/:id` can return 500
+  "sst dev is not running" from the SST live-Lambda bridge stub, `pollJob`
+  (`packages/frontend/src/server/requestJob.ts`) does not retry non-2xx, and
+  the upload dialog stays open. It is unrelated to the MDX editor and not a
+  product fix; `drive.cy.ts` records `>= 400` `/api` responses and appends them
+  to the dialog-assertion failure message.
 - **Pure query factories.** The `MdxEditor/queryOptions/` builders take explicit
   `QueryClient`/view/user/item dependencies and perform no React hook call or
   Zustand read. Instagram invalidation uses the caller-supplied

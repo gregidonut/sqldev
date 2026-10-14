@@ -1,3 +1,5 @@
+import { replaceVisualText, visualEditable } from "../support/mdxEditor.js";
+
 function ownerId() {
   return cy
     .env<{ test_users: [Cypress.TestUser, Cypress.TestUser] }>(["test_users"])
@@ -17,9 +19,7 @@ function typeInEditor(fieldCy: string, text: string) {
   cy.get(`[data-cy='${fieldCy}'] [data-cy='mdx-visual-editor']`, {
     timeout: 20000,
   }).should("exist");
-  cy.get(`[data-cy='${fieldCy}'] .mdx-visual-editor__content`)
-    .click()
-    .type(text);
+  visualEditable(fieldCy).click().type(text);
 }
 
 describe("instagreg", () => {
@@ -71,12 +71,12 @@ describe("instagreg", () => {
       "[data-cy='p_text_content_field'] [data-cy='mdx-visual-editor']",
       { timeout: 20000 },
     ).should("exist");
-    cy.get("[data-cy='p_text_content_field'] .mdx-visual-editor__content")
+    visualEditable("p_text_content_field")
       .click()
       .type("line one{enter}line two");
 
     // A newline keeps both lines in the editor and starts no create request.
-    cy.get("[data-cy='p_text_content_field'] .mdx-visual-editor__content")
+    visualEditable("p_text_content_field")
       .should("contain.text", "line one")
       .and("contain.text", "line two");
     cy.get("@createPost.all").should("have.length", 0);
@@ -94,7 +94,7 @@ describe("instagreg", () => {
       cy.get("[data-cy='igPosts_list']", { timeout: 20000 }).should("exist");
       cy.wait("@listGet");
 
-      cy.get("[data-cy='p_text_content_field'] .mdx-visual-editor__content")
+      visualEditable("p_text_content_field")
         .click()
         .type(`${postText}{ctrl+enter}`);
 
@@ -130,10 +130,18 @@ describe("instagreg", () => {
         "[data-cy='edit_p_text_content_field'] [data-cy='mdx-visual-editor']",
         { timeout: 20000 },
       ).should("exist");
-      cy.get("[data-cy='edit_p_text_content_field'] .mdx-visual-editor__content")
-        .should("contain.text", postText)
-        .type("{selectall}{del}")
-        .type(`## ${postText}`);
+      visualEditable("edit_p_text_content_field").should(
+        "contain.text",
+        postText,
+      );
+      // Select-all and the replacement stay in one type() call (see helper).
+      replaceVisualText("edit_p_text_content_field", `## ${postText}`);
+
+      // The Markdown shortcut converts the line to a heading in the editor
+      // before the form is submitted.
+      visualEditable("edit_p_text_content_field")
+        .find("h2")
+        .should("contain.text", postText);
 
       cy.get("[data-cy='edit_ig_post_submit']").click();
 
