@@ -162,6 +162,10 @@ func (s *Server) Execute(ctx context.Context, envelope jobs.Envelope) (jobs.Outc
 			return outcomeError(errBadRequest), nil
 		}
 		return s.executeDeleteMany(ctx, payload.Bucket, payload.Keys, payload.Bypass)
+	case jobs.KindSetStorageVisibility:
+		return s.executeSetVisibility(ctx, envelope.JobID, envelope.Payload)
+	case jobs.KindConfirmOperation:
+		return s.executeConfirm(ctx, envelope.JobID, envelope.Payload)
 	default:
 		return outcomeError(errBadRequest), nil
 	}

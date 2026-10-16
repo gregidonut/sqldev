@@ -4,6 +4,7 @@ import { GridList, GridListItem } from "../GridList.tsx";
 import { StorageActionMenu } from "./StorageActionMenu.tsx";
 import { formatTimestamp, VisibilityBadge } from "./storageDisplay.tsx";
 import type { StorageRow } from "../queryOptions/types.ts";
+import type { StorageVisibilityMenu } from "./visibility/visibilityAction.ts";
 import { cy } from "@/utils/cy";
 
 interface StorageListProps {
@@ -17,6 +18,7 @@ interface StorageListProps {
     onCopy: (item: StorageRow) => void;
     onDelete: (item: StorageRow) => void;
     onError: (message: string) => void;
+    visibility?: StorageVisibilityMenu;
 }
 
 /* Rendered on mobile in place of the StorageTable. */
@@ -32,6 +34,7 @@ export function StorageList(props: StorageListProps): React.ReactNode {
         onCopy,
         onDelete,
         onError,
+        visibility,
     } = props;
 
     return (
@@ -62,6 +65,7 @@ export function StorageList(props: StorageListProps): React.ReactNode {
                                 onCopy={onCopy}
                                 onDelete={onDelete}
                                 onError={onError}
+                                visibility={visibility}
                             />
                         </div>
                         <span className="col-start-1 truncate text-xs text-drac-comment">

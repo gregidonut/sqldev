@@ -14,7 +14,7 @@ $$
 SELECT COALESCE((SELECT c.public
                   FROM public.d_storage_object_config AS c
                   WHERE c.storage_object_id = p_storage_object_id
-                  ORDER BY c.created_at DESC
+                  ORDER BY c.config_version DESC
                   LIMIT 1), FALSE);
 $$;
 
@@ -78,9 +78,6 @@ REVOKE INSERT, UPDATE, DELETE ON
     public.d_storage_objects_shared_with_me_view
     FROM anon, authenticated;
 
-CREATE INDEX d_storage_object_config_object_created_at_idx
-    ON public.d_storage_object_config (storage_object_id, created_at DESC);
-
 CREATE INDEX d_storage_object_data_object_id_idx
     ON public.d_storage_object_data (storage_object_id);
 
@@ -142,8 +139,8 @@ BEGIN
         INSERT INTO public.d_storage_objects_roles (storage_object_id, user_id, role)
         VALUES (v_storage_object_id, v_user_id, 'owner');
 
-        INSERT INTO public.d_storage_object_config (storage_object_id, public)
-        VALUES (v_storage_object_id, FALSE);
+        INSERT INTO public.d_storage_object_config (storage_object_id, public, config_version)
+        VALUES (v_storage_object_id, FALSE, 1);
 
         v_is_new_object := TRUE;
     END IF;

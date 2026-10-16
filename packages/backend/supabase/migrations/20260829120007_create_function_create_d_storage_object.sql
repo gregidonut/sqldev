@@ -51,8 +51,8 @@ BEGIN
         INSERT INTO public.d_storage_objects_roles (storage_object_id, user_id, role)
         VALUES (v_storage_object_id, v_user_id, 'owner');
 
-        INSERT INTO public.d_storage_object_config (storage_object_id, public)
-        VALUES (v_storage_object_id, FALSE);
+        INSERT INTO public.d_storage_object_config (storage_object_id, public, config_version)
+        VALUES (v_storage_object_id, FALSE, 1);
 
         v_is_new_object := TRUE;
     END IF;

@@ -37,9 +37,12 @@ func (m *Memory) Get(_ context.Context, jobID string) (Record, error) {
 func (m *Memory) Update(_ context.Context, record Record) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.records[record.JobID]; !ok {
+	existing, ok := m.records[record.JobID]
+	if !ok {
 		return ErrNotFound
 	}
+	// Like Dynamo.Update, an update never changes the fingerprint.
+	record.Fingerprint = existing.Fingerprint
 	m.records[record.JobID] = record
 	return nil
 }

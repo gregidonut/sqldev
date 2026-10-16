@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -130,6 +131,9 @@ func (p *processor) Run(ctx dbos.Context, envelope jobs.Envelope) (jobs.Outcome,
 	if err != nil {
 		outcome = jobs.Outcome{HTTPStatus: 500, Message: "internal error"}
 	}
+	// DBOS records this outcome, so a later replay of the same key can tell an
+	// identical request from a conflicting one even after the status record expires.
+	outcome.Fingerprint = envelope.Fingerprint
 	if finishErr := p.server.Finish(context.Background(), envelope, outcome); finishErr != nil {
 		// A job left running can never be resubmitted, because only failed
 		// image jobs reopen under a new workflow id.
@@ -217,9 +221,19 @@ func (p *processor) Accept(ctx context.Context, envelope jobs.Envelope) error {
 	if err != nil && !errors.Is(err, status.ErrNotFound) {
 		return err
 	}
-	workflowID, err := chooseWorkflowID(envelope, record, err == nil, p.lookupWorkflow)
+	found := err == nil
+	workflowID, err := chooseWorkflowID(envelope, record, found, p.lookupWorkflow)
 	if err != nil {
 		return err
+	}
+	outcome, settled, err := reconcileOutcome(envelope, record, found, workflowID, p.lookupWorkflow, p.workflowOutcome)
+	if err != nil {
+		return err
+	}
+	if settled {
+		// The work already ran under this workflow id. Report what it recorded and
+		// run nothing again: a mutation must happen once per idempotency key.
+		return p.server.Finish(ctx, envelope, outcome)
 	}
 	_, err = dbos.RunWorkflow(p.dbos, p.Run, envelope,
 		dbos.WithWorkflowID(workflowID),
@@ -268,6 +282,47 @@ func chooseWorkflowID(envelope jobs.Envelope, record status.Record, found bool, 
 	return fmt.Sprintf("%s:e%d", id, record.ExpiresAt.Unix()), nil
 }
 
+// workflowOutcome reads the outcome a finished workflow recorded.
+type workflowOutcome func(id string) (jobs.Outcome, error)
+
+// reconcileOutcome settles a recreated job record for the fingerprinted kinds.
+//
+// The status record expires after 24 hours but DBOS keeps the workflow row, and a
+// finished workflow id is never run again. A key reused after the record expired
+// therefore gets a fresh "pending" record whose workflow already finished, and
+// nothing would ever update it. Normal completion always moves the record out of
+// "pending" before the workflow ends, so a finished workflow behind a pending
+// record means the record was recreated.
+//
+// The recorded outcome is reported when the request body is the same, and an
+// idempotency conflict when it differs. The mutation is never executed again.
+func reconcileOutcome(envelope jobs.Envelope, record status.Record, found bool, workflowID string,
+	lookup workflowLookup, recorded workflowOutcome) (jobs.Outcome, bool, error) {
+	if !found || !jobs.Fingerprinted(envelope.Kind) || record.Status != status.Pending {
+		return jobs.Outcome{}, false, nil
+	}
+	state, exists, err := lookup(workflowID)
+	if err != nil {
+		return jobs.Outcome{}, false, err
+	}
+	if !exists || !workflowFinished(state) {
+		return jobs.Outcome{}, false, nil
+	}
+	previous, err := recorded(workflowID)
+	if err != nil {
+		// The workflow ended in an error, so that is the answer for this key.
+		return jobs.Outcome{HTTPStatus: 500, Message: "internal error", Fingerprint: envelope.Fingerprint}, true, nil
+	}
+	if previous.Fingerprint != envelope.Fingerprint {
+		body, err := json.Marshal(api.OperationRejectedResult{Kind: api.Rejected, Reason: api.RejectionReasonIdempotencyConflict})
+		if err != nil {
+			return jobs.Outcome{}, false, err
+		}
+		return jobs.Outcome{HTTPStatus: 200, Body: body, Fingerprint: envelope.Fingerprint}, true, nil
+	}
+	return previous, true, nil
+}
+
 func workflowFinished(state dbos.WorkflowStatusType) bool {
 	switch state {
 	case dbos.WorkflowStatusSuccess,
@@ -278,6 +333,14 @@ func workflowFinished(state dbos.WorkflowStatusType) bool {
 	default:
 		return false
 	}
+}
+
+func (p *processor) workflowOutcome(id string) (jobs.Outcome, error) {
+	handle, err := dbos.RetrieveWorkflow[jobs.Outcome](p.dbos, id)
+	if err != nil {
+		return jobs.Outcome{}, err
+	}
+	return handle.GetResult()
 }
 
 func (p *processor) lookupWorkflow(id string) (dbos.WorkflowStatusType, bool, error) {

@@ -33,6 +33,7 @@ type item struct {
 	ProgressPhase     string `dynamodbav:"progressPhase,omitempty"`
 	ProgressCompleted int    `dynamodbav:"progressCompleted,omitempty"`
 	ProgressTotal     int    `dynamodbav:"progressTotal,omitempty"`
+	Fingerprint       string `dynamodbav:"fingerprint,omitempty"`
 }
 
 func NewDynamo(ctx context.Context, table string) (*Dynamo, error) {
@@ -182,6 +183,7 @@ func toItem(record Record) item {
 		ProgressPhase:     record.Progress.Phase,
 		ProgressCompleted: record.Progress.Completed,
 		ProgressTotal:     record.Progress.Total,
+		Fingerprint:       record.Fingerprint,
 	}
 }
 
@@ -198,6 +200,7 @@ func fromItem(stored item) Record {
 		Message:     stored.Message,
 		ExpiresAt:   time.Unix(stored.ExpiresAt, 0),
 		Attempt:     stored.Attempt,
+		Fingerprint: stored.Fingerprint,
 		Progress: Progress{
 			Phase:     stored.ProgressPhase,
 			Completed: stored.ProgressCompleted,

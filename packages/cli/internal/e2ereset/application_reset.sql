@@ -39,5 +39,6 @@ TRUNCATE TABLE
   public.d_storage_objects,
   public.d_storage_object_data,
   public.d_storage_object_config,
-  public.d_storage_objects_roles;
+  public.d_storage_objects_roles,
+  public.app_confirmation_challenges;
 COMMIT;

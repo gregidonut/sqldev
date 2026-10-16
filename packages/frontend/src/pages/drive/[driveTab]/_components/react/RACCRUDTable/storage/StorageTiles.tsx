@@ -6,6 +6,7 @@ import { StorageActionMenu } from "./StorageActionMenu.tsx";
 import { StorageThumbnail } from "./StorageThumbnail.tsx";
 import { formatTimestamp, VisibilityBadge } from "./storageDisplay.tsx";
 import type { StorageRow } from "../queryOptions/types.ts";
+import type { StorageVisibilityMenu } from "./visibility/visibilityAction.ts";
 import { dStorageThumbnailQueryKey } from "../queryOptions/createThumbnailGet.ts";
 import { cy } from "@/utils/cy";
 
@@ -20,6 +21,7 @@ interface StorageTilesProps {
     onCopy: (item: StorageRow) => void;
     onDelete: (item: StorageRow) => void;
     onError: (message: string) => void;
+    visibility?: StorageVisibilityMenu;
 }
 
 // Private ownership lifecycle for the single latest-active preview tile.
@@ -204,6 +206,7 @@ export function StorageTiles(props: StorageTilesProps): React.ReactNode {
         onCopy,
         onDelete,
         onError,
+        visibility,
     } = props;
 
     const { activeSourceKey, onActiveChange } = useLatestActivePreview();
@@ -251,6 +254,7 @@ export function StorageTiles(props: StorageTilesProps): React.ReactNode {
                             onCopy={onCopy}
                             onDelete={onDelete}
                             onError={onError}
+                            visibility={visibility}
                         />
                         <div className="col-start-1 flex min-w-0 items-center gap-2">
                             <VisibilityBadge isPublic={item.public} />

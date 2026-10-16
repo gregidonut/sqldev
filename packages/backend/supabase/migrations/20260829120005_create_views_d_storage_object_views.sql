@@ -8,6 +8,7 @@ SELECT so.storage_object_id
      , lsd.s3_object_key
      , lsd.file_name
      , lsc.public
+     , lsc.config_version
 FROM public.d_storage_objects AS so
          INNER JOIN LATERAL (
     SELECT sod.created_at, sod.s3_object_key, sod.file_name
@@ -17,10 +18,10 @@ FROM public.d_storage_objects AS so
     LIMIT 1
     ) AS lsd ON TRUE
          INNER JOIN LATERAL (
-    SELECT soc.public
+    SELECT soc.public, soc.config_version
     FROM public.d_storage_object_config AS soc
     WHERE soc.storage_object_id = so.storage_object_id
-    ORDER BY soc.created_at DESC
+    ORDER BY soc.config_version DESC
     LIMIT 1
     ) AS lsc ON TRUE
          INNER JOIN LATERAL (
@@ -48,6 +49,7 @@ SELECT b.storage_object_id
      , b.s3_object_key
      , b.file_name
      , b.public
+     , b.config_version
 FROM public.d_storage_objects_base_view AS b
 WHERE b.public = TRUE
 ORDER BY b.created_at DESC;
@@ -62,6 +64,7 @@ SELECT b.storage_object_id
      , b.s3_object_key
      , b.file_name
      , b.public
+     , b.config_version
 FROM public.d_storage_objects_base_view AS b
 WHERE b.user_id = (SELECT go.user_id FROM public.get_owner() AS go)
 ORDER BY b.created_at DESC;
@@ -76,6 +79,7 @@ SELECT b.storage_object_id
      , b.s3_object_key
      , b.file_name
      , b.public
+     , b.config_version
 FROM public.d_storage_objects_base_view AS b
 WHERE EXISTS (SELECT 1
               FROM public.d_storage_objects_roles AS r

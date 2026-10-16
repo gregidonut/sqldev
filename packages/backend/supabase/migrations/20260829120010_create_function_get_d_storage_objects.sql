@@ -12,7 +12,8 @@ CREATE OR REPLACE FUNCTION public.get_d_storage_objects(
                 updated_at        TIMESTAMPTZ,
                 s3_object_key     TEXT,
                 file_name         TEXT,
-                public            BOOLEAN
+                public            BOOLEAN,
+                config_version    BIGINT
             )
     LANGUAGE plpgsql
     STABLE
@@ -30,6 +31,7 @@ BEGIN
                  , v.s3_object_key
                  , v.file_name
                  , v.public
+                 , v.config_version
             FROM public.d_storage_objects_public_view AS v;
     ELSIF p_tab = 'mine' THEN
         RETURN QUERY
@@ -41,6 +43,7 @@ BEGIN
                  , v.s3_object_key
                  , v.file_name
                  , v.public
+                 , v.config_version
             FROM public.d_storage_objects_mine_view AS v;
     ELSIF p_tab = 'shared_with_me' THEN
         RETURN QUERY
@@ -52,6 +55,7 @@ BEGIN
                  , v.s3_object_key
                  , v.file_name
                  , v.public
+                 , v.config_version
             FROM public.d_storage_objects_shared_with_me_view AS v;
     ELSE
         RAISE EXCEPTION 'get_d_storage_objects: unsupported tab %', p_tab;

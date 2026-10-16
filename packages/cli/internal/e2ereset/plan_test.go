@@ -72,10 +72,10 @@ func TestBuildResetPlanRejections(t *testing.T) {
 
 func TestCanonicalSQLSharedAndSafe(t *testing.T) {
 	tables := ApplicationTables()
-	if len(tables) != 26 {
-		t.Errorf("expected 26 application tables, got %d", len(tables))
+	if len(tables) != 27 {
+		t.Errorf("expected 27 application tables, got %d", len(tables))
 	}
-	for _, want := range []string{"public.users", "public.d_storage_objects", "public.tds_todo_spaces"} {
+	for _, want := range []string{"public.users", "public.d_storage_objects", "public.tds_todo_spaces", "public.app_confirmation_challenges"} {
 		found := false
 		for _, got := range tables {
 			if got == want {

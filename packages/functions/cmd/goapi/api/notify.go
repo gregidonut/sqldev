@@ -95,11 +95,11 @@ func (s Server) Notify(ctx context.Context, request NotifyRequestObject) (Notify
 
 func notifyTopics(appName, appStage string, body *NotifyJSONRequestBody) ([]string, bool) {
 	switch body.Visibility {
-	case NotifyJSONBodyVisibilityPublic:
+	case VisibilityPublic:
 		return []string{
 			fmt.Sprintf("%s/%s/public/%s", appName, appStage, body.View),
 		}, true
-	case NotifyJSONBodyVisibilityPrivate:
+	case VisibilityPrivate:
 		if body.Recipients == nil {
 			return nil, false
 		}

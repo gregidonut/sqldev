@@ -44,12 +44,17 @@ func (s *Server) submit(ctx context.Context, kind string, payload any, idempoten
 			return JobReceipt{}, err
 		}
 	}
+	fingerprint := ""
+	if jobs.Fingerprinted(kind) {
+		fingerprint = jobs.Fingerprint(kind, body)
+	}
 	record := status.Record{
-		JobID:     jobID,
-		Owner:     claims.Subject,
-		Kind:      kind,
-		Status:    status.Pending,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
+		JobID:       jobID,
+		Owner:       claims.Subject,
+		Kind:        kind,
+		Status:      status.Pending,
+		ExpiresAt:   time.Now().Add(24 * time.Hour),
+		Fingerprint: fingerprint,
 	}
 	if err := s.Jobs.Create(ctx, record); err != nil {
 		if !errors.Is(err, status.ErrExists) {
@@ -62,6 +67,11 @@ func (s *Server) submit(ctx context.Context, kind string, payload any, idempoten
 		if existing.Owner != claims.Subject || existing.Kind != kind {
 			return JobReceipt{}, errForbidden
 		}
+		// The same key with a different body is a different request. Reject it
+		// here, before the queue, so it can never reuse the first job's result.
+		if fingerprint != "" && existing.Fingerprint != fingerprint {
+			return JobReceipt{}, errIdempotencyConflict
+		}
 		if err := s.reopenFailedImage(ctx, kind, existing); err != nil {
 			return JobReceipt{}, err
 		}
@@ -72,6 +82,8 @@ func (s *Server) submit(ctx context.Context, kind string, payload any, idempoten
 		Kind:    kind,
 		Claims:  claims,
 		Payload: body,
+
+		Fingerprint: fingerprint,
 	}
 	encoded, err := envelope.Marshal()
 	if err != nil {

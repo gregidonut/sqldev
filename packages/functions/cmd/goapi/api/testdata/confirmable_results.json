@@ -1,0 +1,138 @@
+{
+  "valid": [
+    {
+      "kind": "confirmation_required",
+      "operationKind": "storage.visibility.make_public",
+      "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" },
+      "expectedRevision": 1,
+      "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90",
+      "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde",
+      "expiresAt": "2026-10-14T15:50:20.944454Z"
+    },
+    {
+      "kind": "confirmation_required",
+      "operationKind": "storage.visibility.make_public",
+      "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" },
+      "expectedRevision": 9007199254740991,
+      "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90",
+      "proof": "_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_",
+      "expiresAt": "2026-10-14T15:50:20Z"
+    },
+    {
+      "kind": "visibility_changed",
+      "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" },
+      "visibility": "public",
+      "revision": 2
+    },
+    {
+      "kind": "visibility_changed",
+      "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" },
+      "visibility": "private",
+      "revision": 3
+    },
+    { "kind": "rejected", "reason": "forbidden" },
+    { "kind": "rejected", "reason": "stale_revision" },
+    { "kind": "rejected", "reason": "invalid_challenge" },
+    { "kind": "rejected", "reason": "expired_challenge" },
+    { "kind": "rejected", "reason": "consumed_challenge" },
+    { "kind": "rejected", "reason": "superseded_challenge" },
+    { "kind": "rejected", "reason": "idempotency_conflict" }
+  ],
+  "malformed": [
+    { "name": "null", "value": null },
+    { "name": "string", "value": "confirmation_required" },
+    { "name": "array", "value": [] },
+    { "name": "empty object", "value": {} },
+    { "name": "unknown kind", "value": { "kind": "deleted" } },
+    { "name": "missing kind", "value": { "reason": "forbidden" } },
+    { "name": "non-string kind", "value": { "kind": 7 } },
+    { "name": "rejected with unknown reason", "value": { "kind": "rejected", "reason": "teapot" } },
+    { "name": "rejected without reason", "value": { "kind": "rejected" } },
+    { "name": "rejected with extra field", "value": { "kind": "rejected", "reason": "forbidden", "detail": "x" } },
+    { "name": "rejected with non-string reason", "value": { "kind": "rejected", "reason": 4 } },
+    {
+      "name": "changed with unknown visibility",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "visibility": "internal", "revision": 2 }
+    },
+    {
+      "name": "changed with revision zero",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "visibility": "public", "revision": 0 }
+    },
+    {
+      "name": "changed with revision as string",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "visibility": "public", "revision": "2" }
+    },
+    {
+      "name": "changed with fractional revision",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "visibility": "public", "revision": 2.5 }
+    },
+    {
+      "name": "changed with unsafe revision",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "visibility": "public", "revision": 9007199254740992 }
+    },
+    {
+      "name": "changed missing target",
+      "value": { "kind": "visibility_changed", "visibility": "public", "revision": 2 }
+    },
+    {
+      "name": "changed with extra top-level field",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "visibility": "public", "revision": 2, "owner": "x" }
+    },
+    {
+      "name": "changed with extra nested field",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11", "name": "x" }, "visibility": "public", "revision": 2 }
+    },
+    {
+      "name": "changed with wrong target type",
+      "value": { "kind": "visibility_changed", "target": { "type": "ig_post", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "visibility": "public", "revision": 2 }
+    },
+    {
+      "name": "changed with bad target uuid",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "not-a-uuid" }, "visibility": "public", "revision": 2 }
+    },
+    {
+      "name": "changed carrying a rejection reason",
+      "value": { "kind": "visibility_changed", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "visibility": "public", "revision": 2, "reason": "forbidden" }
+    },
+    {
+      "name": "required missing proof",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "expiresAt": "2026-10-14T15:50:20Z" }
+    },
+    {
+      "name": "required with short proof",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "proof": "short", "expiresAt": "2026-10-14T15:50:20Z" }
+    },
+    {
+      "name": "required with proof containing a forbidden character",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789+/AbCde", "expiresAt": "2026-10-14T15:50:20Z" }
+    },
+    {
+      "name": "required with unknown operation kind",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.destroy", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde", "expiresAt": "2026-10-14T15:50:20Z" }
+    },
+    {
+      "name": "required with unparseable expiry",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde", "expiresAt": "tomorrow" }
+    },
+    {
+      "name": "required with numeric expiry",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde", "expiresAt": 1760457020000 }
+    },
+    {
+      "name": "required with bad challenge id",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "123", "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde", "expiresAt": "2026-10-14T15:50:20Z" }
+    },
+    {
+      "name": "required with extra field",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde", "expiresAt": "2026-10-14T15:50:20Z", "verifier": "x" }
+    },
+    {
+      "name": "required with revision zero",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 0, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde", "expiresAt": "2026-10-14T15:50:20Z" }
+    },
+    {
+      "name": "required mixing in a visibility field",
+      "value": { "kind": "confirmation_required", "operationKind": "storage.visibility.make_public", "target": { "type": "storage_object", "id": "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11" }, "expectedRevision": 1, "challengeId": "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90", "proof": "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde", "expiresAt": "2026-10-14T15:50:20Z", "visibility": "public" }
+    }
+  ]
+}

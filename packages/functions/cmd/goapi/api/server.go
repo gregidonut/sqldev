@@ -24,6 +24,10 @@ var (
 	errBadRequest   = errors.New("bad request")
 	errConflict     = errors.New("conflict")
 	errNotFound     = errors.New("not found")
+
+	// errIdempotencyConflict means an Idempotency-Key was reused with a different
+	// request body. It is rejected before anything is queued.
+	errIdempotencyConflict = errors.New("idempotency key conflict")
 )
 
 // Database calls Supabase with the caller's Clerk JWT so RLS and auth.jwt() apply.
@@ -129,6 +133,8 @@ func classify(err error) (int, string) {
 			message = "Bad request"
 		}
 		return http.StatusBadRequest, message
+	case errors.Is(err, errIdempotencyConflict):
+		return http.StatusConflict, "Idempotency key conflict"
 	case errors.Is(err, errConflict), errors.Is(err, s3store.ErrInactive):
 		return http.StatusConflict, "Conflict"
 	case errors.Is(err, s3store.ErrTooLarge), errors.Is(err, imagor.ErrTooLarge):

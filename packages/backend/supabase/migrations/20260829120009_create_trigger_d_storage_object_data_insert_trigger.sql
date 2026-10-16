@@ -31,7 +31,7 @@ BEGIN
     INTO is_public
     FROM public.d_storage_object_config AS soc
     WHERE soc.storage_object_id = NEW.storage_object_id
-    ORDER BY soc.created_at DESC
+    ORDER BY soc.config_version DESC
     LIMIT 1;
 
     IF COALESCE(is_public, FALSE) THEN

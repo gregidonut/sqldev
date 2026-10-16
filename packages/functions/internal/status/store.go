@@ -68,6 +68,9 @@ type Record struct {
 	ExpiresAt   time.Time
 	Attempt     int
 	Progress    Progress
+	// Fingerprint is set when the record is created and never changed by an
+	// update. It binds an idempotency key to one request body.
+	Fingerprint string
 }
 
 type Store interface {

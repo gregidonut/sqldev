@@ -443,6 +443,69 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /api/storage/buckets/{bucketName}/objects/visibility:
+    post:
+      operationId: setStorageObjectVisibility
+      summary: Make an owned object private, or begin the make-public confirmation
+      description: >
+        Accepted work completes as a ConfirmableOperationResult. Making an object
+        public first completes with confirmation_required (the job finishes and
+        releases the worker); the browser then confirms with POST /api/confirmations.
+        Making an object private completes with visibility_changed.
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/BucketName"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StorageVisibilityChange"
+      responses:
+        "202":
+          $ref: "#/components/responses/JobAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/OperationRejected"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /api/confirmations:
+    post:
+      operationId: confirmOperation
+      summary: Confirm a previously issued confirmation challenge
+      description: >
+        Runs as a separate job from the one that issued the challenge. The job
+        completes with a ConfirmableOperationResult.
+      security:
+        - clerkBearer: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OperationConfirmation"
+      responses:
+        "202":
+          $ref: "#/components/responses/JobAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/OperationRejected"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /api/storage/buckets/{bucketName}/objects/object:
     delete:
       operationId: deleteSingleObject
@@ -500,8 +563,7 @@ paths:
                 message:
                   type: string
                 visibility:
-                  type: string
-                  enum: [public, private]
+                  $ref: "#/components/schemas/Visibility"
                 recipients:
                   type: array
                   items:
@@ -652,6 +714,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorMessage"
+    OperationRejected:
+      description: The request was rejected before any job was submitted.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/OperationRejectedResult"
   schemas:
     JobReceipt:
       type: object
@@ -750,6 +818,132 @@ components:
           type: string
         public:
           type: boolean
+        config_version:
+          $ref: "#/components/schemas/ConfigRevision"
+    OperationKind:
+      type: string
+      enum: ["storage.visibility.make_public"]
+    ConfirmationTargetType:
+      type: string
+      enum: [storage_object]
+    ConfirmationTarget:
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type:
+          $ref: "#/components/schemas/ConfirmationTargetType"
+        id:
+          type: string
+          format: uuid
+    ConfigRevision:
+      type: integer
+      format: int64
+      minimum: 1
+      maximum: 9007199254740991
+    Visibility:
+      type: string
+      enum: [public, private]
+    ChallengeProof:
+      type: string
+      pattern: "^[A-Za-z0-9_-]{43}$"
+    StorageVisibilityChange:
+      type: object
+      additionalProperties: false
+      required: [target, expectedRevision, visibility]
+      properties:
+        target:
+          $ref: "#/components/schemas/ConfirmationTarget"
+        expectedRevision:
+          $ref: "#/components/schemas/ConfigRevision"
+        visibility:
+          $ref: "#/components/schemas/Visibility"
+    OperationConfirmation:
+      type: object
+      additionalProperties: false
+      required: [operationKind, target, expectedRevision, challengeId, proof]
+      properties:
+        operationKind:
+          $ref: "#/components/schemas/OperationKind"
+        target:
+          $ref: "#/components/schemas/ConfirmationTarget"
+        expectedRevision:
+          $ref: "#/components/schemas/ConfigRevision"
+        challengeId:
+          type: string
+          format: uuid
+        proof:
+          $ref: "#/components/schemas/ChallengeProof"
+    ConfirmationRequiredResult:
+      type: object
+      additionalProperties: false
+      required: [kind, operationKind, target, expectedRevision, challengeId, proof, expiresAt]
+      properties:
+        kind:
+          type: string
+          enum: [confirmation_required]
+        operationKind:
+          $ref: "#/components/schemas/OperationKind"
+        target:
+          $ref: "#/components/schemas/ConfirmationTarget"
+        expectedRevision:
+          $ref: "#/components/schemas/ConfigRevision"
+        challengeId:
+          type: string
+          format: uuid
+        proof:
+          $ref: "#/components/schemas/ChallengeProof"
+        expiresAt:
+          type: string
+          format: date-time
+    VisibilityChangedResult:
+      type: object
+      additionalProperties: false
+      required: [kind, target, visibility, revision]
+      properties:
+        kind:
+          type: string
+          enum: [visibility_changed]
+        target:
+          $ref: "#/components/schemas/ConfirmationTarget"
+        visibility:
+          $ref: "#/components/schemas/Visibility"
+        revision:
+          $ref: "#/components/schemas/ConfigRevision"
+    RejectionReason:
+      type: string
+      enum:
+        - forbidden
+        - stale_revision
+        - invalid_challenge
+        - expired_challenge
+        - consumed_challenge
+        - superseded_challenge
+        - idempotency_conflict
+    OperationRejectedResult:
+      type: object
+      additionalProperties: false
+      required: [kind, reason]
+      properties:
+        kind:
+          type: string
+          enum: [rejected]
+        reason:
+          $ref: "#/components/schemas/RejectionReason"
+    ConfirmableOperationResult:
+      description: >
+        What a completed visibility or confirmation job returns in JobState.result.
+        A domain rejection is a completed job, not a failed one, so its body survives.
+      oneOf:
+        - $ref: "#/components/schemas/ConfirmationRequiredResult"
+        - $ref: "#/components/schemas/VisibilityChangedResult"
+        - $ref: "#/components/schemas/OperationRejectedResult"
+      discriminator:
+        propertyName: kind
+        mapping:
+          confirmation_required: "#/components/schemas/ConfirmationRequiredResult"
+          visibility_changed: "#/components/schemas/VisibilityChangedResult"
+          rejected: "#/components/schemas/OperationRejectedResult"
     PendingUpload:
       type: object
       required:

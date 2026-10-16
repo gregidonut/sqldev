@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCollator, useFilter } from "react-aria";
 import type {
     Key,
     Selection,
@@ -15,6 +14,7 @@ import { StorageList } from "./StorageList.tsx";
 import { StorageTable } from "./StorageTable.tsx";
 import { StorageTiles } from "./StorageTiles.tsx";
 import { StorageToolbar } from "./StorageToolbar.tsx";
+import { ConfirmationDialogHost } from "../confirmation/ConfirmationDialogHost.tsx";
 import {
     toStorageSort,
     useStorageTableStore,
@@ -27,6 +27,9 @@ import createBucketExistsGetQueryOptions from "../queryOptions/createBucketExist
 import createListGetQueryOptions from "../queryOptions/createListGet.ts";
 import createOneDeleteMutationOptions from "../queryOptions/createOneDelete.ts";
 import type { StorageRow } from "../queryOptions/types.ts";
+import { useVisibleStorageRows } from "./useVisibleStorageRows.ts";
+import { useStorageVisibility } from "./visibility/useStorageVisibility.ts";
+import type { StorageVisibilityMenu } from "./visibility/visibilityAction.ts";
 
 export type StorageCRUDTableProps = {
     tab: ObjectsTab;
@@ -39,23 +42,6 @@ const TAB_EMPTY_MESSAGE: Record<ObjectsTab, string> = {
     mine: "You have not uploaded anything yet.",
     shared_with_me: "Nothing has been shared with you yet.",
 };
-
-function compareRows(
-    a: StorageRow,
-    b: StorageRow,
-    column: Key | undefined,
-    collator: Intl.Collator,
-): number {
-    if (!column) {
-        return 0;
-    }
-    const first = a[column as keyof StorageRow];
-    const second = b[column as keyof StorageRow];
-    if (typeof first === "boolean" || typeof second === "boolean") {
-        return Number(Boolean(first)) - Number(Boolean(second));
-    }
-    return collator.compare(String(first ?? ""), String(second ?? ""));
-}
 
 type StorageObjectsViewProps = {
     items: StorageRow[];
@@ -71,6 +57,7 @@ type StorageObjectsViewProps = {
     onCopy: (item: StorageRow) => void;
     onDelete: (item: StorageRow) => void;
     onError: (message: string) => void;
+    visibility: StorageVisibilityMenu;
 };
 
 function renderStorageView(
@@ -92,6 +79,7 @@ function renderStorageView(
                         onCopy={props.onCopy}
                         onDelete={props.onDelete}
                         onError={props.onError}
+                        visibility={props.visibility}
                     />
                     <StorageTable
                         items={props.items}
@@ -107,6 +95,7 @@ function renderStorageView(
                         onCopy={props.onCopy}
                         onDelete={props.onDelete}
                         onError={props.onError}
+                        visibility={props.visibility}
                     />
                 </>
             );
@@ -219,8 +208,12 @@ export default function StorageCRUDTable({
         [sort],
     );
 
-    const { contains } = useFilter({ sensitivity: "base" });
-    const collator = useCollator();
+    const visibility = useStorageVisibility({
+        tab,
+        bucketName,
+        userId,
+        onError: setActionError,
+    });
 
     const oneDelete = useMutation(
         createOneDeleteMutationOptions({ userId, bucketName }),
@@ -229,22 +222,11 @@ export default function StorageCRUDTable({
         createBatchDeleteMutationOptions({ userId, bucketName }),
     );
 
-    const rows = listQuery.data;
-    const items = useMemo(() => {
-        const direction = sortDescriptor.direction === "descending" ? -1 : 1;
-        return (rows ?? [])
-            .filter(
-                (row) =>
-                    contains(row.file_name, search) ||
-                    contains(row.clerk_user_id, search) ||
-                    contains(row.s3_object_key, search),
-            )
-            .sort(
-                (a, b) =>
-                    compareRows(a, b, sortDescriptor.column, collator) *
-                    direction,
-            );
-    }, [rows, search, sortDescriptor, contains, collator]);
+    const items = useVisibleStorageRows(
+        listQuery.data,
+        search,
+        sortDescriptor,
+    );
 
     const selectedObjectKeys = useMemo(() => {
         if (selectedKeys === "all") {
@@ -384,7 +366,10 @@ export default function StorageCRUDTable({
                 onCopy: (item) => openDialog({ kind: "copy", item }),
                 onDelete: (item) => openDialog({ kind: "delete", item }),
                 onError: setActionError,
+                visibility,
             })}
+
+            <ConfirmationDialogHost />
 
             <Modal
                 isOpen={dialog.kind === "copy"}

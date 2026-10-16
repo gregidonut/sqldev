@@ -4,6 +4,7 @@ package jobs
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +33,12 @@ const (
 	KindDeleteObject   = "deleteSingleObject"
 	KindDeleteObjects  = "deleteObjects"
 	KindImagor         = "imagor"
+
+	// KindSetStorageVisibility begins make-public or makes an object private.
+	KindSetStorageVisibility = "setStorageVisibility"
+	// KindConfirmOperation confirms a challenge issued by an earlier job. It is a
+	// separate job on purpose: nothing waits for the user between the two.
+	KindConfirmOperation = "confirmOperation"
 )
 
 type Claims struct {
@@ -46,6 +53,9 @@ type Envelope struct {
 	Claims  Claims          `json:"claims"`
 	Payload json.RawMessage `json:"payload"`
 	TraceID string          `json:"traceId,omitempty"`
+	// Fingerprint binds the idempotency key to the request body for the kinds
+	// where Fingerprinted reports true.
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 // Artifact is the transformed image stored before the caller receives a URL.
@@ -60,6 +70,10 @@ type Outcome struct {
 	Body       json.RawMessage `json:"body,omitempty"`
 	Message    string          `json:"message,omitempty"`
 	Artifact   *Artifact       `json:"artifact,omitempty"`
+	// Fingerprint is copied from the envelope. DBOS records the outcome, so it
+	// lets the worker tell an identical replay from a conflicting one after the
+	// job-status record has expired and been recreated.
+	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
 func NewID() string {
@@ -130,7 +144,8 @@ func knownKind(kind string) bool {
 	case KindListView, KindGetViewItem, KindCreateViewItem, KindUpdateViewItem,
 		KindGetTodoTree, KindMoveTodoItems, KindCreateTodo, KindBucketExists,
 		KindListStorage, KindPresign, KindCommit, KindAbort, KindDownload,
-		KindCopy, KindDeleteObject, KindDeleteObjects, KindImagor:
+		KindCopy, KindDeleteObject, KindDeleteObjects, KindImagor,
+		KindSetStorageVisibility, KindConfirmOperation:
 		return true
 	default:
 		return false
@@ -141,9 +156,24 @@ func Mutation(kind string) bool {
 	switch kind {
 	case KindCreateViewItem, KindUpdateViewItem, KindMoveTodoItems, KindCreateTodo,
 		KindPresign, KindCommit, KindAbort, KindCopy, KindDeleteObject, KindDeleteObjects,
-		KindImagor:
+		KindImagor, KindSetStorageVisibility, KindConfirmOperation:
 		return true
 	default:
 		return false
 	}
+}
+
+// Fingerprinted reports whether a job's idempotency key is bound to its request
+// body. StableID alone ignores the body, so a key reused with a different body
+// would silently return the first job's result. The confirmable kinds reject
+// that instead.
+func Fingerprinted(kind string) bool {
+	return kind == KindSetStorageVisibility || kind == KindConfirmOperation
+}
+
+// Fingerprint is the hex SHA-256 of the kind and the encoded request payload.
+// It reveals nothing about the payload to a reader of the status record.
+func Fingerprint(kind string, body []byte) string {
+	sum := sha256.Sum256([]byte("sqldev.request.v1\n" + kind + "\n" + string(body)))
+	return hex.EncodeToString(sum[:])
 }

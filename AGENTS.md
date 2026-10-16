@@ -79,6 +79,88 @@ Before changing the harness, the resolver, the reset command, or the Go
 `cypress-author`. The referenced `golang-*` skills remain uninstalled; follow
 existing `packages/cli` Go patterns and do not download replacements.
 
+## Confirmable operations (storage object visibility)
+
+A drive storage object can be made public from the three-dot menu on `/drive/mine`
+(`Make public…` / `Make private`). Making it public uses a reusable "confirm before
+commit" protocol whose authority is PostgreSQL. Before changing it, load the
+`packages/agent-skills/skills/confirmable-operations/SKILL.md` skill; the spec is
+`.kiro/specs/storage-visibility-confirmation/`.
+
+Verified facts the protocol depends on:
+
+- The single-concurrency DBOS worker must never wait for a human. Make-public is two
+  independent jobs: an initiation job that issues a five-minute challenge and
+  *completes* with `confirmation_required`, then a separate confirmation job that
+  consumes the challenge and appends the config row in one transaction. Never add an
+  `awaiting_confirmation` job status.
+- `d_storage_object_config` is insert-only (an update trigger rejects `UPDATE`). The
+  current row is the greatest `config_version`, never the latest `created_at`
+  (`created_at` is the transaction start time). `prepare_d_storage_upload` is the only
+  writer of a first config row, and it writes revision 1; the file named
+  `20260829120007_create_function_create_d_storage_object.sql` defines it.
+- Domain rejections are returned as tagged `jsonb` and become *completed* jobs with
+  HTTP 200, because `Server.Finish` drops the body of any outcome with status >= 400
+  and a `RAISE` would roll back the `active -> expired` transition.
+- Supabase default privileges grant `EXECUTE` on new functions to `anon` and
+  `authenticated`. Revoke explicitly on every internal function.
+- Editors hold `d_storage_objects.write`. Visibility needs an exact `role = 'owner'` row.
+- An Idempotency-Key is bound to its request body by a fingerprint stored on the job
+  status record (`jobs.Fingerprinted` kinds only). A conflicting reuse is a 409 before
+  the queue. The status record expires after 24 hours but DBOS keeps the workflow, so
+  `reconcileOutcome` in `packages/functions/cmd/supabaseworker/main.go` settles a
+  recreated record from the recorded outcome without running anything again.
+- `decodeStrict` rejects unknown JSON fields but cannot see a missing one (a missing
+  `public` would become `false`). Use `hasExactKeys` for payloads and results.
+- Adding an enum to `api.yaml` can rename the constants of other inline enums that share
+  a value name (adding `Visibility` renamed `/notify`'s `public`/`private` constants).
+  Regenerate and build after every spec edit. Run `go generate` from
+  `packages/functions/cmd/goapi` with `CGO_ENABLED=0`, and never hand-edit `api.gen.go`.
+
+Verification: Go unit tests run with `CGO_ENABLED=0 go -C packages/functions test ./...`.
+Database and worker integration tests need local Supabase and the `integration` tag:
+
+```bash
+SQLDEV_TEST_DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
+  CGO_ENABLED=0 go -C packages/functions test -tags integration -count=1 -p 1 \
+  ./internal/sqldb/ ./cmd/supabaseworker/
+```
+
+Apply new migrations to a running local database with
+`sqldev --stage dev supabase migration up --local` (use `db reset` only to wipe data).
+
+Frontend and harness facts (verified):
+
+- Layout: the generic protocol lives in `packages/frontend/src/utils/confirmation/`
+  (`dialogMachine.ts` pure `transition`, `confirmationStore.ts` non-persisted Zustand
+  coordinator, `decodeResult.ts`, `finalSuccessLedger.ts`, `focusRestore.ts`). One
+  `ConfirmationDialogHost` is mounted once in `StorageCRUDTable`; the storage adapter and
+  menu wiring are under `RACCRUDTable/storage/visibility/`. `AlertDialog.tsx` is not used
+  because its action button closes the dialog while confirming.
+- Zustand v5 selectors must return stable values; select each function separately instead
+  of returning a fresh object literal.
+- React Aria `Dialog` does not forward `aria-busy`; set it through the `render` prop. Use
+  `isPending` (not `isDisabled`) on buttons that may hold focus.
+- Row keys are S3 keys, so `focusRestore` compares the `data-key` attribute directly
+  instead of building a CSS selector.
+- React Aria collection nodes cannot change `id`. A `MenuItem` whose id flips with data
+  (`make-public` <-> `make-private`) needs `key={id}` or React throws "Cannot change the
+  id of an item" when a refetch lands while the menu is open.
+- The e2e/staging reset SQL (`packages/cli/internal/e2ereset/application_reset.sql`)
+  TRUNCATEs without CASCADE, so every new table that references `users` must be listed
+  there (27 tables now) and `plan_test.go` updated. `app_confirmable_operations` is seeded
+  config and is intentionally not listed.
+- The Cypress suite start-up truncates local app data (users, posts, storage objects).
+- `bun run build` (`astro build`) rewrites `packages/frontend/node_modules/.vite`, which a
+  running `astro dev` shares. Afterwards the browser gets `504 (Outdated Optimize Dep)` for
+  `@clerk_astro_internal.js`, Clerk never loads, and pages (and Cypress sign-in) break.
+  Touching `packages/frontend/astro.config.mjs` restarts the dev server and fixes it.
+- Never run Prettier over existing directories (it reformatted
+  `thumbnailRailStore.ts`); format only new files.
+- `bun run packages/frontend/scripts/verify-visibility.ts` runs every validation command
+  and checks that Properties 1-15 all executed (`--with-db-reset` adds the destructive
+  `supabase db reset`; logs go to `/tmp/verify-visibility/`).
+
 ## Loading bar / thumbnail rail state
 
 The "loading bar" is the thumbnail progress rail (`ThumbnailProgressRail` + `railView` in `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/StorageThumbnail.tsx`). Its lifecycle state lives in a per-`sourceKey` Zustand store at `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/store/thumbnailRailStore.ts` (no longer local React state). See `packages/frontend/AGENTS.md` for details.

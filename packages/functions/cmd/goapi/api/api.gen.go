@@ -29,6 +29,36 @@ const (
 	ClerkBearerScopes clerkBearerContextKey = "clerkBearer.Scopes"
 )
 
+// Defines values for ConfirmationRequiredResultKind.
+const (
+	ConfirmationRequired ConfirmationRequiredResultKind = "confirmation_required"
+)
+
+// Valid indicates whether the value is a known member of the ConfirmationRequiredResultKind enum.
+func (e ConfirmationRequiredResultKind) Valid() bool {
+	switch e {
+	case ConfirmationRequired:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ConfirmationTargetType.
+const (
+	StorageObject ConfirmationTargetType = "storage_object"
+)
+
+// Valid indicates whether the value is a known member of the ConfirmationTargetType enum.
+func (e ConfirmationTargetType) Valid() bool {
+	switch e {
+	case StorageObject:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ImageResultContentType.
 const (
 	Imagejpeg ImageResultContentType = "image/jpeg"
@@ -179,6 +209,69 @@ func (e JobStateStatus) Valid() bool {
 	}
 }
 
+// Defines values for OperationKind.
+const (
+	StorageVisibilityMakePublic OperationKind = "storage.visibility.make_public"
+)
+
+// Valid indicates whether the value is a known member of the OperationKind enum.
+func (e OperationKind) Valid() bool {
+	switch e {
+	case StorageVisibilityMakePublic:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for OperationRejectedResultKind.
+const (
+	Rejected OperationRejectedResultKind = "rejected"
+)
+
+// Valid indicates whether the value is a known member of the OperationRejectedResultKind enum.
+func (e OperationRejectedResultKind) Valid() bool {
+	switch e {
+	case Rejected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RejectionReason.
+const (
+	RejectionReasonConsumedChallenge   RejectionReason = "consumed_challenge"
+	RejectionReasonExpiredChallenge    RejectionReason = "expired_challenge"
+	RejectionReasonForbidden           RejectionReason = "forbidden"
+	RejectionReasonIdempotencyConflict RejectionReason = "idempotency_conflict"
+	RejectionReasonInvalidChallenge    RejectionReason = "invalid_challenge"
+	RejectionReasonStaleRevision       RejectionReason = "stale_revision"
+	RejectionReasonSupersededChallenge RejectionReason = "superseded_challenge"
+)
+
+// Valid indicates whether the value is a known member of the RejectionReason enum.
+func (e RejectionReason) Valid() bool {
+	switch e {
+	case RejectionReasonConsumedChallenge:
+		return true
+	case RejectionReasonExpiredChallenge:
+		return true
+	case RejectionReasonForbidden:
+		return true
+	case RejectionReasonIdempotencyConflict:
+		return true
+	case RejectionReasonInvalidChallenge:
+		return true
+	case RejectionReasonStaleRevision:
+		return true
+	case RejectionReasonSupersededChallenge:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for StorageTab.
 const (
 	StorageTabMine         StorageTab = "mine"
@@ -218,23 +311,41 @@ func (e ViewName) Valid() bool {
 	}
 }
 
-// Defines values for NotifyJSONBodyVisibility.
+// Defines values for Visibility.
 const (
-	NotifyJSONBodyVisibilityPrivate NotifyJSONBodyVisibility = "private"
-	NotifyJSONBodyVisibilityPublic  NotifyJSONBodyVisibility = "public"
+	VisibilityPrivate Visibility = "private"
+	VisibilityPublic  Visibility = "public"
 )
 
-// Valid indicates whether the value is a known member of the NotifyJSONBodyVisibility enum.
-func (e NotifyJSONBodyVisibility) Valid() bool {
+// Valid indicates whether the value is a known member of the Visibility enum.
+func (e Visibility) Valid() bool {
 	switch e {
-	case NotifyJSONBodyVisibilityPrivate:
+	case VisibilityPrivate:
 		return true
-	case NotifyJSONBodyVisibilityPublic:
+	case VisibilityPublic:
 		return true
 	default:
 		return false
 	}
 }
+
+// Defines values for VisibilityChangedResultKind.
+const (
+	VisibilityChanged VisibilityChangedResultKind = "visibility_changed"
+)
+
+// Valid indicates whether the value is a known member of the VisibilityChangedResultKind enum.
+func (e VisibilityChangedResultKind) Valid() bool {
+	switch e {
+	case VisibilityChanged:
+		return true
+	default:
+		return false
+	}
+}
+
+// ChallengeProof defines model for ChallengeProof.
+type ChallengeProof = string
 
 // ClerkUser defines model for ClerkUser.
 type ClerkUser struct {
@@ -242,6 +353,37 @@ type ClerkUser struct {
 	ImageUrl *string `json:"imageUrl,omitempty"`
 	Username *string `json:"username,omitempty"`
 }
+
+// ConfigRevision defines model for ConfigRevision.
+type ConfigRevision = int64
+
+// ConfirmableOperationResult What a completed visibility or confirmation job returns in JobState.result. A domain rejection is a completed job, not a failed one, so its body survives.
+type ConfirmableOperationResult struct {
+	union json.RawMessage
+}
+
+// ConfirmationRequiredResult defines model for ConfirmationRequiredResult.
+type ConfirmationRequiredResult struct {
+	ChallengeId      openapi_types.UUID             `json:"challengeId"`
+	ExpectedRevision ConfigRevision                 `json:"expectedRevision"`
+	ExpiresAt        time.Time                      `json:"expiresAt"`
+	Kind             ConfirmationRequiredResultKind `json:"kind"`
+	OperationKind    OperationKind                  `json:"operationKind"`
+	Proof            ChallengeProof                 `json:"proof"`
+	Target           ConfirmationTarget             `json:"target"`
+}
+
+// ConfirmationRequiredResultKind defines model for ConfirmationRequiredResult.Kind.
+type ConfirmationRequiredResultKind string
+
+// ConfirmationTarget defines model for ConfirmationTarget.
+type ConfirmationTarget struct {
+	Id   openapi_types.UUID     `json:"id"`
+	Type ConfirmationTargetType `json:"type"`
+}
+
+// ConfirmationTargetType defines model for ConfirmationTargetType.
+type ConfirmationTargetType string
 
 // CopyDestination defines model for CopyDestination.
 type CopyDestination struct {
@@ -341,6 +483,27 @@ type JsonObject map[string]interface{}
 // JsonRows defines model for JsonRows.
 type JsonRows = []JsonObject
 
+// OperationConfirmation defines model for OperationConfirmation.
+type OperationConfirmation struct {
+	ChallengeId      openapi_types.UUID `json:"challengeId"`
+	ExpectedRevision ConfigRevision     `json:"expectedRevision"`
+	OperationKind    OperationKind      `json:"operationKind"`
+	Proof            ChallengeProof     `json:"proof"`
+	Target           ConfirmationTarget `json:"target"`
+}
+
+// OperationKind defines model for OperationKind.
+type OperationKind string
+
+// OperationRejectedResult defines model for OperationRejectedResult.
+type OperationRejectedResult struct {
+	Kind   OperationRejectedResultKind `json:"kind"`
+	Reason RejectionReason             `json:"reason"`
+}
+
+// OperationRejectedResultKind defines model for OperationRejectedResult.Kind.
+type OperationRejectedResultKind string
+
 // PendingUpload defines model for PendingUpload.
 type PendingUpload struct {
 	FileName            string             `json:"fileName"`
@@ -357,9 +520,13 @@ type PresignResponse struct {
 	Url           string        `json:"url"`
 }
 
+// RejectionReason defines model for RejectionReason.
+type RejectionReason string
+
 // StorageObjectRow defines model for StorageObjectRow.
 type StorageObjectRow struct {
 	ClerkUserId     *string             `json:"clerk_user_id,omitempty"`
+	ConfigVersion   *ConfigRevision     `json:"config_version,omitempty"`
 	CreatedAt       *time.Time          `json:"created_at,omitempty"`
 	FileName        *string             `json:"file_name,omitempty"`
 	Public          *bool               `json:"public,omitempty"`
@@ -372,8 +539,29 @@ type StorageObjectRow struct {
 // StorageTab defines model for StorageTab.
 type StorageTab string
 
+// StorageVisibilityChange defines model for StorageVisibilityChange.
+type StorageVisibilityChange struct {
+	ExpectedRevision ConfigRevision     `json:"expectedRevision"`
+	Target           ConfirmationTarget `json:"target"`
+	Visibility       Visibility         `json:"visibility"`
+}
+
 // ViewName defines model for ViewName.
 type ViewName string
+
+// Visibility defines model for Visibility.
+type Visibility string
+
+// VisibilityChangedResult defines model for VisibilityChangedResult.
+type VisibilityChangedResult struct {
+	Kind       VisibilityChangedResultKind `json:"kind"`
+	Revision   ConfigRevision              `json:"revision"`
+	Target     ConfirmationTarget          `json:"target"`
+	Visibility Visibility                  `json:"visibility"`
+}
+
+// VisibilityChangedResultKind defines model for VisibilityChangedResult.Kind.
+type VisibilityChangedResultKind string
 
 // BucketName defines model for BucketName.
 type BucketName = string
@@ -417,11 +605,19 @@ type JobAccepted = JobReceipt
 // NotFound defines model for NotFound.
 type NotFound = ErrorMessage
 
+// OperationRejected defines model for OperationRejected.
+type OperationRejected = OperationRejectedResult
+
 // Unauthorized defines model for Unauthorized.
 type Unauthorized = ErrorMessage
 
 // clerkBearerContextKey is the context key for clerkBearer security scheme
 type clerkBearerContextKey string
+
+// ConfirmOperationParams defines parameters for ConfirmOperation.
+type ConfirmOperationParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
 
 // TransformImageParams defines parameters for TransformImage.
 type TransformImageParams struct {
@@ -474,6 +670,11 @@ type PresignObjectParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
+// SetStorageObjectVisibilityParams defines parameters for SetStorageObjectVisibility.
+type SetStorageObjectVisibilityParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
 // CreateTodoParams defines parameters for CreateTodo.
 type CreateTodoParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -496,10 +697,10 @@ type UpdateViewItemParams struct {
 
 // NotifyJSONBody defines parameters for Notify.
 type NotifyJSONBody struct {
-	Message    string                   `json:"message"`
-	Recipients *[]string                `json:"recipients,omitempty"`
-	View       string                   `json:"view"`
-	Visibility NotifyJSONBodyVisibility `json:"visibility"`
+	Message    string     `json:"message"`
+	Recipients *[]string  `json:"recipients,omitempty"`
+	View       string     `json:"view"`
+	Visibility Visibility `json:"visibility"`
 }
 
 // NotifyParams defines parameters for Notify.
@@ -507,13 +708,13 @@ type NotifyParams struct {
 	XNotifySecret string `json:"x-notify-secret"`
 }
 
-// NotifyJSONBodyVisibility defines parameters for Notify.
-type NotifyJSONBodyVisibility string
-
 // RenderMdJSONBody defines parameters for RenderMd.
 type RenderMdJSONBody struct {
 	Text string `json:"text"`
 }
+
+// ConfirmOperationJSONRequestBody defines body for ConfirmOperation for application/json ContentType.
+type ConfirmOperationJSONRequestBody = OperationConfirmation
 
 // TransformImageJSONRequestBody defines body for TransformImage for application/json ContentType.
 type TransformImageJSONRequestBody = ImageTransform
@@ -529,6 +730,9 @@ type CommitObjectJSONRequestBody = PendingUpload
 
 // CopyObjectJSONRequestBody defines body for CopyObject for application/json ContentType.
 type CopyObjectJSONRequestBody = CopyDestination
+
+// SetStorageObjectVisibilityJSONRequestBody defines body for SetStorageObjectVisibility for application/json ContentType.
+type SetStorageObjectVisibilityJSONRequestBody = StorageVisibilityChange
 
 // CreateTodoMultipartRequestBody defines body for CreateTodo for multipart/form-data ContentType.
 type CreateTodoMultipartRequestBody = FormBody
@@ -547,6 +751,125 @@ type NotifyJSONRequestBody NotifyJSONBody
 
 // RenderMdJSONRequestBody defines body for RenderMd for application/json ContentType.
 type RenderMdJSONRequestBody RenderMdJSONBody
+
+// AsConfirmationRequiredResult returns the union data inside the ConfirmableOperationResult as a ConfirmationRequiredResult
+func (t ConfirmableOperationResult) AsConfirmationRequiredResult() (ConfirmationRequiredResult, error) {
+	var body ConfirmationRequiredResult
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromConfirmationRequiredResult overwrites any union data inside the ConfirmableOperationResult as the provided ConfirmationRequiredResult
+func (t *ConfirmableOperationResult) FromConfirmationRequiredResult(v ConfirmationRequiredResult) error {
+	v.Kind = "confirmation_required"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeConfirmationRequiredResult performs a merge with any union data inside the ConfirmableOperationResult, using the provided ConfirmationRequiredResult
+func (t *ConfirmableOperationResult) MergeConfirmationRequiredResult(v ConfirmationRequiredResult) error {
+	v.Kind = "confirmation_required"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsVisibilityChangedResult returns the union data inside the ConfirmableOperationResult as a VisibilityChangedResult
+func (t ConfirmableOperationResult) AsVisibilityChangedResult() (VisibilityChangedResult, error) {
+	var body VisibilityChangedResult
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromVisibilityChangedResult overwrites any union data inside the ConfirmableOperationResult as the provided VisibilityChangedResult
+func (t *ConfirmableOperationResult) FromVisibilityChangedResult(v VisibilityChangedResult) error {
+	v.Kind = "visibility_changed"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeVisibilityChangedResult performs a merge with any union data inside the ConfirmableOperationResult, using the provided VisibilityChangedResult
+func (t *ConfirmableOperationResult) MergeVisibilityChangedResult(v VisibilityChangedResult) error {
+	v.Kind = "visibility_changed"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsOperationRejectedResult returns the union data inside the ConfirmableOperationResult as a OperationRejectedResult
+func (t ConfirmableOperationResult) AsOperationRejectedResult() (OperationRejectedResult, error) {
+	var body OperationRejectedResult
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromOperationRejectedResult overwrites any union data inside the ConfirmableOperationResult as the provided OperationRejectedResult
+func (t *ConfirmableOperationResult) FromOperationRejectedResult(v OperationRejectedResult) error {
+	v.Kind = "rejected"
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeOperationRejectedResult performs a merge with any union data inside the ConfirmableOperationResult, using the provided OperationRejectedResult
+func (t *ConfirmableOperationResult) MergeOperationRejectedResult(v OperationRejectedResult) error {
+	v.Kind = "rejected"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ConfirmableOperationResult) Discriminator() (string, error) {
+	var discriminator struct {
+		Discriminator string `json:"kind"`
+	}
+	err := json.Unmarshal(t.union, &discriminator)
+	return discriminator.Discriminator, err
+}
+
+func (t ConfirmableOperationResult) ValueByDiscriminator() (interface{}, error) {
+	discriminator, err := t.Discriminator()
+	if err != nil {
+		return nil, err
+	}
+	switch discriminator {
+	case "confirmation_required":
+		return t.AsConfirmationRequiredResult()
+	case "rejected":
+		return t.AsOperationRejectedResult()
+	case "visibility_changed":
+		return t.AsVisibilityChangedResult()
+	default:
+		return nil, errors.New("unknown discriminator value: " + discriminator)
+	}
+}
+
+func (t ConfirmableOperationResult) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ConfirmableOperationResult) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -621,6 +944,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// ConfirmOperationWithBody request with any body
+	ConfirmOperationWithBody(ctx context.Context, params *ConfirmOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ConfirmOperation(ctx context.Context, params *ConfirmOperationParams, body ConfirmOperationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// TransformImageWithBody request with any body
 	TransformImageWithBody(ctx context.Context, params *TransformImageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -664,6 +992,11 @@ type ClientInterface interface {
 	// PresignObject request
 	PresignObject(ctx context.Context, bucketName BucketName, params *PresignObjectParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// SetStorageObjectVisibilityWithBody request with any body
+	SetStorageObjectVisibilityWithBody(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	SetStorageObjectVisibility(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, body SetStorageObjectVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetClerkUser request
 	GetClerkUser(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -697,6 +1030,30 @@ type ClientInterface interface {
 	RenderMdWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	RenderMd(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) ConfirmOperationWithBody(ctx context.Context, params *ConfirmOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewConfirmOperationRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ConfirmOperation(ctx context.Context, params *ConfirmOperationParams, body ConfirmOperationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewConfirmOperationRequest(c.Server, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) TransformImageWithBody(ctx context.Context, params *TransformImageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -891,6 +1248,30 @@ func (c *Client) PresignObject(ctx context.Context, bucketName BucketName, param
 	return c.Client.Do(req)
 }
 
+func (c *Client) SetStorageObjectVisibilityWithBody(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetStorageObjectVisibilityRequestWithBody(c.Server, bucketName, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SetStorageObjectVisibility(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, body SetStorageObjectVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetStorageObjectVisibilityRequest(c.Server, bucketName, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetClerkUser(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetClerkUserRequest(c.Server, userId)
 	if err != nil {
@@ -1033,6 +1414,59 @@ func (c *Client) RenderMd(ctx context.Context, body RenderMdJSONRequestBody, req
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewConfirmOperationRequest calls the generic ConfirmOperation builder with application/json body
+func NewConfirmOperationRequest(server string, params *ConfirmOperationParams, body ConfirmOperationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewConfirmOperationRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewConfirmOperationRequestWithBody generates requests for ConfirmOperation with any type of body
+func NewConfirmOperationRequestWithBody(server string, params *ConfirmOperationParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/confirmations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
 }
 
 // NewTransformImageRequest calls the generic TransformImage builder with application/json body
@@ -1724,6 +2158,66 @@ func NewPresignObjectRequest(server string, bucketName BucketName, params *Presi
 	return req, nil
 }
 
+// NewSetStorageObjectVisibilityRequest calls the generic SetStorageObjectVisibility builder with application/json body
+func NewSetStorageObjectVisibilityRequest(server string, bucketName BucketName, params *SetStorageObjectVisibilityParams, body SetStorageObjectVisibilityJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewSetStorageObjectVisibilityRequestWithBody(server, bucketName, params, "application/json", bodyReader)
+}
+
+// NewSetStorageObjectVisibilityRequestWithBody generates requests for SetStorageObjectVisibility with any type of body
+func NewSetStorageObjectVisibilityRequestWithBody(server string, bucketName BucketName, params *SetStorageObjectVisibilityParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "bucketName", bucketName, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/storage/buckets/%s/objects/visibility", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewGetClerkUserRequest generates requests for GetClerkUser
 func NewGetClerkUserRequest(server string, userId ClerkUserId) (*http.Request, error) {
 	var err error
@@ -2199,6 +2693,11 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// ConfirmOperationWithBodyWithResponse request with any body
+	ConfirmOperationWithBodyWithResponse(ctx context.Context, params *ConfirmOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ConfirmOperationResponse, error)
+
+	ConfirmOperationWithResponse(ctx context.Context, params *ConfirmOperationParams, body ConfirmOperationJSONRequestBody, reqEditors ...RequestEditorFn) (*ConfirmOperationResponse, error)
+
 	// TransformImageWithBodyWithResponse request with any body
 	TransformImageWithBodyWithResponse(ctx context.Context, params *TransformImageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TransformImageResponse, error)
 
@@ -2242,6 +2741,11 @@ type ClientWithResponsesInterface interface {
 	// PresignObjectWithResponse request
 	PresignObjectWithResponse(ctx context.Context, bucketName BucketName, params *PresignObjectParams, reqEditors ...RequestEditorFn) (*PresignObjectResponse, error)
 
+	// SetStorageObjectVisibilityWithBodyWithResponse request with any body
+	SetStorageObjectVisibilityWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetStorageObjectVisibilityResponse, error)
+
+	SetStorageObjectVisibilityWithResponse(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, body SetStorageObjectVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetStorageObjectVisibilityResponse, error)
+
 	// GetClerkUserWithResponse request
 	GetClerkUserWithResponse(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*GetClerkUserResponse, error)
 
@@ -2275,6 +2779,40 @@ type ClientWithResponsesInterface interface {
 	RenderMdWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
 
 	RenderMdWithResponse(ctx context.Context, body RenderMdJSONRequestBody, reqEditors ...RequestEditorFn) (*RenderMdResponse, error)
+}
+
+type ConfirmOperationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *JobAccepted
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON409      *OperationRejected
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r ConfirmOperationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ConfirmOperationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ConfirmOperationResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
 }
 
 type TransformImageResponse struct {
@@ -2651,6 +3189,41 @@ func (r PresignObjectResponse) ContentType() string {
 	return ""
 }
 
+type SetStorageObjectVisibilityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *JobAccepted
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON409      *OperationRejected
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r SetStorageObjectVisibilityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetStorageObjectVisibilityResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SetStorageObjectVisibilityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetClerkUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2980,6 +3553,23 @@ func (r RenderMdResponse) ContentType() string {
 	return ""
 }
 
+// ConfirmOperationWithBodyWithResponse request with arbitrary body returning *ConfirmOperationResponse
+func (c *ClientWithResponses) ConfirmOperationWithBodyWithResponse(ctx context.Context, params *ConfirmOperationParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ConfirmOperationResponse, error) {
+	rsp, err := c.ConfirmOperationWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseConfirmOperationResponse(rsp)
+}
+
+func (c *ClientWithResponses) ConfirmOperationWithResponse(ctx context.Context, params *ConfirmOperationParams, body ConfirmOperationJSONRequestBody, reqEditors ...RequestEditorFn) (*ConfirmOperationResponse, error) {
+	rsp, err := c.ConfirmOperation(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseConfirmOperationResponse(rsp)
+}
+
 // TransformImageWithBodyWithResponse request with arbitrary body returning *TransformImageResponse
 func (c *ClientWithResponses) TransformImageWithBodyWithResponse(ctx context.Context, params *TransformImageParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TransformImageResponse, error) {
 	rsp, err := c.TransformImageWithBody(ctx, params, contentType, body, reqEditors...)
@@ -3119,6 +3709,23 @@ func (c *ClientWithResponses) PresignObjectWithResponse(ctx context.Context, buc
 	return ParsePresignObjectResponse(rsp)
 }
 
+// SetStorageObjectVisibilityWithBodyWithResponse request with arbitrary body returning *SetStorageObjectVisibilityResponse
+func (c *ClientWithResponses) SetStorageObjectVisibilityWithBodyWithResponse(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SetStorageObjectVisibilityResponse, error) {
+	rsp, err := c.SetStorageObjectVisibilityWithBody(ctx, bucketName, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetStorageObjectVisibilityResponse(rsp)
+}
+
+func (c *ClientWithResponses) SetStorageObjectVisibilityWithResponse(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, body SetStorageObjectVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetStorageObjectVisibilityResponse, error) {
+	rsp, err := c.SetStorageObjectVisibility(ctx, bucketName, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetStorageObjectVisibilityResponse(rsp)
+}
+
 // GetClerkUserWithResponse request returning *GetClerkUserResponse
 func (c *ClientWithResponses) GetClerkUserWithResponse(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*GetClerkUserResponse, error) {
 	rsp, err := c.GetClerkUser(ctx, userId, reqEditors...)
@@ -3223,6 +3830,60 @@ func (c *ClientWithResponses) RenderMdWithResponse(ctx context.Context, body Ren
 		return nil, err
 	}
 	return ParseRenderMdResponse(rsp)
+}
+
+// ParseConfirmOperationResponse parses an HTTP response from a ConfirmOperationWithResponse call
+func ParseConfirmOperationResponse(rsp *http.Response) (*ConfirmOperationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ConfirmOperationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest OperationRejected
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseTransformImageResponse parses an HTTP response from a TransformImageWithResponse call
@@ -3819,6 +4480,67 @@ func ParsePresignObjectResponse(rsp *http.Response) (*PresignObjectResponse, err
 	return response, nil
 }
 
+// ParseSetStorageObjectVisibilityResponse parses an HTTP response from a SetStorageObjectVisibilityWithResponse call
+func ParseSetStorageObjectVisibilityResponse(rsp *http.Response) (*SetStorageObjectVisibilityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetStorageObjectVisibilityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest OperationRejected
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetClerkUserResponse parses an HTTP response from a GetClerkUserWithResponse call
 func ParseGetClerkUserResponse(rsp *http.Response) (*GetClerkUserResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -4269,6 +4991,9 @@ func ParseRenderMdResponse(rsp *http.Response) (*RenderMdResponse, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Confirm a previously issued confirmation challenge
+	// (POST /api/confirmations)
+	ConfirmOperation(w http.ResponseWriter, r *http.Request, params ConfirmOperationParams)
 	// Queue a typed media preview
 	// (POST /api/images/transform)
 	TransformImage(w http.ResponseWriter, r *http.Request, params TransformImageParams)
@@ -4302,6 +5027,9 @@ type ServerInterface interface {
 	// Prepare an upload and return a presigned PUT URL
 	// (POST /api/storage/buckets/{bucketName}/objects/presign)
 	PresignObject(w http.ResponseWriter, r *http.Request, bucketName BucketName, params PresignObjectParams)
+	// Make an owned object private, or begin the make-public confirmation
+	// (POST /api/storage/buckets/{bucketName}/objects/visibility)
+	SetStorageObjectVisibility(w http.ResponseWriter, r *http.Request, bucketName BucketName, params SetStorageObjectVisibilityParams)
 	// Get a Clerk user profile
 	// (GET /api/users/get/{userId})
 	GetClerkUser(w http.ResponseWriter, r *http.Request, userId ClerkUserId)
@@ -4342,6 +5070,57 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// ConfirmOperation operation middleware
+func (siw *ServerInterfaceWrapper) ConfirmOperation(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ConfirmOperationParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ConfirmOperation(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // TransformImage operation middleware
 func (siw *ServerInterfaceWrapper) TransformImage(w http.ResponseWriter, r *http.Request) {
@@ -4992,6 +5771,66 @@ func (siw *ServerInterfaceWrapper) PresignObject(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// SetStorageObjectVisibility operation middleware
+func (siw *ServerInterfaceWrapper) SetStorageObjectVisibility(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "bucketName" -------------
+	var bucketName BucketName
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bucketName", mux.Vars(r)["bucketName"], &bucketName, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "bucketName", Err: err})
+		return
+	}
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SetStorageObjectVisibilityParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetStorageObjectVisibility(w, r, bucketName, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetClerkUser operation middleware
 func (siw *ServerInterfaceWrapper) GetClerkUser(w http.ResponseWriter, r *http.Request) {
 
@@ -5541,6 +6380,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.HandleFunc(options.BaseURL+"/api/confirmations", wrapper.ConfirmOperation).Methods(http.MethodPost)
+
 	r.HandleFunc(options.BaseURL+"/api/images/transform", wrapper.TransformImage).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/jobs/{jobId}", wrapper.GetJob).Methods(http.MethodGet)
@@ -5562,6 +6403,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/object", wrapper.DeleteSingleObject).Methods(http.MethodDelete)
 
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/presign", wrapper.PresignObject).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/visibility", wrapper.SetStorageObjectVisibility).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/users/get/{userId}", wrapper.GetClerkUser).Methods(http.MethodGet)
 
@@ -5598,7 +6441,88 @@ type JobAcceptedJSONResponse JobReceipt
 
 type NotFoundJSONResponse ErrorMessage
 
+type OperationRejectedJSONResponse OperationRejectedResult
+
 type UnauthorizedJSONResponse ErrorMessage
+
+type ConfirmOperationRequestObject struct {
+	Params ConfirmOperationParams
+	Body   *ConfirmOperationJSONRequestBody
+}
+
+type ConfirmOperationResponseObject interface {
+	VisitConfirmOperationResponse(w http.ResponseWriter) error
+}
+
+type ConfirmOperation202JSONResponse struct{ JobAcceptedJSONResponse }
+
+func (response ConfirmOperation202JSONResponse) VisitConfirmOperationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmOperation400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ConfirmOperation400JSONResponse) VisitConfirmOperationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmOperation401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ConfirmOperation401JSONResponse) VisitConfirmOperationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmOperation409JSONResponse struct{ OperationRejectedJSONResponse }
+
+func (response ConfirmOperation409JSONResponse) VisitConfirmOperationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ConfirmOperation500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ConfirmOperation500JSONResponse) VisitConfirmOperationResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
 
 type TransformImageRequestObject struct {
 	Params TransformImageParams
@@ -6479,6 +7403,100 @@ func (response PresignObject500JSONResponse) VisitPresignObjectResponse(w http.R
 	return err
 }
 
+type SetStorageObjectVisibilityRequestObject struct {
+	BucketName BucketName `json:"bucketName"`
+	Params     SetStorageObjectVisibilityParams
+	Body       *SetStorageObjectVisibilityJSONRequestBody
+}
+
+type SetStorageObjectVisibilityResponseObject interface {
+	VisitSetStorageObjectVisibilityResponse(w http.ResponseWriter) error
+}
+
+type SetStorageObjectVisibility202JSONResponse struct{ JobAcceptedJSONResponse }
+
+func (response SetStorageObjectVisibility202JSONResponse) VisitSetStorageObjectVisibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStorageObjectVisibility400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response SetStorageObjectVisibility400JSONResponse) VisitSetStorageObjectVisibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStorageObjectVisibility401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response SetStorageObjectVisibility401JSONResponse) VisitSetStorageObjectVisibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStorageObjectVisibility403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response SetStorageObjectVisibility403JSONResponse) VisitSetStorageObjectVisibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStorageObjectVisibility409JSONResponse struct{ OperationRejectedJSONResponse }
+
+func (response SetStorageObjectVisibility409JSONResponse) VisitSetStorageObjectVisibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetStorageObjectVisibility500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response SetStorageObjectVisibility500JSONResponse) VisitSetStorageObjectVisibilityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetClerkUserRequestObject struct {
 	UserId ClerkUserId `json:"userId"`
 }
@@ -7131,6 +8149,9 @@ func (response RenderMd400Response) VisitRenderMdResponse(w http.ResponseWriter)
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
+	// Confirm a previously issued confirmation challenge
+	// (POST /api/confirmations)
+	ConfirmOperation(ctx context.Context, request ConfirmOperationRequestObject) (ConfirmOperationResponseObject, error)
 	// Queue a typed media preview
 	// (POST /api/images/transform)
 	TransformImage(ctx context.Context, request TransformImageRequestObject) (TransformImageResponseObject, error)
@@ -7164,6 +8185,9 @@ type StrictServerInterface interface {
 	// Prepare an upload and return a presigned PUT URL
 	// (POST /api/storage/buckets/{bucketName}/objects/presign)
 	PresignObject(ctx context.Context, request PresignObjectRequestObject) (PresignObjectResponseObject, error)
+	// Make an owned object private, or begin the make-public confirmation
+	// (POST /api/storage/buckets/{bucketName}/objects/visibility)
+	SetStorageObjectVisibility(ctx context.Context, request SetStorageObjectVisibilityRequestObject) (SetStorageObjectVisibilityResponseObject, error)
 	// Get a Clerk user profile
 	// (GET /api/users/get/{userId})
 	GetClerkUser(ctx context.Context, request GetClerkUserRequestObject) (GetClerkUserResponseObject, error)
@@ -7223,6 +8247,39 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
+}
+
+// ConfirmOperation operation middleware
+func (sh *strictHandler) ConfirmOperation(w http.ResponseWriter, r *http.Request, params ConfirmOperationParams) {
+	var request ConfirmOperationRequestObject
+
+	request.Params = params
+
+	var body ConfirmOperationJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ConfirmOperation(ctx, request.(ConfirmOperationRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ConfirmOperation")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ConfirmOperationResponseObject); ok {
+		if err := validResponse.VisitConfirmOperationResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
 }
 
 // TransformImage operation middleware
@@ -7554,6 +8611,40 @@ func (sh *strictHandler) PresignObject(w http.ResponseWriter, r *http.Request, b
 	}
 }
 
+// SetStorageObjectVisibility operation middleware
+func (sh *strictHandler) SetStorageObjectVisibility(w http.ResponseWriter, r *http.Request, bucketName BucketName, params SetStorageObjectVisibilityParams) {
+	var request SetStorageObjectVisibilityRequestObject
+
+	request.BucketName = bucketName
+	request.Params = params
+
+	var body SetStorageObjectVisibilityJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.SetStorageObjectVisibility(ctx, request.(SetStorageObjectVisibilityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetStorageObjectVisibility")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetStorageObjectVisibilityResponseObject); ok {
+		if err := validResponse.VisitSetStorageObjectVisibilityResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetClerkUser operation middleware
 func (sh *strictHandler) GetClerkUser(w http.ResponseWriter, r *http.Request, userId ClerkUserId) {
 	var request GetClerkUserRequestObject
@@ -7864,56 +8955,71 @@ func (sh *strictHandler) RenderMd(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"UrXq8r8BAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

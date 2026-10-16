@@ -39,6 +39,12 @@ var functions = map[string]functionSpec{
 	"get_d_storage_object_by_key":   {args: []string{"p_s3_object_key"}},
 	"authorize_d_storage_object":    {args: []string{"p_requested_user_id", "p_requested_permission", "p_requested_storage_object_id"}, kind: returnsScalar, cast: map[string]string{"p_requested_permission": "public.d_storage_objects_permission"}},
 	"notify_ig_posts_view_for_post": {args: []string{"p_post_id"}, kind: returnsVoid},
+
+	// Confirmable storage visibility. These return tagged jsonb, so they are
+	// scalars; domain rejections are values, not errors.
+	"begin_d_storage_make_public":   {args: []string{"p_storage_object_id", "p_expected_revision", "p_request_id"}, kind: returnsScalar},
+	"make_d_storage_object_private": {args: []string{"p_storage_object_id", "p_expected_revision", "p_request_id"}, kind: returnsScalar},
+	"confirm_app_operation":         {args: []string{"p_challenge_id", "p_operation_kind", "p_target_type", "p_target_id", "p_expected_revision", "p_proof", "p_request_id"}, kind: returnsScalar},
 }
 
 var relations = map[string]string{

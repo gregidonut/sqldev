@@ -9,6 +9,7 @@ import { Cell, Column, Row, Table, TableBody, TableHeader } from "../Table.tsx";
 import { StorageActionMenu } from "./StorageActionMenu.tsx";
 import { formatTimestamp, VisibilityBadge } from "./storageDisplay.tsx";
 import type { StorageRow } from "../queryOptions/types.ts";
+import type { StorageVisibilityMenu } from "./visibility/visibilityAction.ts";
 import { cy } from "@/utils/cy";
 
 export type StorageColumnId =
@@ -117,6 +118,7 @@ interface StorageTableProps {
     onCopy: (item: StorageRow) => void;
     onDelete: (item: StorageRow) => void;
     onError: (message: string) => void;
+    visibility?: StorageVisibilityMenu;
 }
 
 export function StorageTable(props: StorageTableProps): React.ReactNode {
@@ -134,6 +136,7 @@ export function StorageTable(props: StorageTableProps): React.ReactNode {
         onCopy,
         onDelete,
         onError,
+        visibility,
     } = props;
 
     const columns = useMemo(() => {
@@ -235,6 +238,7 @@ export function StorageTable(props: StorageTableProps): React.ReactNode {
                                                 onCopy={onCopy}
                                                 onDelete={onDelete}
                                                 onError={onError}
+                                                visibility={visibility}
                                             />
                                         </Cell>
                                     );
