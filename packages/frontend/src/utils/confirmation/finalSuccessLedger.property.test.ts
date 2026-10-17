@@ -66,6 +66,7 @@ describe("final success ledger", () => {
                         case "protocolError":
                             initiation.result.resolve({
                                 kind: "protocol_error",
+                                scope: "payload",
                             });
                             break;
                         case "failure":
@@ -137,7 +138,9 @@ describe("final success ledger", () => {
         await flush();
         expect(rig.store.getState().state.tag).toBe("closed");
 
-        rig.store.getState().open(openRequest({ label: "second.pdf" }));
+        rig.store
+            .getState()
+            .open(openRequest({ focus: { origin: null, rowKey: "row-2" } }));
         expect(rig.adapter.finalSuccesses).toHaveLength(1);
         expect(rig.store.getState().state.tag).toBe("requesting");
     });

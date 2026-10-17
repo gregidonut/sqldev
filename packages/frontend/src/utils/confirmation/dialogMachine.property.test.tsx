@@ -94,7 +94,7 @@ const EXPECTED: Record<Tag, Expected> = {
         busy: false,
     },
     requesting: {
-        makePublic: "disabled",
+        makePublic: "absent",
         refresh: "absent",
         cancel: "enabled",
         cancelLabel: "Cancel",
@@ -315,7 +315,10 @@ async function drive(actions: readonly Action[]) {
                                   reason: "stale_revision",
                               } as const)
                             : action === "initProtocol"
-                              ? ({ kind: "protocol_error" } as const)
+                              ? ({
+                                    kind: "protocol_error",
+                                    scope: "payload",
+                                } as const)
                               : null;
                 const deferred = rig.adapter.initiations[index]!.result;
                 await act(async () => {

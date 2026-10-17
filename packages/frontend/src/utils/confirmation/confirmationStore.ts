@@ -55,7 +55,6 @@ export type OpenRequest = {
     readonly operationKind: OperationKind;
     readonly target: ConfirmationTarget;
     readonly expectedRevision: ConfigRevision;
-    readonly label: string;
     readonly focus: DialogSubject["focus"];
 };
 
@@ -65,6 +64,11 @@ export interface ConfirmationStore {
     readonly open: (request: OpenRequest) => boolean;
     readonly confirm: () => void;
     readonly refresh: () => void;
+    /**
+     * From the safe copy fallback only: asks the backend for a new confirmation
+     * with a fresh idempotency key. Nothing from the bad result is reused.
+     */
+    readonly freshInitiation: () => void;
     readonly close: () => void;
     /** Registers an operation; returns a function that removes it. */
     readonly registerAdapter: <Kind extends OperationKind>(
@@ -314,7 +318,6 @@ export function createConfirmationStore(deps: ConfirmationDeps = realDeps) {
                     operationKind: request.operationKind,
                     target: request.target,
                     expectedRevision: request.expectedRevision,
-                    label: request.label,
                     focus: request.focus,
                 };
                 dispatch({ type: "OPEN", subject });
@@ -337,6 +340,12 @@ export function createConfirmationStore(deps: ConfirmationDeps = realDeps) {
                 const token = currentToken(get().state);
                 if (token !== null) {
                     dispatch({ type: "REFRESH", token });
+                }
+            },
+            freshInitiation() {
+                const token = currentToken(get().state);
+                if (token !== null) {
+                    dispatch({ type: "FRESH_INITIATION", token });
                 }
             },
             close() {

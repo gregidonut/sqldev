@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 
@@ -204,10 +206,11 @@ func decodeOperationResult(raw json.RawMessage) (any, error) {
 	case string(ConfirmationRequired):
 		var v ConfirmationRequiredResult
 		if err := decodeStrict(raw, &v); err != nil ||
-			!hasExactKeys(raw, "kind", "operationKind", "target", "expectedRevision", "challengeId", "proof", "expiresAt") ||
-			!hasExactKeys(nestedObject(raw, "target"), "type", "id") || v.Kind != ConfirmationRequired ||
-			v.OperationKind != StorageVisibilityMakePublic || !validTarget(v.Target) || !validRevision(v.ExpectedRevision) ||
-			v.ChallengeId == uuid.Nil || !proofPattern.MatchString(v.Proof) || v.ExpiresAt.IsZero() {
+			!hasExactKeys(raw, "kind", "registryId", "operationKind", "target", "expectedRevision", "challengeId", "proof", "expiresAt", "dialogCopy") ||
+			!hasExactKeys(nestedObject(raw, "target"), "type", "id") ||
+			!hasExactKeys(nestedObject(raw, "dialogCopy"), "title", "description", "confirmLabel") || v.Kind != ConfirmationRequired ||
+			!validRegistryID(v.RegistryId) || v.OperationKind != StorageVisibilityMakePublic || !validTarget(v.Target) || !validRevision(v.ExpectedRevision) ||
+			v.ChallengeId == uuid.Nil || !proofPattern.MatchString(v.Proof) || v.ExpiresAt.IsZero() || !validCopy(v.DialogCopy) {
 			return nil, errMalformedResult
 		}
 		return v, nil
@@ -228,6 +231,59 @@ func decodeOperationResult(raw json.RawMessage) (any, error) {
 	default:
 		return nil, errMalformedResult
 	}
+}
+
+// minRegistryID is the first value of the registry identifier sequence.
+const minRegistryID = 1000
+
+// Dialog copy bounds, in Unicode code points.
+const (
+	maxCopyTitle        = 200
+	maxCopyDescription  = 2000
+	maxCopyConfirmLabel = 80
+)
+
+// validRegistryID accepts only the canonical base-10 text of a signed 64-bit
+// integer of at least 1000. Re-formatting rejects signs, leading zeros,
+// whitespace and any other non-canonical spelling; ParseInt rejects overflow
+// and decimals.
+func validRegistryID(s string) bool {
+	id, err := strconv.ParseInt(s, 10, 64)
+	return err == nil && id >= minRegistryID && strconv.FormatInt(id, 10) == s
+}
+
+// isBlankRune reports whether r is in the shared blank class, the Unicode
+// White_Space property. It is spelled out because strings.TrimSpace uses a
+// different set than the PostgreSQL helper and JavaScript's trim().
+func isBlankRune(r rune) bool {
+	switch {
+	case r >= '\t' && r <= '\r', r == ' ', r == 0x85, r == 0xA0, r == 0x1680,
+		r >= 0x2000 && r <= 0x200A, r == 0x2028, r == 0x2029, r == 0x202F, r == 0x205F, r == 0x3000:
+		return true
+	default:
+		return false
+	}
+}
+
+// validCopyField reports whether s is valid UTF-8, holds at least one rune
+// outside the blank class, and has at most limit code points. It never alters s.
+func validCopyField(s string, limit int) bool {
+	if !utf8.ValidString(s) || utf8.RuneCountInString(s) > limit {
+		return false
+	}
+	for _, r := range s {
+		if !isBlankRune(r) {
+			return true
+		}
+	}
+	return false
+}
+
+// validCopy checks the three dialog copy fields against the contract bounds.
+func validCopy(c AuthoritativeDialogCopy) bool {
+	return validCopyField(c.Title, maxCopyTitle) &&
+		validCopyField(c.Description, maxCopyDescription) &&
+		validCopyField(c.ConfirmLabel, maxCopyConfirmLabel)
 }
 
 func knownRejection(reason RejectionReason) bool {

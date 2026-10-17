@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -15,10 +16,11 @@ import (
 )
 
 const (
-	vizObject    = "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11"
-	vizChallenge = "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90"
-	vizProof     = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde"
-	vizJobID     = "11111111-1111-4111-8111-111111111111"
+	vizObject     = "5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11"
+	vizChallenge  = "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90"
+	vizProof      = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde"
+	vizJobID      = "11111111-1111-4111-8111-111111111111"
+	vizRegistryID = "1000"
 )
 
 func visibilityBody(visibility string, revision int) string {
@@ -186,7 +188,13 @@ const (
 	confirmJobPayload = `{"operationKind":"storage.visibility.make_public","targetType":"storage_object","targetId":"` + vizObject +
 		`","expectedRevision":3,"challengeId":"` + vizChallenge + `","proof":"` + vizProof + `"}`
 
-	requiredResult = `{"kind":"confirmation_required","operationKind":"storage.visibility.make_public","target":{"type":"storage_object","id":"` +
+	// requiredResult is the current nine-key confirmation_required result: the
+	// registry identity and the PostgreSQL-resolved dialog copy travel with it.
+	requiredResult = `{"kind":"confirmation_required","registryId":"` + vizRegistryID + `","operationKind":"storage.visibility.make_public","target":{"type":"storage_object","id":"` +
+		vizObject + `"},"expectedRevision":3,"challengeId":"` + vizChallenge + `","proof":"` + vizProof + `","expiresAt":"2026-10-14T15:50:20.944454Z",` +
+		`"dialogCopy":{"title":"Make “report.pdf” public?","description":"Anyone signed in to SQLDev will be able to see and download this file. The stored file stays private in S3.","confirmLabel":"Make public"}}`
+	// legacyRequiredResult is the seven-key result recorded before the copy existed.
+	legacyRequiredResult = `{"kind":"confirmation_required","operationKind":"storage.visibility.make_public","target":{"type":"storage_object","id":"` +
 		vizObject + `"},"expectedRevision":3,"challengeId":"` + vizChallenge + `","proof":"` + vizProof + `","expiresAt":"2026-10-14T15:50:20.944454Z"}`
 	changedResult  = `{"kind":"visibility_changed","target":{"type":"storage_object","id":"` + vizObject + `"},"visibility":"public","revision":4}`
 	rejectedResult = `{"kind":"rejected","reason":"stale_revision"}`
@@ -386,4 +394,134 @@ func TestFingerprintDoesNotSurviveAsPartOfAnyUpdate(t *testing.T) {
 	if got.Fingerprint != "fp" {
 		t.Fatalf("fingerprint = %q after an update, want it unchanged", got.Fingerprint)
 	}
+}
+
+// completeInitiation submits a make-public request, runs it through Execute and
+// Finish with the given database result, and returns the server and receipt.
+func completeInitiation(t *testing.T, result string) (*Server, *queue.Memory, JobReceipt) {
+	t.Helper()
+	db := &fakeDB{rpcByName: map[string]json.RawMessage{"begin_d_storage_make_public": json.RawMessage(result)}}
+	messages := queue.NewMemory()
+	server := testServer(t, db, &fakeObjects{}, messages)
+	submitted := requestWithKey(t, server, visibilityPathFor, testJWT, "initiate-key", visibilityBody("public", 3))
+	if submitted.Code != http.StatusAccepted {
+		t.Fatalf("status = %d body %s", submitted.Code, submitted.Body.String())
+	}
+	var receipt JobReceipt
+	if err := json.Unmarshal(submitted.Body.Bytes(), &receipt); err != nil {
+		t.Fatal(err)
+	}
+	envelope, err := jobs.Parse(messages.Sent()[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	outcome, err := server.Execute(jobContext(), envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := server.Finish(jobContext(), envelope, outcome); err != nil {
+		t.Fatal(err)
+	}
+	return server, messages, receipt
+}
+
+func polledResult(t *testing.T, server *Server, receipt JobReceipt) (JobState, any) {
+	t.Helper()
+	polled := requestJSON(t, server, http.MethodGet, "/api/jobs/"+receipt.JobId.String(), testJWT, nil)
+	var state JobState
+	if err := json.Unmarshal(polled.Body.Bytes(), &state); err != nil {
+		t.Fatalf("%s: %v", polled.Body.String(), err)
+	}
+	return state, state.Result
+}
+
+// A completed initiation records the nine-key body, an identical replay returns
+// the same job without queueing again, and polling still shows every field of
+// the recorded result, including the registry identity and the dialog copy.
+func TestIdenticalReplayCarriesTheRecordedNineKeyResult(t *testing.T) {
+	server, messages, receipt := completeInitiation(t, requiredResult)
+	state, first := polledResult(t, server, receipt)
+	if state.Status != JobStateStatusCompleted {
+		t.Fatalf("status = %s", state.Status)
+	}
+	var want any
+	if err := json.Unmarshal([]byte(requiredResult), &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(first, want) {
+		t.Fatalf("recorded result = %#v, want %#v", first, want)
+	}
+
+	sent := len(messages.Sent())
+	replay := requestWithKey(t, server, visibilityPathFor, testJWT, "initiate-key", visibilityBody("public", 3))
+	var again JobReceipt
+	if replay.Code != http.StatusAccepted || json.Unmarshal(replay.Body.Bytes(), &again) != nil || again.JobId != receipt.JobId {
+		t.Fatalf("replay = %d %s", replay.Code, replay.Body.String())
+	}
+	if len(messages.Sent()) != sent+1 {
+		t.Fatalf("a replay should enqueue exactly one redelivery, sent %d -> %d", sent, len(messages.Sent()))
+	}
+	_, second := polledResult(t, server, receipt)
+	if !reflect.DeepEqual(second, want) {
+		t.Fatalf("result after the replay = %#v, want the recorded %#v", second, want)
+	}
+}
+
+// The status record keeps the Body inline, because the worst-case body (200 and
+// 2000 code points, every one escaped as \u003c) stays far below the spill limit.
+func TestWorstCaseConfirmationBodyStaysInlineAndRoundTrips(t *testing.T) {
+	copy := AuthoritativeDialogCopy{
+		Title:        strings.Repeat("<", maxCopyTitle),
+		Description:  strings.Repeat("&", maxCopyDescription),
+		ConfirmLabel: strings.Repeat(">", maxCopyConfirmLabel),
+	}
+	raw := mustJSON(t, map[string]any{
+		"kind": "confirmation_required", "registryId": "9223372036854775807", "operationKind": "storage.visibility.make_public",
+		"target":           map[string]any{"type": "storage_object", "id": vizObject},
+		"expectedRevision": 3, "challengeId": vizChallenge, "proof": vizProof, "expiresAt": "2026-10-14T15:50:20Z",
+		"dialogCopy": copy,
+	})
+	server, _, receipt := completeInitiation(t, string(raw))
+	record, err := server.Jobs.Get(jobContext(), receipt.JobId.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.ResultKey != "" || len(record.Body) == 0 || len(record.Body) >= resultInlineLimit {
+		t.Fatalf("body = %d bytes, result key %q: want a non-empty inline body under %d", len(record.Body), record.ResultKey, resultInlineLimit)
+	}
+	decoded, err := decodeOperationResult(record.Body)
+	if err != nil {
+		t.Fatalf("the recorded body no longer decodes: %v", err)
+	}
+	if got := decoded.(ConfirmationRequiredResult).DialogCopy; got != copy {
+		t.Fatalf("copy changed in storage: %+v", got)
+	}
+}
+
+// A seven-key result recorded by an older database function is not forwarded:
+// the job fails with a generic message that carries no part of the payload.
+func TestALegacyDatabaseResultFailsClosedWithoutLeakingThePayload(t *testing.T) {
+	db := &fakeDB{rpcByName: map[string]json.RawMessage{"begin_d_storage_make_public": json.RawMessage(legacyRequiredResult)}}
+	server := testServer(t, db, &fakeObjects{}, queue.NewMemory())
+	outcome, err := server.Execute(jobContext(), executeEnvelope(jobs.KindSetStorageVisibility, setPublicPayload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome.HTTPStatus != http.StatusInternalServerError || len(outcome.Body) != 0 || outcome.Message != "internal error" {
+		t.Fatalf("outcome = %+v", outcome)
+	}
+	for _, secret := range []string{vizProof, vizChallenge, vizObject, "report.pdf"} {
+		if strings.Contains(outcome.Message, secret) {
+			t.Fatalf("the failure message leaks %q", secret)
+		}
+	}
+}
+
+func mustJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	raw, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }

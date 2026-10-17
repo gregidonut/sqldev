@@ -158,12 +158,18 @@ describe("making an object private", () => {
         // The registered adapter will answer the initiation with a challenge.
         responder = () => ({
             kind: "confirmation_required",
+            registryId: "1000",
             operationKind: "storage.visibility.make_public",
             target: { type: "storage_object", id: OBJECT },
             expectedRevision: 4,
             challengeId: "0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90",
             proof: "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde",
             expiresAt: new Date(Date.now() + 300_000).toISOString(),
+            dialogCopy: {
+                title: "Make “report.pdf” public?",
+                description: "Anyone signed in will be able to see this file.",
+                confirmLabel: "Make public",
+            },
         });
         act(() => view.result.current.invoke(row(false), null));
         expect(useConfirmationStore.getState().state.tag).toBe("requesting");

@@ -16,6 +16,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -70,9 +72,10 @@ type rig struct {
 }
 
 type owner struct {
-	Sub    string
-	UserID uuid.UUID
-	Object uuid.UUID
+	Sub      string
+	UserID   uuid.UUID
+	Object   uuid.UUID
+	FileName string
 }
 
 func newRig(t *testing.T) *rig {
@@ -96,7 +99,11 @@ func newRig(t *testing.T) *rig {
 	t.Cleanup(pool.Close)
 
 	schema := "dbos_it_" + hex.EncodeToString([]byte(uuid.NewString()[:6]))
-	dbosCtx, err := dbos.NewContext(ctx, dbos.Config{AppName: "sqldev-it", SystemDBPool: pool, DatabaseSchema: schema})
+	dbosCtx, err := dbos.NewContext(ctx, dbos.Config{
+		AppName: "sqldev-it", SystemDBPool: pool, DatabaseSchema: schema,
+		// The DBOS logger is tee'd into rigLogs so a test can inspect what was logged.
+		Logger: slog.New(slog.NewTextHandler(io.MultiWriter(os.Stdout, &rigLogs), &slog.HandlerOptions{Level: slog.LevelInfo})),
+	})
 	if err != nil {
 		t.Fatalf("dbos context: %v", err)
 	}
@@ -147,8 +154,15 @@ func (r *rig) expireJobRecords() {
 
 func (r *rig) newOwner() owner {
 	r.t.Helper()
+	return r.newOwnerNamed("it-" + uuid.NewString() + ".txt")
+}
+
+// newOwnerNamed creates an owner whose private object has one committed data row
+// named fileName: make-public initiation resolves the dialog title from that name.
+func (r *rig) newOwnerNamed(fileName string) owner {
+	r.t.Helper()
 	ctx := context.Background()
-	o := owner{Sub: rigPrefix + strings.ReplaceAll(uuid.NewString(), "-", "")}
+	o := owner{Sub: rigPrefix + strings.ReplaceAll(uuid.NewString(), "-", ""), FileName: fileName}
 	must := func(err error) {
 		if err != nil {
 			r.t.Fatal(err)
@@ -160,7 +174,18 @@ func (r *rig) newOwner() owner {
 	must(err)
 	_, err = r.pool.Exec(ctx, `INSERT INTO public.d_storage_object_config (storage_object_id, public, config_version) VALUES ($1, FALSE, 1)`, o.Object)
 	must(err)
+	// The data row goes in with triggers off for this one transaction: its insert
+	// trigger posts to the notify URL, which is unreachable locally.
+	r.withoutTriggers(func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `INSERT INTO public.d_storage_object_data (storage_object_id, file_name, s3_object_key) VALUES ($1, $2, $3)`,
+			o.Object, o.FileName, "it/"+o.Object.String())
+		return err
+	})
 	r.t.Cleanup(func() {
+		r.withoutTriggers(func(tx pgx.Tx) error {
+			_, err := tx.Exec(context.Background(), `DELETE FROM public.d_storage_object_data WHERE storage_object_id = $1`, o.Object)
+			return err
+		})
 		// Children first: the config table has no cascade, and deleting the user
 		// would cascade away the roles and leave the object orphaned.
 		type step struct {
@@ -180,6 +205,30 @@ func (r *rig) newOwner() owner {
 		}
 	})
 	return o
+}
+
+// withoutTriggers runs fn in one transaction with triggers and foreign-key
+// triggers skipped (session_replication_role = replica), then commits.
+func (r *rig) withoutTriggers(fn func(tx pgx.Tx) error) {
+	r.t.Helper()
+	ctx := context.Background()
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		r.t.Error(err)
+		return
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, `SET LOCAL session_replication_role = replica`); err != nil {
+		r.t.Error(err)
+		return
+	}
+	if err := fn(tx); err != nil {
+		r.t.Error(err)
+		return
+	}
+	if err := tx.Commit(ctx); err != nil {
+		r.t.Error(err)
+	}
 }
 
 func (r *rig) post(o owner, path, key, body string) *httptest.ResponseRecorder {

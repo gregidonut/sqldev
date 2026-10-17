@@ -18,6 +18,12 @@ export type OperationToken = Brand<string, "OperationToken">;
 /** One key per submitted job. Initiation, refresh and confirmation each get their own. */
 export type IdempotencyKey = Brand<string, "IdempotencyKey">;
 export type ConfigRevision = Brand<number, "ConfigRevision">;
+/**
+ * Canonical base-10 text of a PostgreSQL BIGINT of at least 1000. Text, not a
+ * number, because JavaScript numbers are exact only to 2^53-1. Presentation and
+ * protocol identity only; it carries no authorization weight.
+ */
+export type RegistryIdentifier = Brand<string, "RegistryIdentifier">;
 
 export const OPERATION_KINDS = ["storage.visibility.make_public"] as const;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
@@ -38,9 +44,20 @@ export const REJECTION_REASONS = [
 ] as const;
 export type RejectionReason = (typeof REJECTION_REASONS)[number];
 
+/**
+ * The text of the dialog, produced by PostgreSQL and validated by the decoder.
+ * Plain text: the host renders it as text children, never as HTML.
+ */
+export type AuthoritativeDialogCopy = {
+    readonly title: string;
+    readonly description: string;
+    readonly confirmLabel: string;
+};
+
 /** The first job finished and issued a challenge. Nothing on the backend is waiting. */
 export type ConfirmationRequired = {
     readonly kind: "confirmation_required";
+    readonly registryId: RegistryIdentifier;
     readonly operationKind: OperationKind;
     readonly target: ConfirmationTarget;
     readonly expectedRevision: ConfigRevision;
@@ -48,6 +65,7 @@ export type ConfirmationRequired = {
     readonly proof: ChallengeProof;
     /** Epoch milliseconds, parsed from the server's ISO timestamp. */
     readonly expiresAt: number;
+    readonly dialogCopy: AuthoritativeDialogCopy;
 };
 
 export type Visibility = "public" | "private";
@@ -67,8 +85,20 @@ export type OperationRejected = {
 export type ConfirmableResult =
     ConfirmationRequired | VisibilityChanged | OperationRejected;
 
-/** Frontend-only: the payload broke the contract (Req 13.6). It never enables a confirm. */
-export type ProtocolError = { readonly kind: "protocol_error" };
+/**
+ * Frontend-only: the payload broke the contract. It never enables a confirm.
+ * `scope: "copy"` means a `confirmation_required` payload that is not a valid
+ * current result (`legacy` = the pre-feature seven-key shape, `malformed` =
+ * anything else); `scope: "payload"` is every other contract break.
+ */
+export type ProtocolError =
+    | { readonly kind: "protocol_error"; readonly scope: "payload" }
+    | {
+          readonly kind: "protocol_error";
+          readonly scope: "copy";
+          readonly shape: "legacy" | "malformed";
+      };
+export type CopyProtocolError = Extract<ProtocolError, { scope: "copy" }>;
 
 /** What the person asked to change, captured when the menu item was invoked. */
 export type DialogSubject<Kind extends OperationKind = OperationKind> = {
@@ -76,8 +106,6 @@ export type DialogSubject<Kind extends OperationKind = OperationKind> = {
     readonly operationKind: Kind;
     readonly target: ConfirmationTarget;
     readonly expectedRevision: ConfigRevision;
-    /** File name used in the dialog copy. */
-    readonly label: string;
     readonly focus: {
         readonly origin: HTMLElement | null;
         /** React Aria row key (`data-key`) used to find the row again. */
@@ -87,6 +115,26 @@ export type DialogSubject<Kind extends OperationKind = OperationKind> = {
 
 export type DialogRejectionCause =
     RejectionReason | "protocol_error" | "request_failed";
+
+/**
+ * `domain-or-request`: a rejection or request failure shown as fixed generic text.
+ * `safe-copy-fallback`: a legacy or malformed confirmation_required result; only
+ * Close and a fresh initiation are offered, and nothing from the bad result is kept
+ * except its classification.
+ */
+export type RejectedState =
+    | {
+          readonly tag: "rejected";
+          readonly mode: "domain-or-request";
+          readonly subject: DialogSubject;
+          readonly cause: DialogRejectionCause;
+      }
+    | {
+          readonly tag: "rejected";
+          readonly mode: "safe-copy-fallback";
+          readonly subject: DialogSubject;
+          readonly error: CopyProtocolError;
+      };
 
 /** Exactly one state; each variant carries only the data valid for it (Req 10.10). */
 export type DialogState =
@@ -105,15 +153,19 @@ export type DialogState =
     | {
           readonly tag: "expired";
           readonly subject: DialogSubject;
+          /** The previously validated identity and copy; the challenge and proof are not kept. */
+          readonly registryId: RegistryIdentifier;
+          readonly copy: AuthoritativeDialogCopy;
           /** True after a refresh failed for a transient reason; the person can retry. */
           readonly refreshFailed: boolean;
       }
-    | { readonly tag: "refreshing"; readonly subject: DialogSubject }
     | {
-          readonly tag: "rejected";
+          readonly tag: "refreshing";
           readonly subject: DialogSubject;
-          readonly cause: DialogRejectionCause;
-      };
+          readonly registryId: RegistryIdentifier;
+          readonly copy: AuthoritativeDialogCopy;
+      }
+    | RejectedState;
 
 export type DialogTag = DialogState["tag"];
 
@@ -138,6 +190,8 @@ export type DialogEvent =
       }
     | { readonly type: "CONFIRM_FAILED"; readonly token: OperationToken }
     | { readonly type: "REFRESH"; readonly token: OperationToken }
+    /** Only from `rejected` / `safe-copy-fallback`: start over with a new idempotency key. */
+    | { readonly type: "FRESH_INITIATION"; readonly token: OperationToken }
     | { readonly type: "CLOSE"; readonly token: OperationToken };
 
 export type DialogEffect =
@@ -162,15 +216,13 @@ export type DialogEffect =
     | { readonly type: "cancelExpiry" }
     | { readonly type: "restoreFocus"; readonly focus: DialogSubject["focus"] };
 
-/** One operation the dialog host can confirm. The host never imports storage code. */
+/**
+ * One operation the dialog host can confirm: transport and success handling only.
+ * The dialog text comes from the validated result (`ConfirmationRequired.dialogCopy`),
+ * never from the adapter. The host never imports storage code.
+ */
 export interface ConfirmableOperationAdapter<Kind extends OperationKind> {
     readonly kind: Kind;
-    /** Plain text only; the host renders it as text, never as HTML. */
-    copy(subject: DialogSubject<Kind>): {
-        readonly title: string;
-        readonly description: string;
-        readonly confirmLabel: string;
-    };
     initiate(
         subject: DialogSubject<Kind>,
         key: IdempotencyKey,
@@ -212,6 +264,11 @@ export function toStorageObjectId(value: string): StorageObjectId | null {
 
 export function toConfigRevision(value: unknown): ConfigRevision | null {
     return isConfigRevision(value) ? value : null;
+}
+
+/** Brands text the decoder has already proven canonical and in range. */
+export function asRegistryIdentifier(value: string): RegistryIdentifier {
+    return value as RegistryIdentifier;
 }
 
 export function asOperationToken(value: string): OperationToken {

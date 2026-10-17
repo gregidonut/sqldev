@@ -89,7 +89,6 @@ export function useStorageVisibility({
                     operationKind: "storage.visibility.make_public",
                     target,
                     expectedRevision: revision,
-                    label: row.file_name,
                     focus: { origin: trigger, rowKey: row.s3_object_key },
                 });
                 return;

@@ -42,6 +42,10 @@ declare module "sst" {
       "type": "sst.aws.ApiGatewayV1"
       "url": string
     }
+    "HostConfigBucket": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
     "JobDeadLetter": {
       "type": "sst.aws.Queue"
       "url": string
@@ -90,6 +94,10 @@ declare module "sst" {
     "SupabaseUrl": {
       "type": "sst.sst.Secret"
       "value": string
+    }
+    "sqldevSupabaseVPC": {
+      "bastion": string
+      "type": "sst.aws.Vpc"
     }
   }
 }

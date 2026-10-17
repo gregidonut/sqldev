@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/dbos-inc/dbos-transact-golang/dbos"
@@ -112,5 +113,48 @@ func TestReconcileNeverRunsTheMutationAgain(t *testing.T) {
 		if err != nil || !settled {
 			t.Errorf("state %s: settled = %v err = %v", state, settled, err)
 		}
+	}
+}
+
+// A recreated status record is settled with the nine-key confirmation_required
+// body exactly as DBOS recorded it. The outcome survives the JSON encoding DBOS
+// applies to a workflow result, and reconcileOutcome hands it back unchanged.
+func TestReconcileReturnsTheRecordedNineKeyConfirmationBodyUnchanged(t *testing.T) {
+	body := json.RawMessage(`{"kind":"confirmation_required","registryId":"1000","operationKind":"storage.visibility.make_public",` +
+		`"target":{"type":"storage_object","id":"5b1f7f0e-0c4a-4f7e-9a63-2f4f6a1d9b11"},"expectedRevision":3,` +
+		`"challengeId":"0d7e1c52-8b0e-4a53-b3a4-1c9d2a6f7e90","proof":"AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_AbCde",` +
+		`"expiresAt":"2026-10-14T15:50:20.944454Z","dialogCopy":{"title":"Make \u201creport.pdf\u201d public?",` +
+		`"description":"Anyone signed in to SQLDev will be able to see and download this file. The stored file stays private in S3.",` +
+		`"confirmLabel":"Make public"}}`)
+	recorded := jobs.Outcome{HTTPStatus: 200, Body: body, Fingerprint: "fp"}
+
+	encoded, err := json.Marshal(recorded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored jobs.Outcome
+	if err := json.Unmarshal(encoded, &stored); err != nil {
+		t.Fatal(err)
+	}
+
+	got, settled, err := reconcileOutcome(confirmEnvelope("fp"), pendingRecord, true, "job-1",
+		workflowStates(map[string]dbos.WorkflowStatusType{"job-1": dbos.WorkflowStatusSuccess}), recordedOutcome(stored, nil))
+	if err != nil || !settled {
+		t.Fatalf("settled = %v err = %v", settled, err)
+	}
+	var want, have any
+	if err := json.Unmarshal(body, &want); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(got.Body, &have); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(want, have) {
+		t.Fatalf("the recorded body changed:\n  recorded %s\n  returned %s", body, got.Body)
+	}
+	var typed api.ConfirmationRequiredResult
+	if err := json.Unmarshal(got.Body, &typed); err != nil || typed.RegistryId != "1000" ||
+		typed.DialogCopy.ConfirmLabel != "Make public" || typed.DialogCopy.Title != "Make “report.pdf” public?" {
+		t.Fatalf("the replayed body lost its registry identity or copy: %+v (%v)", typed, err)
 	}
 }

@@ -103,8 +103,17 @@ SELECT jsonb_build_object(
                'revision', p_revision);
 $$;
 
--- Job 1 of make-public: validate, issue a five-minute challenge, return it.
--- Appends no config row. The job finishes immediately; nothing waits.
+-- Job 1 of make-public: validate, issue a five-minute challenge, return it together
+-- with the registry identity and the authoritative dialog copy. Appends no config
+-- row. The job finishes immediately; nothing waits.
+--
+-- After the replay defense and the guard (which holds the d_storage_objects
+-- parent-row lock and has proven owner, private and revision), the label is read
+-- from committed data, the challenge is issued, and the copy is resolved from that
+-- same registry row. A guard failure returns before any registry or label read, so
+-- an unauthorized caller learns nothing about the copy. Any RAISE after issuance
+-- aborts the whole RPC transaction, which rolls back the supersession and the new
+-- challenge: no confirmation_required is returned and no config row is appended.
 CREATE FUNCTION public.begin_d_storage_make_public(
     p_storage_object_id UUID,
     p_expected_revision BIGINT,
@@ -121,6 +130,8 @@ DECLARE
     v_outcome   TEXT;
     v_existing  public.app_confirmation_challenges%ROWTYPE;
     v_challenge RECORD;
+    v_label     TEXT;
+    v_copy      JSONB;
 BEGIN
     IF p_storage_object_id IS NULL OR p_expected_revision IS NULL OR p_request_id IS NULL THEN
         RAISE EXCEPTION 'begin_d_storage_make_public: arguments are required';
@@ -152,19 +163,37 @@ BEGIN
         RETURN public.d_storage_visibility_rejected(v_outcome);
     END IF;
 
+    -- Newest committed name. The views order by created_at alone; the tiebreaker
+    -- makes two rows with an equal transaction timestamp deterministic. No data
+    -- row (an upload that never committed) leaves the label NULL, which the
+    -- resolver rejects.
+    SELECT sod.file_name
+    INTO v_label
+    FROM public.d_storage_object_data AS sod
+    WHERE sod.storage_object_id = p_storage_object_id
+    ORDER BY sod.created_at DESC, sod.storage_object_data_id DESC
+    LIMIT 1;
+
     SELECT *
     INTO v_challenge
     FROM public.app_confirmation_issue(v_actor, 'storage.visibility.make_public', p_storage_object_id,
                                        p_expected_revision, p_request_id);
 
+    v_copy := public.app_confirmation_resolve_dialog_copy(v_challenge.dialog_title_template,
+                                                          v_challenge.dialog_description,
+                                                          v_challenge.dialog_confirm_label,
+                                                          v_label);
+
     RETURN jsonb_build_object(
             'kind', 'confirmation_required',
+            'registryId', v_challenge.registry_id::TEXT,
             'operationKind', 'storage.visibility.make_public',
             'target', jsonb_build_object('type', 'storage_object', 'id', p_storage_object_id),
             'expectedRevision', p_expected_revision,
             'challengeId', v_challenge.challenge_id,
             'proof', v_challenge.proof,
-            'expiresAt', to_char(v_challenge.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+            'expiresAt', to_char(v_challenge.expires_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+            'dialogCopy', v_copy);
 END;
 $$;
 

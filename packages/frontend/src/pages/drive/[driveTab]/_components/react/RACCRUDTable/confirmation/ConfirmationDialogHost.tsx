@@ -2,7 +2,12 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import type { StoreApi, UseBoundStore } from "zustand";
 import { useStore } from "zustand";
 import { cy } from "@/utils/cy";
-import { controlsFor, statusText } from "@/utils/confirmation/dialogMachine";
+import {
+    controlsFor,
+    presentationFor,
+    registryIdFor,
+    statusText,
+} from "@/utils/confirmation/dialogMachine";
 import {
     useConfirmationStore,
     type ConfirmationStore,
@@ -17,15 +22,10 @@ export type ConfirmationDialogHostProps = {
     store?: UseBoundStore<StoreApi<ConfirmationStore>>;
 };
 
-const FALLBACK_COPY = {
-    title: "Confirm this change?",
-    description: "The server asked you to confirm this change.",
-    confirmLabel: "Confirm",
-};
-
 /**
  * The one confirmation dialog for every backend-requested confirmation. It knows
- * nothing about storage: the text comes from the operation's adapter and every
+ * nothing about storage: the text is the validated copy PostgreSQL returned (via
+ * `presentationFor(state)`), rendered only as React text children, and every
  * control comes from `controlsFor(state)`.
  *
  * While it is open and waiting for the person, the backend is holding nothing.
@@ -41,7 +41,7 @@ export function ConfirmationDialogHost({
     const confirm = useStore(store, (s) => s.confirm);
     const refresh = useStore(store, (s) => s.refresh);
     const close = useStore(store, (s) => s.close);
-    const adapterFor = useStore(store, (s) => s.adapterFor);
+    const freshInitiation = useStore(store, (s) => s.freshInitiation);
 
     // Keep rendering the last open state while the modal plays its exit animation,
     // after the store has already moved to "closed".
@@ -84,13 +84,8 @@ export function ConfirmationDialogHost({
 
     const isOpen = state.tag !== "closed";
     const controls = controlsFor(view);
-    const subject = view.tag === "closed" ? null : view.subject;
-    const adapter =
-        subject === null ? undefined : adapterFor(subject.operationKind);
-    const copy =
-        subject !== null && adapter !== undefined
-            ? adapter.copy(subject)
-            : FALLBACK_COPY;
+    const presentation = presentationFor(view);
+    const registryId = registryIdFor(view);
     const status = statusText(view);
 
     return (
@@ -106,7 +101,11 @@ export function ConfirmationDialogHost({
         >
             <Dialog
                 role="alertdialog"
-                aria-describedby={descriptionId}
+                aria-describedby={
+                    presentation.description === null
+                        ? undefined
+                        : descriptionId
+                }
                 // Dialog does not forward aria-busy, so set it through `render`.
                 render={(domProps) => (
                     <section {...domProps} aria-busy={controls.busy} />
@@ -118,11 +117,24 @@ export function ConfirmationDialogHost({
                         slot="title"
                         className="text-xl font-semibold leading-6 my-0 text-drac-foreground"
                     >
-                        {copy.title}
+                        {presentation.title}
                     </Heading>
-                    <p id={descriptionId} className="mt-3 text-drac-comment">
-                        {copy.description}
-                    </p>
+                    {presentation.description !== null && (
+                        <p
+                            id={descriptionId}
+                            className="mt-3 text-drac-comment"
+                        >
+                            {presentation.description}
+                        </p>
+                    )}
+                    {registryId !== null && (
+                        <p
+                            className="mt-2 text-xs text-drac-comment"
+                            {...cy("confirm_dialog_registry_id")}
+                        >
+                            Operation ID: {registryId}
+                        </p>
+                    )}
                     <p
                         role="status"
                         aria-live="polite"
@@ -145,18 +157,29 @@ export function ConfirmationDialogHost({
                                 {controls.cancel.label}
                             </Button>
                         )}
-                        {controls.confirm.visible && (
+                        {controls.confirm.visible &&
+                            presentation.confirmLabel !== null && (
+                                <Button
+                                    variant="primary"
+                                    isDisabled={
+                                        !controls.confirm.enabled &&
+                                        view.tag !== "confirming"
+                                    }
+                                    isPending={view.tag === "confirming"}
+                                    onPress={confirm}
+                                    {...cy("confirm_dialog_confirm")}
+                                >
+                                    {presentation.confirmLabel}
+                                </Button>
+                            )}
+                        {controls.freshInitiation.visible && (
                             <Button
                                 variant="primary"
-                                isDisabled={
-                                    !controls.confirm.enabled &&
-                                    view.tag !== "confirming"
-                                }
-                                isPending={view.tag === "confirming"}
-                                onPress={confirm}
-                                {...cy("confirm_dialog_confirm")}
+                                isDisabled={!controls.freshInitiation.enabled}
+                                onPress={freshInitiation}
+                                {...cy("confirm_dialog_fresh_initiation")}
                             >
-                                {copy.confirmLabel}
+                                Get new confirmation
                             </Button>
                         )}
                         {controls.refresh.visible && (

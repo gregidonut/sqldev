@@ -11,6 +11,7 @@ import {
 import {
     asIdempotencyKey,
     asOperationToken,
+    asRegistryIdentifier,
     type ChallengeId,
     type ChallengeProof,
     type ConfigRevision,
@@ -113,14 +114,6 @@ export function createFakeAdapter(): FakeAdapter {
         initiations,
         confirmations,
         finalSuccesses,
-        copy(subject) {
-            return {
-                title: `Make “${subject.label}” public?`,
-                description:
-                    "Anyone signed in will be able to see and download this file.",
-                confirmLabel: "Make public",
-            };
-        },
         initiate(subject, key, signal) {
             const call = {
                 token: subject.token,
@@ -159,12 +152,19 @@ export function challenge(
     const { expiresInMs, ...rest } = over;
     return {
         kind: "confirmation_required",
+        registryId: asRegistryIdentifier("1000"),
         operationKind: "storage.visibility.make_public",
         target: { type: "storage_object", id: OBJECT_ID },
         expectedRevision: REVISION,
         challengeId: `c-${Math.random().toString(16).slice(2)}` as ChallengeId,
         proof: PROOF,
         expiresAt: START + (expiresInMs ?? 5 * 60_000),
+        dialogCopy: {
+            title: "Make “report.pdf” public?",
+            description:
+                "Anyone signed in will be able to see and download this file.",
+            confirmLabel: "Make public",
+        },
         ...rest,
     };
 }
@@ -186,7 +186,6 @@ export function openRequest(over: Partial<OpenRequest> = {}): OpenRequest {
         operationKind: "storage.visibility.make_public",
         target: { type: "storage_object", id: OBJECT_ID },
         expectedRevision: REVISION,
-        label: "report.pdf",
         focus: { origin: null, rowKey: "row-1" },
         ...over,
     };
@@ -229,8 +228,10 @@ export function createRig(): Rig {
 }
 
 /** Lets pending promise callbacks run. */
-export async function flush(): Promise<void> {
-    for (let i = 0; i < 5; i += 1) {
-        await Promise.resolve();
-    }
+export function flush(): Promise<void> {
+    // Five chained microtask ticks, built without awaiting inside a loop.
+    return Array.from({ length: 5 }).reduce<Promise<void>>(
+        (chain) => chain.then(() => undefined),
+        Promise.resolve(),
+    );
 }

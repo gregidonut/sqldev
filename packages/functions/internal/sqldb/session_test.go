@@ -73,6 +73,7 @@ func TestInternalConfirmationFunctionsAreNotCallable(t *testing.T) {
 		"app_confirmation_issue", "app_confirmation_classify", "app_confirmation_consume", "app_confirmation_lock",
 		"app_confirmation_cleanup", "app_confirmation_proof_verifier", "d_storage_visibility_guard",
 		"d_storage_apply_make_public", "d_storage_object_current_config",
+		"app_confirmation_resolve_dialog_copy", "app_confirmation_text_is_blank",
 	} {
 		if _, _, err := functionSQL(name, map[string]any{}); err == nil {
 			t.Errorf("%s must not be reachable through the job worker", name)

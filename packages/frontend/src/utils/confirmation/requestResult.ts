@@ -23,7 +23,7 @@ export async function toConfirmableResult(
             if (decoded.kind === "rejected") {
                 return decoded;
             }
-            return { kind: "protocol_error" };
+            return { kind: "protocol_error", scope: "payload" };
         }
         throw error;
     }

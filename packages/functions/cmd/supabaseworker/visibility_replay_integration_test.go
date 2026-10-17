@@ -156,17 +156,26 @@ func (r *rig) idleInTransaction() int {
 	return n
 }
 
+// workflowState returns the DBOS state of the job's workflow. The job record turns
+// completed inside the workflow body, so DBOS can still show it as running for a
+// moment afterwards; wait for it to finish rather than reading that gap.
 func (r *rig) workflowState(jobID string) dbos.WorkflowStatusType {
 	r.t.Helper()
-	handle, err := dbos.RetrieveWorkflow[jobs.Outcome](r.proc.dbos, jobID)
-	if err != nil {
-		r.t.Fatalf("workflow %s: %v", jobID, err)
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		handle, err := dbos.RetrieveWorkflow[jobs.Outcome](r.proc.dbos, jobID)
+		if err != nil {
+			r.t.Fatalf("workflow %s: %v", jobID, err)
+		}
+		current, err := handle.GetStatus()
+		if err != nil {
+			r.t.Fatal(err)
+		}
+		if workflowFinished(current.Status) || time.Now().After(deadline) {
+			return current.Status
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
-	current, err := handle.GetStatus()
-	if err != nil {
-		r.t.Fatal(err)
-	}
-	return current.Status
 }
 
 func TestInitiationHoldsNothingWhileTheUserDecides(t *testing.T) {

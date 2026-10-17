@@ -5,6 +5,10 @@
 // Each test uploads its own uniquely named file and does not depend on another
 // test. Waiting on the user happens only in the browser, so the checks here also
 // confirm the dialog opens, stays open, and recovers without any job pending.
+//
+// Updated 2026-10-17 (Cypress Author): the dialog text is no longer written in the
+// frontend. PostgreSQL returns it with the confirmation_required result
+// (`registryId` + `dialogCopy`), and the dialog renders exactly that, as text.
 
 import { isRecord } from "../tasks/narrow.js";
 import { jobIdFrom, waitForJob } from "../support/jobs.js";
@@ -43,8 +47,75 @@ function bucketFromListRequest(): Cypress.Chainable<string> {
 }
 
 function badgeFor(fileName: string) {
-  return rowFor(fileName).contains(/^(Public|Private)$/);
+  // A change is a queued job followed by a list refetch, which can take longer
+  // than Cypress's 4 s default on a busy local stack.
+  return rowFor(fileName).contains(/^(Public|Private)$/, { timeout: 20000 });
 }
+
+type DialogCopy = { title: string; description: string; confirmLabel: string };
+
+const CURRENT_KEYS = [
+  "challengeId",
+  "dialogCopy",
+  "expectedRevision",
+  "expiresAt",
+  "kind",
+  "operationKind",
+  "proof",
+  "registryId",
+  "target",
+];
+
+/** The three strings PostgreSQL returned in a current confirmation_required result. */
+function dialogCopyOf(result: unknown): DialogCopy {
+  if (!isRecord(result) || result.kind !== "confirmation_required" || !isRecord(result.dialogCopy)) {
+    throw new Error("result is not a current confirmation_required result");
+  }
+  const { title, description, confirmLabel } = result.dialogCopy;
+  if (typeof title !== "string" || typeof description !== "string" || typeof confirmLabel !== "string") {
+    throw new Error("dialogCopy is missing a string field");
+  }
+  return { title, description, confirmLabel };
+}
+
+/** What the database says about a make-public result for one file. */
+function expectCurrentResultFor(result: unknown, fileName: string) {
+  expect(Object.keys(isRecord(result) ? result : {}).sort(), "nine current keys").to.deep.eq(CURRENT_KEYS);
+  const copy = dialogCopyOf(result);
+  // The registry's approved copy, resolved with the committed file name.
+  expect(copy.title).to.eq(`Make “${fileName}” public?`);
+  expect(copy.confirmLabel).to.eq("Make public");
+  expect(copy.description.trim()).to.not.eq("");
+  // The identifier is a canonical decimal string, never a JSON number.
+  expect(isRecord(result) && result.registryId).to.match(/^[1-9][0-9]{3,18}$/);
+  return copy;
+}
+
+/**
+ * The open dialog shows exactly this copy: one heading that names the dialog, one
+ * description it is described by, and one primary button. Compared as text, so
+ * markup in the copy would show up as extra characters or elements.
+ */
+function expectDialogShows(copy: DialogCopy) {
+  dialog().find("h2[slot='title']").should("have.length", 1).and("have.text", copy.title);
+  dialog()
+    .find("p[id]")
+    .should("have.length", 1)
+    .and("have.text", copy.description)
+    .invoke("attr", "id")
+    .then((id) => {
+      dialog().should("have.attr", "aria-describedby", id);
+    });
+  dialog()
+    .find("h2[slot='title']")
+    .invoke("attr", "id")
+    .then((id) => {
+      dialog().should("have.attr", "aria-labelledby", id);
+    });
+  cy.get("[data-cy='confirm_dialog_confirm']").should("have.text", copy.confirmLabel);
+}
+
+const JOB_STATUS = { method: "GET", url: /\/api\/jobs\/[^/?]+$/ } as const;
 
 describe("drive object visibility", () => {
   beforeEach(() => {
@@ -70,9 +141,16 @@ describe("drive object visibility", () => {
         return waitForJob(jobIdFrom(interception.response?.body)).then((job) => {
           expect(job.status).to.eq("completed");
           expect(isRecord(job.result) && job.result.kind).to.eq("confirmation_required");
+          return expectCurrentResultFor(job.result, file.fileName);
         });
+      }).then((copy) => {
+        // The dialog shows what the database returned: title, description, and the
+        // primary button's label, with nothing added by the frontend.
+        cy.get("[data-cy='confirm_dialog_confirm']", { timeout: 20000 }).should("be.enabled");
+        expectDialogShows(copy);
+        // The registry id PostgreSQL returned is shown beside the message.
+        cy.get("[data-cy='confirm_dialog_registry_id']").invoke("text").should("match", /^Operation ID: [1-9][0-9]{3,18}$/);
       });
-      cy.get("[data-cy='confirm_dialog_confirm']", { timeout: 20000 }).should("be.enabled");
       cy.get("[data-cy='confirm_dialog']", { timeout: 20000 }).should("have.attr", "aria-busy", "false");
       // Nothing was committed yet.
       badgeFor(file.fileName).should("have.text", "Private");
@@ -141,18 +219,32 @@ describe("drive object visibility", () => {
       // Shorten only the first challenge the page receives. The server's own
       // five-minute rule is covered by the database tests; this checks what the
       // dialog does when the time arrives, without a five-minute wait.
-      let shortened = false;
-      cy.intercept({ method: "GET", url: /\/api\/jobs\/[^/?]+$/ }, (req) => {
+      //
+      // The refreshed result is also given different copy (same registry
+      // identity), because the registry text itself is unchanged and a refresh
+      // that kept any old string would otherwise be invisible. Presentation has no
+      // authority, so the server still accepts the confirmation.
+      const challenges: string[] = [];
+      const copies: DialogCopy[] = [];
+      const refreshedCopy: DialogCopy = {
+        title: `Make “${file.fileName}” public? (refreshed)`,
+        description: "Refreshed description that replaces the first one as a whole.",
+        confirmLabel: "Publish now",
+      };
+      cy.intercept(JOB_STATUS, (req) => {
         req.continue((res) => {
           const body: unknown = res.body;
-          if (
-            !shortened &&
-            isRecord(body) &&
-            isRecord(body.result) &&
-            body.result.kind === "confirmation_required"
-          ) {
-            shortened = true;
-            body.result.expiresAt = new Date(Date.now() + 2500).toISOString();
+          if (isRecord(body) && isRecord(body.result) && body.result.kind === "confirmation_required") {
+            if (typeof body.result.challengeId === "string") {
+              challenges.push(body.result.challengeId);
+            }
+            if (challenges.length === 1) {
+              copies.push(dialogCopyOf(body.result));
+              body.result.expiresAt = new Date(Date.now() + 2500).toISOString();
+            } else if (challenges.length === 2) {
+              body.result.dialogCopy = { ...refreshedCopy };
+              copies.push(refreshedCopy);
+            }
           }
         });
       });
@@ -160,20 +252,141 @@ describe("drive object visibility", () => {
 
       startMakePublic(file.fileName);
       cy.get("[data-cy='confirm_dialog_confirm']", { timeout: 20000 }).should("be.enabled");
+      cy.then(() => {
+        expect(copies[0]?.title).to.eq(`Make “${file.fileName}” public?`);
+        expectDialogShows(copies[0] as DialogCopy);
+      });
 
       // It expires by itself, stays open, and says so without any countdown.
       cy.get("[data-cy='confirm_dialog_refresh']", { timeout: 15000 }).should("be.enabled");
       cy.get("[data-cy='confirm_dialog_confirm']").should("be.disabled");
       cy.get("[data-cy='confirm_dialog_status']").should("contain.text", "expired");
       dialog().invoke("text").should("not.match", /\b\d+\s*(seconds?|secs?|minutes?|mins?)\b|remaining|countdown|time left/i);
+      // The last validated copy stays on screen while the confirmation is expired.
+      cy.then(() => expectDialogShows(copies[0] as DialogCopy));
 
       cy.get("[data-cy='confirm_dialog_refresh']").click();
       // A second, separate initiation was requested.
       cy.get("@setVisibility.all").should("have.length", 2);
       cy.get("[data-cy='confirm_dialog_confirm']", { timeout: 20000 }).should("be.enabled");
       cy.get("[data-cy='confirm_dialog_refresh']").should("not.exist");
+      // A new challenge arrived, and its copy replaced the old one as a whole.
+      cy.then(() => {
+        expect(challenges).to.have.length(2);
+        expect(challenges[0]).to.not.eq(challenges[1]);
+        expectDialogShows(refreshedCopy);
+        const first = copies[0] as DialogCopy;
+        dialog()
+          .invoke("text")
+          .should("not.contain", first.description)
+          .and("not.contain", first.confirmLabel);
+      });
 
       cy.get("[data-cy='confirm_dialog_confirm']").click();
+      cy.get("[data-cy='confirm_dialog']", { timeout: 60000 }).should("not.exist");
+      badgeFor(file.fileName).should("have.text", "Public");
+    });
+  });
+
+  it("title contains markup-like characters → shown literally in the dialog, nothing is interpreted, and confirming still works", () => {
+    cy.uniqueRecordName("vis-markup").then((marker) => {
+      // No "/" (it separates object key segments) and no quote or backslash (the
+      // row selector wraps the name in a quoted attribute), but tags, an event
+      // handler, an ampersand entity, and an apostrophe that would all be
+      // interpreted if the name were treated as HTML.
+      const name = `<b>${marker}<img src=x onerror=window.__xss=1>&amp;'s.jpg`;
+      const file = { contents: SMALL_IMAGE, fileName: name };
+      openDrive(0, "mine");
+      uploadThroughDialog(file);
+      cy.intercept({ method: "POST", url: "**/api/confirmations" }).as("confirmOperation");
+      cy.intercept(visibilityRoute).as("setVisibility");
+
+      startMakePublic(file.fileName);
+      cy.wait("@setVisibility").then((interception) => {
+        return waitForJob(jobIdFrom(interception.response?.body)).then((job) => {
+          expect(job.status).to.eq("completed");
+          return expectCurrentResultFor(job.result, file.fileName);
+        });
+      }).then((copy) => {
+        // The committed name reached the title unchanged, characters and all.
+        expect(copy.title).to.eq(`Make “${name}” public?`);
+        cy.get("[data-cy='confirm_dialog_confirm']", { timeout: 20000 }).should("be.enabled");
+        expectDialogShows(copy);
+      });
+
+      // Text content equals the name, and no element was created from it.
+      dialog().find("h2[slot='title']").should("contain.text", name).children().should("have.length", 0);
+      dialog().find("b, img, script, style, a, [onerror]").should("not.exist");
+      dialog().find("p[id]").children().should("have.length", 0);
+      cy.window().then((win) => {
+        expect(Reflect.get(win, "__xss"), "injected handler never ran").to.eq(undefined);
+      });
+
+      cy.get("[data-cy='confirm_dialog_confirm']").click();
+      cy.wait("@confirmOperation", { timeout: 60000 });
+      cy.get("[data-cy='confirm_dialog']", { timeout: 60000 }).should("not.exist");
+      badgeFor(file.fileName).should("have.text", "Public");
+    });
+  });
+
+  it("a recorded legacy result (no registry copy) arrives → safe fallback with only Close and Get new confirmation, and a fresh confirmation can be confirmed", () => {
+    cy.uniqueRecordName("vis-legacy").then((marker) => {
+      const file = namedFixture(SMALL_IMAGE, marker);
+      openDrive(0, "mine");
+      uploadThroughDialog(file);
+      cy.intercept({ method: "POST", url: "**/api/confirmations" }).as("confirmOperation");
+      cy.intercept(visibilityRoute).as("setVisibility");
+
+      // Swap only the first confirmation_required the page receives for the seven
+      // key result a deployment from before the registry copy would have recorded:
+      // every legacy field is valid, `registryId` and `dialogCopy` are absent.
+      let swapped = false;
+      cy.intercept(JOB_STATUS, (req) => {
+        req.continue((res) => {
+          const body: unknown = res.body;
+          if (!swapped && isRecord(body) && isRecord(body.result) && body.result.kind === "confirmation_required") {
+            swapped = true;
+            // Edit the parsed body in place: assigning a new object to `res.body`
+            // is ignored (verified), while changing the parsed object is sent.
+            delete body.result.registryId;
+            delete body.result.dialogCopy;
+            expect(Object.keys(body.result), "seven legacy keys").to.have.length(7);
+          }
+        });
+      });
+
+      startMakePublic(file.fileName);
+      cy.get("[data-cy='confirm_dialog_fresh_initiation']", { timeout: 20000 }).should("be.enabled");
+
+      // Fixed generic text only: no file name, no operation wording.
+      cy.get("[data-cy='confirm_dialog_status']").should("contain.text", "nothing was changed");
+      dialog().should("not.contain.text", file.fileName).and("not.contain.text", "public");
+      // Exactly two controls, Close and Get new confirmation, and no way to confirm.
+      dialog().find("button").should("have.length", 2);
+      cy.get("[data-cy='confirm_dialog_cancel']").should("be.enabled").and("have.text", "Close");
+      cy.get("[data-cy='confirm_dialog_fresh_initiation']").should("have.text", "Get new confirmation");
+      cy.get("[data-cy='confirm_dialog_confirm']").should("not.exist");
+      cy.get("[data-cy='confirm_dialog_refresh']").should("not.exist");
+      cy.get("@confirmOperation.all").should("have.length", 0);
+      badgeFor(file.fileName).should("have.text", "Private");
+
+      // A fresh initiation is a separate request and yields a current dialog.
+      cy.get("[data-cy='confirm_dialog_fresh_initiation']").click();
+      cy.get("@setVisibility.all").should("have.length", 2);
+      cy.get("[data-cy='confirm_dialog_confirm']", { timeout: 20000 }).should("be.enabled");
+      cy.get("[data-cy='confirm_dialog_fresh_initiation']").should("not.exist");
+      cy.get("[data-cy='confirm_dialog_cancel']").should("have.text", "Cancel");
+      // The second job result is untouched, so it is the database's current copy.
+      cy.get("@setVisibility.all").then((all) => {
+        const second = (all as unknown as Array<{ response?: { body?: unknown } }>)[1];
+        return waitForJob(jobIdFrom(second?.response?.body)).then((job) => {
+          const copy = expectCurrentResultFor(job.result, file.fileName);
+          expectDialogShows(copy);
+        });
+      });
+
+      cy.get("[data-cy='confirm_dialog_confirm']").click();
+      cy.wait("@confirmOperation", { timeout: 60000 });
       cy.get("[data-cy='confirm_dialog']", { timeout: 60000 }).should("not.exist");
       badgeFor(file.fileName).should("have.text", "Public");
     });

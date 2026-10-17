@@ -874,14 +874,48 @@ components:
           format: uuid
         proof:
           $ref: "#/components/schemas/ChallengeProof"
+    RegistryIdentifier:
+      type: string
+      minLength: 4
+      maxLength: 19
+      pattern: "^[1-9][0-9]{3,18}$"
+      description: >
+        Canonical base-10 text of a PostgreSQL signed BIGINT between 1000 and
+        9223372036854775807. The pattern is necessary but not sufficient (it admits
+        19-digit values above the maximum); the decoders also enforce the numeric
+        range and canonical form. Text, not a JSON number, so JavaScript clients
+        keep every value exactly.
+    AuthoritativeDialogCopy:
+      type: object
+      additionalProperties: false
+      required: [title, description, confirmLabel]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        confirmLabel:
+          type: string
+          minLength: 1
+          maxLength: 80
+      description: >
+        Plain text. Each field must contain at least one character outside the
+        shared blank class (Unicode White_Space) and is measured in Unicode code
+        points. Clients render it as literal text.
     ConfirmationRequiredResult:
       type: object
       additionalProperties: false
-      required: [kind, operationKind, target, expectedRevision, challengeId, proof, expiresAt]
+      required: [kind, registryId, operationKind, target, expectedRevision, challengeId, proof, expiresAt, dialogCopy]
       properties:
         kind:
           type: string
           enum: [confirmation_required]
+        registryId:
+          $ref: "#/components/schemas/RegistryIdentifier"
         operationKind:
           $ref: "#/components/schemas/OperationKind"
         target:
@@ -896,6 +930,8 @@ components:
         expiresAt:
           type: string
           format: date-time
+        dialogCopy:
+          $ref: "#/components/schemas/AuthoritativeDialogCopy"
     VisibilityChangedResult:
       type: object
       additionalProperties: false
