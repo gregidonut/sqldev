@@ -144,8 +144,20 @@ function uploadThroughDialog(files: readonly Cypress.FileReference[]) {
 }
 
 function openTiles() {
-  cy.get("[data-cy='dStorage_view_options']").click();
-  cy.get("[data-cy='dStorage_view_tiles']").click();
+  // The layout is addressable, so thumbnail cases open tiles directly instead
+  // of going through the view menu. A visit also mounts the grid after the
+  // intercepts above it are registered.
+  cy.location("pathname").then((pathname) => {
+    cy.visit(`${pathname}?view=tiles`);
+  });
+  cy.waitForClerkLoaded();
+  objectsGrid().should(($grid) => {
+    const grid = $grid[0];
+    if (!grid) {
+      throw new Error("tile grid is missing");
+    }
+    expect(getComputedStyle(grid).display, "tile layout").to.eq("grid");
+  });
 }
 
 // React's declarative onPointerEnter / onPointerLeave are synthesized from the

@@ -16,11 +16,11 @@ import { Toolbar } from "../Toolbar.tsx";
 import { Tooltip } from "../Tooltip.tsx";
 import { TOGGLEABLE_STORAGE_COLUMNS } from "./StorageTable.tsx";
 import { UploadForm } from "../forms/UploadForm.tsx";
+import { toStorageView } from "./store/storageTableStore.ts";
 import {
     STORAGE_VIEWS,
-    toStorageView,
     type StorageView,
-} from "./store/storageTableStore.ts";
+} from "@/utils/storage/storageView.ts";
 import { cy } from "@/utils/cy";
 
 const VIEW_ICONS = {
@@ -39,6 +39,7 @@ interface StorageToolbarProps {
     onDeleteSelected: () => void;
     onViewChange: (view: StorageView) => void;
     onVisibleColumnsChange: (selection: Selection) => void;
+    showViewOptions: boolean;
 }
 
 export function StorageToolbar(props: StorageToolbarProps): React.ReactNode {
@@ -53,6 +54,7 @@ export function StorageToolbar(props: StorageToolbarProps): React.ReactNode {
         onDeleteSelected,
         onViewChange,
         onVisibleColumnsChange,
+        showViewOptions,
     } = props;
 
     return (
@@ -129,51 +131,53 @@ export function StorageToolbar(props: StorageToolbarProps): React.ReactNode {
                     </Menu>
                 </MenuTrigger>
 
-                <MenuTrigger>
-                    <TooltipTrigger>
-                        <Button
-                            {...cy("dStorage_view_options")}
-                            aria-label="View options"
-                            variant="secondary"
-                            className="h-9! shrink-0 px-2.5"
+                {showViewOptions && (
+                    <MenuTrigger>
+                        <TooltipTrigger>
+                            <Button
+                                {...cy("dStorage_view_options")}
+                                aria-label="View options"
+                                variant="secondary"
+                                className="h-9! shrink-0 px-2.5"
+                            >
+                                <LayoutGridIcon
+                                    aria-hidden
+                                    className="block h-5 w-5"
+                                />
+                                <span className="hidden sm:inline">
+                                    View options
+                                </span>
+                            </Button>
+                            <Tooltip>View options</Tooltip>
+                        </TooltipTrigger>
+                        <Menu
+                            selectionMode="single"
+                            selectedKeys={[view]}
+                            disallowEmptySelection
+                            onSelectionChange={function (selection) {
+                                const next = toStorageView(selection);
+                                if (next) {
+                                    onViewChange(next);
+                                }
+                            }}
                         >
-                            <LayoutGridIcon
-                                aria-hidden
-                                className="block h-5 w-5"
-                            />
-                            <span className="hidden sm:inline">
-                                View options
-                            </span>
-                        </Button>
-                        <Tooltip>View options</Tooltip>
-                    </TooltipTrigger>
-                    <Menu
-                        selectionMode="single"
-                        selectedKeys={[view]}
-                        disallowEmptySelection
-                        onSelectionChange={function (selection) {
-                            const next = toStorageView(selection);
-                            if (next) {
-                                onViewChange(next);
-                            }
-                        }}
-                    >
-                        {STORAGE_VIEWS.map(function (option) {
-                            const Icon = VIEW_ICONS[option];
-                            return (
-                                <MenuItem
-                                    {...cy(`dStorage_view_${option}`)}
-                                    key={option}
-                                    id={option}
-                                    textValue={viewLabel(option)}
-                                >
-                                    <Icon aria-hidden className="h-4 w-4" />
-                                    {viewLabel(option)}
-                                </MenuItem>
-                            );
-                        })}
-                    </Menu>
-                </MenuTrigger>
+                            {STORAGE_VIEWS.map(function (option) {
+                                const Icon = VIEW_ICONS[option];
+                                return (
+                                    <MenuItem
+                                        {...cy(`dStorage_view_${option}`)}
+                                        key={option}
+                                        id={option}
+                                        textValue={viewLabel(option)}
+                                    >
+                                        <Icon aria-hidden className="h-4 w-4" />
+                                        {viewLabel(option)}
+                                    </MenuItem>
+                                );
+                            })}
+                        </Menu>
+                    </MenuTrigger>
+                )}
             </div>
         </Toolbar>
     );

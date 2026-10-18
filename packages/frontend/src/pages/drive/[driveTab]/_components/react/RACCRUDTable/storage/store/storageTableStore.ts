@@ -11,6 +11,12 @@ import {
     type StorageColumnId,
 } from "../StorageTable.tsx";
 import type { StorageRow } from "../../queryOptions/types.ts";
+import {
+    DEFAULT_STORAGE_VIEW,
+    isStorageView,
+    persistedStorageView,
+    type StorageView,
+} from "@/utils/storage/storageView.ts";
 
 type ToggleableStorageColumnId = Exclude<StorageColumnId, "actions">;
 
@@ -26,10 +32,6 @@ type StorageDialog =
     | { readonly kind: "batch-delete" };
 
 type ActiveStorageDialog = Exclude<StorageDialog, { readonly kind: "closed" }>;
-
-export const STORAGE_VIEWS = ["detailed", "tiles"] as const;
-
-export type StorageView = (typeof STORAGE_VIEWS)[number];
 
 type StorageTablePreferences = {
     readonly visibleColumns: readonly ToggleableStorageColumnId[];
@@ -69,7 +71,7 @@ const DEFAULT_SORT = {
     direction: "descending",
 } as const satisfies StorageSort;
 
-const STORAGE_TABLE_STORAGE_KEY = "sqldev:drive:storage-table";
+export const STORAGE_TABLE_STORAGE_KEY = "sqldev:drive:storage-table";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -144,12 +146,6 @@ function parseSort(value: unknown): StorageSort {
     };
 }
 
-export function isStorageView(value: unknown): value is StorageView {
-    return STORAGE_VIEWS.some(function (view) {
-        return view === value;
-    });
-}
-
 export function toStorageView(selection: Selection): StorageView | undefined {
     if (selection === "all") {
         return undefined;
@@ -182,9 +178,7 @@ function mergePreferences(
         ...currentState,
         visibleColumns: parseVisibleColumns(persistedState.visibleColumns),
         sort: parseSort(persistedState.sort),
-        view: isStorageView(persistedState.view)
-            ? persistedState.view
-            : currentState.view,
+        view: persistedStorageView(persistedState.view),
     };
 }
 
@@ -235,7 +229,7 @@ export const useStorageTableStore = create<StorageTableStore>()(
                 setActionError: function (actionError) {
                     set({ actionError });
                 },
-                view: "detailed",
+                view: DEFAULT_STORAGE_VIEW,
                 setView: function (view) {
                     set({ view });
                 },

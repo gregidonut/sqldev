@@ -18,8 +18,9 @@ import { ConfirmationDialogHost } from "../confirmation/ConfirmationDialogHost.t
 import {
     toStorageSort,
     useStorageTableStore,
-    type StorageView,
 } from "./store/storageTableStore.ts";
+import { useStorageView } from "./useStorageView.ts";
+import type { StorageView } from "@/utils/storage/storageView.ts";
 import { CopyForm } from "../forms/CopyForm.tsx";
 import { toErrorMessage } from "./storageDisplay.tsx";
 import createBatchDeleteMutationOptions from "../queryOptions/createBatchDelete.ts";
@@ -152,7 +153,6 @@ export default function StorageCRUDTable({
         selectedKeys,
         dialog,
         actionError,
-        view,
         setSearch,
         setSort,
         setVisibleColumns,
@@ -161,7 +161,6 @@ export default function StorageCRUDTable({
         openDialog,
         closeDialog,
         setActionError,
-        setView,
     } = useStorageTableStore(
         useShallow(function (state) {
             return {
@@ -171,7 +170,6 @@ export default function StorageCRUDTable({
                 selectedKeys: state.selectedKeys,
                 dialog: state.dialog,
                 actionError: state.actionError,
-                view: state.view,
                 setSearch: state.setSearch,
                 setSort: state.setSort,
                 setVisibleColumns: state.setVisibleColumns,
@@ -180,7 +178,6 @@ export default function StorageCRUDTable({
                 openDialog: state.openDialog,
                 closeDialog: state.closeDialog,
                 setActionError: state.setActionError,
-                setView: state.setView,
             };
         }),
     );
@@ -207,6 +204,8 @@ export default function StorageCRUDTable({
         },
         [sort],
     );
+
+    const storageView = useStorageView(tab);
 
     const visibility = useStorageVisibility({
         tab,
@@ -328,12 +327,13 @@ export default function StorageCRUDTable({
                 canModify={canModify}
                 selectedCount={selectedObjectKeys.length}
                 isDeleting={isDeleting}
-                view={view}
+                view={storageView.view ?? "tiles"}
+                showViewOptions={storageView.showViewOptions}
                 visibleColumns={visibleColumns}
                 bucketName={bucketName}
                 userId={userId}
                 onDeleteSelected={() => openDialog({ kind: "batch-delete" })}
-                onViewChange={setView}
+                onViewChange={storageView.selectView}
                 onVisibleColumnsChange={setVisibleColumns}
             />
 
@@ -352,22 +352,23 @@ export default function StorageCRUDTable({
                 <StatusPanel tone="error">{actionError}</StatusPanel>
             )}
 
-            {renderStorageView(view, {
-                items,
-                visibleColumns,
-                sortDescriptor,
-                onSortChange: handleSortChange,
-                selectedKeys,
-                onSelectionChange: setSelectedKeys,
-                bucketName,
-                userId,
-                canDelete: canModify,
-                emptyMessage: TAB_EMPTY_MESSAGE[tab],
-                onCopy: (item) => openDialog({ kind: "copy", item }),
-                onDelete: (item) => openDialog({ kind: "delete", item }),
-                onError: setActionError,
-                visibility,
-            })}
+            {storageView.view &&
+                renderStorageView(storageView.view, {
+                    items,
+                    visibleColumns,
+                    sortDescriptor,
+                    onSortChange: handleSortChange,
+                    selectedKeys,
+                    onSelectionChange: setSelectedKeys,
+                    bucketName,
+                    userId,
+                    canDelete: canModify,
+                    emptyMessage: TAB_EMPTY_MESSAGE[tab],
+                    onCopy: (item) => openDialog({ kind: "copy", item }),
+                    onDelete: (item) => openDialog({ kind: "delete", item }),
+                    onError: setActionError,
+                    visibility,
+                })}
 
             <ConfirmationDialogHost />
 
