@@ -268,6 +268,18 @@ function createHost(vpc: NonNullable<typeof SupabaseVPC>) {
     size: volumeGb,
     type: "gp3",
     encrypted: true,
+    // These tags are the volume's identity for `sqldev host data-volume replace`.
+    // The instance Name tag alone is not enough: host replacement reattaches this
+    // volume, so the destructive command must prove it is deleting this resource.
+    tags: {
+      Name: `${$app.name}-${$app.stage}-supabase-data`,
+      Application: $app.name,
+      Stage: $app.stage,
+      Purpose: "supabase-data",
+    },
+  });
+  const dataVolumeID = new sst.Linkable("HostDataVolumeId", {
+    properties: { id: dataVolume.id },
   });
   const userData = all([
     configBucket.name,
@@ -354,5 +366,5 @@ bash /opt/sqldev/bootstrap.sh
     { deleteBeforeReplace: true },
   );
 
-  return { role, instance };
+  return { role, instance, dataVolumeID };
 }

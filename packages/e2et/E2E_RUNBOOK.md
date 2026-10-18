@@ -101,10 +101,40 @@ AWS_PROFILE=folio_api_admin AWS_REGION=ap-east-1 \
 - S3 deletion is not transactional: a partial failure reports completed effects;
   rerun from a fresh preflight/reset.
 
+## Fresh staging data volume
+
+`sst deploy` and `sqldev host replace` replace the EC2 instance and reattach the
+same EBS data volume. PostgreSQL, DBOS history, Docker data, and Vault stay on
+that volume. Bootstrap applies migration files whose versions are not already in
+`supabase_migrations.schema_migrations`; it does not rerun a version that was
+edited after it was recorded. A staging Cypress failure caused by that preserved
+database is not fixed by replacing the instance again.
+
+`sqldev host data-volume replace` is exact-`staging` only. It terminates the
+host, deletes the linked data volume, and redeploys so bootstrap formats an empty
+volume and applies every current migration. It then restores the three trigger
+Vault secrets. The deletion is permanent: PostgreSQL, migration history, DBOS,
+Docker data, and Vault on the volume are destroyed, and a failed deploy can leave
+staging without a host or volume. It does not delete Clerk users, S3 objects,
+queues, or job status. There is no rollback.
+
+Deploy the volume identity tags and `HostDataVolumeId` link, rebuild the CLI,
+and install it before the first run. Preflight validates the host and volume
+without changing them:
+
+```bash
+AWS_PROFILE=folio_api_admin AWS_REGION=ap-east-1 \
+  sqldev --stage staging host data-volume replace --preflight
+AWS_PROFILE=folio_api_admin AWS_REGION=ap-east-1 \
+  sqldev --stage staging host data-volume replace
+```
+
 ## Prerequisites that must hold for staging
 
-**One-time (and after any host replacement):** the host's Vault must contain the
-three secrets the database triggers read. Check, then provision:
+The host's Vault must contain the three secrets the database triggers read.
+`host replace` keeps the data volume, so those secrets survive it. A fresh
+volume starts empty; `host data-volume replace` restores them itself. Check or
+provision them directly when they are missing:
 
 ```bash
 AWS_PROFILE=folio_api_admin AWS_REGION=ap-east-1 sqldev --stage staging host vault sync --preflight

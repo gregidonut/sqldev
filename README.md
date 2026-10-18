@@ -30,6 +30,12 @@ sqldev --stage dev storage delete key/one key/two
 sqldev --stage staging host database tunnel
 sqldev --stage staging host replace --yes
 
+# Rebuild disposable staging on a new data volume. `host replace` keeps the
+# volume, so it does not replay migration versions already recorded there.
+# Preflight first. The replacement permanently deletes Postgres, DBOS, and Vault.
+sqldev --stage staging host data-volume replace --preflight
+sqldev --stage staging host data-volume replace
+
 # Local dev services.
 sqldev --stage dev dev worker
 sqldev --stage dev dev imagor

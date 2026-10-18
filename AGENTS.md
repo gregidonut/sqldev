@@ -70,11 +70,14 @@ The database triggers read three Vault secrets (`render_md_url`,
 `notify_ig_posts_view_url`, `notify_ig_posts_view_secret`). Locally they come
 from `packages/backend/supabase/config.toml` `[db.vault]`. Nothing in
 `packages/backend/selfhost/bootstrap.sh` or `infra/` creates them on the
-deployed host, so a fresh or replaced staging host needs
-`sqldev --stage staging host vault sync` (see `packages/cli/internal/e2ereset/vault.go`).
+deployed host. `sqldev host replace` keeps the data volume, so the secrets
+survive it. A fresh volume starts empty; `sqldev --stage staging host data-volume replace`
+restores them after bootstrap, and `sqldev --stage staging host vault sync`
+(see `packages/cli/internal/e2ereset/vault.go`) provisions them when they are
+missing.
 Without them posts save with no rendered HTML and no MQTT notify is sent, and the
-specs that wait on rendered headings or live updates fail. The command is exact-
-staging only, derives the values from the linked `GoApi.url` and `NotifySecret`,
+specs that wait on rendered headings or live updates fail. `host vault sync` is
+exact-staging only, derives the values from the linked `GoApi.url` and `NotifySecret`,
 upserts by name in one transaction, and prints names only; `--preflight` lists
 which names exist. SSM keeps command parameters in its history, so the notify
 secret is readable by principals that can read SSM commands in the account.
@@ -161,9 +164,10 @@ there is no separate registry migration, and a regression test keeps it that way
   file, a `setval` in the seed, or a separate `*registry_id*` migration.
 - The two files were edited in place to carry the registry identity and copy, so a database
   that applied the earlier versions keeps the old shape and must be rebuilt: local dev with
-  `sqldev --stage dev supabase db reset --local`, a deployed host by re-bootstrapping (the
-  worker records applied versions in `supabase_migrations.schema_migrations` and will not
-  re-run an edited file). The seed insert omits `registry_id`, so the first value comes from
+  `sqldev --stage dev supabase db reset --local`, a deployed database by rebuilding its
+  data volume with `sqldev --stage staging host data-volume replace`. Replacing only the
+  EC2 instance keeps that volume, and the worker records applied versions in
+  `supabase_migrations.schema_migrations`, so it will not re-run an edited file. The seed insert omits `registry_id`, so the first value comes from
   the sequence start (1000). Compare function argument types through `proargtypes::TEXT`
   when you write a catalog check (an `oidvector` is zero-based, so `= ARRAY[...]` is silently
   false).

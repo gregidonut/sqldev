@@ -1,6 +1,7 @@
-// Package host ports the deployed-host operations: an SSM Postgres tunnel and a
-// full host replacement that preserves the data volume. Both refuse a missing
-// stage or the exact "dev" stage, which has no host.
+// Package host ports the deployed-host operations: an SSM Postgres tunnel, a
+// host replacement that preserves the data volume, and an exact-staging
+// replacement that deletes that volume. The tunnel and preserving replacement
+// refuse a missing stage or the exact "dev" stage, which has no host.
 package host
 
 import (
@@ -30,9 +31,9 @@ func HostName(stage string) string {
 
 // Instance is the subset of EC2 instance data the host commands need.
 type Instance struct {
-	InstanceID          string
-	RootDeviceName      string
-	DataVolumeIDs       []string
+	InstanceID     string
+	RootDeviceName string
+	DataVolumeIDs  []string
 }
 
 // Tunnel starts an SSM port-forwarding session from a local port to the host's

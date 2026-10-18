@@ -146,6 +146,101 @@ func TestDiscoverStagingHostRequiresExactlyOne(t *testing.T) {
 	}
 }
 
+func TestWaitReadyAcceptsReadyMarker(t *testing.T) {
+	runner := &readyRunner{outputs: []string{"HOST_READY\n"}}
+	ex := testExecutor(runner)
+	if err := ex.WaitReady(context.Background(), "i-abc123"); err != nil {
+		t.Fatal(err)
+	}
+	if len(runner.scripts) != 1 || !strings.Contains(runner.scripts[0], "pg_isready") {
+		t.Fatalf("script = %v", runner.scripts)
+	}
+	for _, want := range []string{"sqldev-imagor.service", "sqldev-worker.service", "HOST_NOT_READY", "HOST_READY"} {
+		if !strings.Contains(runner.scripts[0], want) {
+			t.Fatalf("readiness script missing %s", want)
+		}
+	}
+	if strings.Contains(runner.scripts[0], "i-abc123") {
+		t.Fatal("readiness script must not interpolate the instance id")
+	}
+}
+
+func TestWaitReadyRetriesUntilReady(t *testing.T) {
+	runner := &readyRunner{outputs: []string{"HOST_NOT_READY\n", "HOST_READY\n"}}
+	ex := testExecutor(runner)
+	if err := ex.WaitReady(context.Background(), "i-abc123"); err != nil {
+		t.Fatal(err)
+	}
+	if len(runner.scripts) != 2 {
+		t.Fatalf("attempts = %d", len(runner.scripts))
+	}
+}
+
+func TestWaitReadyTimesOut(t *testing.T) {
+	runner := &readyRunner{outputs: []string{"HOST_NOT_READY\n"}}
+	ex := testExecutor(runner)
+	now := time.Unix(0, 0)
+	ex.now = func() time.Time { return now }
+	ex.sleep = func(context.Context, time.Duration) error {
+		now = now.Add(ex.readyInterval)
+		return nil
+	}
+	ex.readyBudget = 10 * time.Second
+	ex.readyInterval = 5 * time.Second
+	if err := ex.WaitReady(context.Background(), "i-abc123"); err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestWaitReadyRejectsInvalidInstance(t *testing.T) {
+	runner := &readyRunner{}
+	if err := testExecutor(runner).WaitReady(context.Background(), "instance-1"); err == nil {
+		t.Fatal("expected invalid instance id to be refused")
+	}
+	if len(runner.scripts) != 0 {
+		t.Fatal("invalid instance id reached SSM")
+	}
+}
+
+// readyRunner returns a different SSM stdout for each send-command.
+type readyRunner struct {
+	scripts []string
+	outputs []string
+	index   int
+	pending string
+}
+
+func (r *readyRunner) Run(_ context.Context, req process.RunRequest) error {
+	sub := ""
+	for i, arg := range req.Args {
+		if arg == "ssm" && i+1 < len(req.Args) {
+			sub = req.Args[i+1]
+		}
+	}
+	switch sub {
+	case "send-command":
+		for i, arg := range req.Args {
+			if arg == "--parameters" && i+1 < len(req.Args) {
+				r.scripts = append(r.scripts, req.Args[i+1])
+			}
+		}
+		r.pending = "HOST_NOT_READY\n"
+		if r.index < len(r.outputs) {
+			r.pending = r.outputs[r.index]
+		}
+		r.index++
+		if req.Stdout != nil {
+			_, _ = req.Stdout.Write([]byte("cmd-1\n"))
+		}
+	case "get-command-invocation":
+		body := `{"Status":"Success","StandardOutputContent":` + jsonString(r.pending) + `,"StandardErrorContent":""}`
+		if req.Stdout != nil {
+			_, _ = req.Stdout.Write([]byte(body))
+		}
+	}
+	return nil
+}
+
 // fixedRunner always writes the same stdout.
 type fixedRunner struct{ output string }
 

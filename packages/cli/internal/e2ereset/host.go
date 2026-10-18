@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -26,11 +27,34 @@ type DatabaseResult struct {
 	Committed bool
 }
 
-// ssmPollInterval and ssmTotalBudget bound the Run Command status wait.
+// ssmPollInterval and ssmSQLBudget bound one Run Command status wait.
+// readinessBudget bounds the separate bootstrap wait: a fresh volume pulls
+// images and applies migrations before the service units exist.
 const (
-	ssmPollInterval = 2 * time.Second
-	ssmSQLBudget    = 5 * time.Minute
+	ssmPollInterval   = 2 * time.Second
+	ssmSQLBudget      = 5 * time.Minute
+	readinessBudget   = 15 * time.Minute
+	readinessInterval = 5 * time.Second
 )
+
+var instanceIDPattern = regexp.MustCompile(`^i-[A-Za-z0-9]+$`)
+
+// readinessScript is fixed. Bootstrap creates and starts the Imagor and worker
+// units only after `worker migrate` succeeds, so active units plus a ready
+// database mean the migration phase finished. It prints a marker and always
+// exits 0 so the caller can poll without treating "not yet" as a command failure.
+const readinessScript = `set +e
+db=0
+docker exec sqldev-db pg_isready -U postgres -h 127.0.0.1 >/dev/null 2>&1 && db=1
+imagor=$(systemctl is-active sqldev-imagor.service 2>/dev/null)
+worker=$(systemctl is-active sqldev-worker.service 2>/dev/null)
+if [ "$db" = 1 ] && [ "$imagor" = active ] && [ "$worker" = active ]; then
+  printf 'HOST_READY\n'
+else
+  printf 'HOST_NOT_READY\n'
+fi
+exit 0
+`
 
 // HostExecutor runs fixed operations on the staging host over SSM Run Command.
 // It accepts no caller script or SQL; the only interpolated value is the
@@ -39,18 +63,34 @@ type HostExecutor struct {
 	Runner process.Runner
 	Region string
 	// now and sleep are injectable for tests.
-	now   func() time.Time
-	sleep func(context.Context, time.Duration) error
+	now           func() time.Time
+	sleep         func(context.Context, time.Duration) error
+	readyBudget   time.Duration
+	readyInterval time.Duration
 }
 
 // NewHostExecutor builds a HostExecutor with real time functions.
 func NewHostExecutor(runner process.Runner, region string) *HostExecutor {
 	return &HostExecutor{
-		Runner: runner,
-		Region: region,
-		now:    time.Now,
-		sleep:  sleepCtx,
+		Runner:        runner,
+		Region:        region,
+		now:           time.Now,
+		sleep:         sleepCtx,
+		readyBudget:   readinessBudget,
+		readyInterval: readinessInterval,
 	}
+}
+
+// WithReadinessWindow overrides how long WaitReady polls. Non-positive values
+// are ignored. Tests use it to bound a failure without waiting out the default.
+func (h *HostExecutor) WithReadinessWindow(budget, interval time.Duration) *HostExecutor {
+	if budget > 0 {
+		h.readyBudget = budget
+	}
+	if interval > 0 {
+		h.readyInterval = interval
+	}
+	return h
 }
 
 func sleepCtx(ctx context.Context, d time.Duration) error {
@@ -132,6 +172,31 @@ echo "DB_RESET_COMMITTED"`
 		return DatabaseResult{}, errors.New("staging database reset did not commit")
 	}
 	return DatabaseResult{Committed: true}, nil
+}
+
+// WaitReady polls until Postgres accepts connections and the Imagor and worker
+// units are active, or until the readiness budget expires. A fresh instance may
+// not be registered with SSM yet; send failures are retried inside the budget.
+func (h *HostExecutor) WaitReady(ctx context.Context, instanceID string) error {
+	if !instanceIDPattern.MatchString(instanceID) {
+		return errors.New("host readiness refused: instance id is not valid")
+	}
+	deadline := h.now().Add(h.readyBudget)
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		out, err := h.runShell(ctx, instanceID, readinessScript)
+		if err == nil && strings.Contains(out, "HOST_READY") && !strings.Contains(out, "HOST_NOT_READY") {
+			return nil
+		}
+		if !h.now().Before(deadline) {
+			return errors.New("timed out waiting for the staging host to finish bootstrap")
+		}
+		if err := h.sleep(ctx, h.readyInterval); err != nil {
+			return err
+		}
+	}
 }
 
 // RestartWorker starts the worker and cancels the fallback recovery timer.

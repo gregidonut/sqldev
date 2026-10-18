@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -25,8 +26,17 @@ func newHostCommand(appOf func() *app.App) *cobra.Command {
 		Short: "Provision the host database's Vault secrets",
 	}
 	vaultCmd.AddCommand(newHostVaultSyncCommand(appOf))
-	hostCmd.AddCommand(databaseCmd, vaultCmd, newHostReplaceCommand(appOf))
+	hostCmd.AddCommand(databaseCmd, vaultCmd, newHostReplaceCommand(appOf), newHostDataVolumeCommand(appOf))
 	return hostCmd
+}
+
+func newHostDataVolumeCommand(appOf func() *app.App) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "data-volume",
+		Short: "Operate the deployed host data volume",
+	}
+	cmd.AddCommand(newHostDataVolumeReplaceCommand(appOf))
+	return cmd
 }
 
 // newHostVaultSyncCommand provisions the Vault secrets the database triggers
@@ -117,6 +127,55 @@ func newHostReplaceCommand(appOf func() *app.App) *cobra.Command {
 			return host.Replace(cmd.Context(), a.Runner, a.Cfg.Stage, a.Cfg.Root)
 		},
 	}
+	cmd.Flags().BoolVar(&assumeYes, "yes", false, "skip the confirmation prompt")
+	return cmd
+}
+
+// newHostDataVolumeReplaceCommand rebuilds the staging Supabase data volume.
+// Ordinary `host replace` keeps that volume; this command permanently deletes
+// it so bootstrap applies the current migration files to an empty database.
+func newHostDataVolumeReplaceCommand(appOf func() *app.App) *cobra.Command {
+	var preflight bool
+	var assumeYes bool
+	cmd := &cobra.Command{
+		Use:   "replace",
+		Short: "Replace the staging data volume and rerun host bootstrap",
+		Long: "Deletes the staging host's data volume and redeploys it through SST so bootstrap formats a new volume and applies every migration. " +
+			"PostgreSQL, migration history, DBOS state, Docker data, and Vault secrets on that volume are permanently destroyed. " +
+			"Runs only for the exact 'staging' stage, and only against the linked HostDataVolumeId. " +
+			"There is no rollback. After the new host is ready, the trigger Vault secrets are restored. " +
+			"Deploy the volume identity tags before the first run.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			a := appOf()
+			if a.Cfg.Stage != "staging" {
+				return errors.New("host data-volume replace runs only for the exact 'staging' stage")
+			}
+			if handled, err := a.EnsureLinked(cmd.Context()); handled {
+				return err
+			}
+			res, err := a.Resources()
+			if err != nil {
+				return err
+			}
+			return host.ReplaceDataVolume(cmd.Context(), host.ReplaceOptions{
+				ConfiguredStage: a.Cfg.Stage,
+				Region:          a.Cfg.AWSRegion,
+				AWSProfile:      a.Cfg.AWSProfile,
+				Root:            a.Cfg.Root,
+				Resources:       res,
+				Runner:          a.Runner,
+				Preflight:       preflight,
+				AssumeYes:       assumeYes,
+				Stdout:          cmd.OutOrStdout(),
+				Env:             os.Environ(),
+				Confirm: func(message string) (bool, error) {
+					return confirm(cmd, message)
+				},
+			})
+		},
+	}
+	cmd.Flags().BoolVar(&preflight, "preflight", false, "validate the staging volume identity without changing anything")
 	cmd.Flags().BoolVar(&assumeYes, "yes", false, "skip the confirmation prompt")
 	return cmd
 }
