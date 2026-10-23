@@ -87,10 +87,6 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
-    "SupabaseUrl": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
   }
 }
 

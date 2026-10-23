@@ -30,6 +30,7 @@ import {
     type MarkdownEditorProps,
 } from "../types.ts";
 import { handleSubmitShortcut } from "./submitShortcut.ts";
+import { unescapeStorageImageSyntax } from "../storageImageSyntax.ts";
 
 /**
  * Plugin set limited to constructs that round-trip to default (unextended)
@@ -120,7 +121,7 @@ export const VisualMarkdownEditor = React.forwardRef<
             <MDXEditor
                 ref={editorRef}
                 markdown={value}
-                onChange={onChange}
+                onChange={(next) => onChange(unescapeStorageImageSyntax(next))}
                 plugins={goldmarkPlugins()}
                 // Use the EXACT prose classes the posted article uses as its
                 // render sink (ListItemUI.tsx:

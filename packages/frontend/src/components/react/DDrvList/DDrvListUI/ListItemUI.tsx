@@ -20,6 +20,7 @@ import type {
     TodoSpacesViewRow,
 } from "@/utils/supabase/models/aliases.ts";
 import { cy } from "@/utils/cy";
+import { RenderedPostBody } from "@/components/react/StorageTile/RenderedPostBody.tsx";
 
 export default function ListItemUI<K extends keyof ViewMap>({
     post,
@@ -85,16 +86,11 @@ export default function ListItemUI<K extends keyof ViewMap>({
                             />
                         </footer>
                     </header>
-                    <main className="px-[2rem]">
+                    <main className="w-full px-[2rem]">
                         {htmlContent ? (
-                            <div
-                                className={
-                                    "prose prose-invert text-drac-foreground prose-stone"
-                                }
-                                {...cy("ig_post_body")}
-                                dangerouslySetInnerHTML={{
-                                    __html: htmlContent,
-                                }}
+                            <RenderedPostBody
+                                html={htmlContent}
+                                instanceScope={currentId}
                             />
                         ) : (
                             <p

@@ -31,7 +31,6 @@ func linkedEnv() []string {
 		`SST_RESOURCE_NotifySecret={"value":"notify-secret"}`,
 		`SST_RESOURCE_ClerkPublicKey={"value":"pk"}`,
 		`SST_RESOURCE_ClerkSecretKey={"value":"sk"}`,
-		`SST_RESOURCE_SupabaseUrl={"value":"http://localhost:54321"}`,
 		`SST_RESOURCE_SupabaseKey={"value":"sb-key"}`,
 		`SST_RESOURCE_CyTestUsersJson={"value":"[{\"user_id\":\"a\"},{\"user_id\":\"b\"}]"}`,
 	}
@@ -106,7 +105,6 @@ func TestCypressPassthroughInjectsEnvAndBin(t *testing.T) {
 		"SST_STAGE":             "dev",
 		"CLERK_PUBLISHABLE_KEY": "pk",
 		"CLERK_SECRET_KEY":      "sk",
-		"SUPABASE_URL":          "http://localhost:54321",
 		"SUPABASE_KEY":          "sb-key",
 		"SQLDEV_BIN":            "/abs/sqldev",
 		"SQLDEV_ROOT":           "/repo",
@@ -137,7 +135,6 @@ func stagingLinkedEnv() []string {
 		`SST_RESOURCE_NotifySecret={"value":"notify-secret"}`,
 		`SST_RESOURCE_ClerkPublicKey={"value":"pk"}`,
 		`SST_RESOURCE_ClerkSecretKey={"value":"sk"}`,
-		`SST_RESOURCE_SupabaseUrl={"value":"https://supabase.example.com"}`,
 		`SST_RESOURCE_SupabaseKey={"value":"sb-key"}`,
 		`SST_RESOURCE_CyTestUsersJson={"value":"[{\"user_id\":\"a\"},{\"user_id\":\"b\"}]"}`,
 		`SST_RESOURCE_Frontend={"url":"https://dev.sqldev.gregosilaja.cc/"}`,

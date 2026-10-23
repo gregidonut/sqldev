@@ -71,6 +71,10 @@ type Record struct {
 	// Fingerprint is set when the record is created and never changed by an
 	// update. It binds an idempotency key to one request body.
 	Fingerprint string
+	// StorageObjectID and RevisionID bind a completed image to the revision it
+	// rendered. Empty for every other job.
+	StorageObjectID string
+	RevisionID      string
 }
 
 type Store interface {

@@ -100,15 +100,35 @@ func (s *Server) prepareImage(ctx context.Context, envelope jobs.Envelope) (imag
 	if err := json.Unmarshal(envelope.Payload, &request); err != nil {
 		return imagor.Request{}, errBadRequest
 	}
-	if err := imagor.Validate(request); err != nil {
-		return imagor.Request{}, fmt.Errorf("%w: %s", errBadRequest, err.Error())
-	}
-	if _, err := utils.ParseObjectKey(request.SourceKey); err != nil {
+	if err := imagor.ValidateOptions(request); err != nil {
 		return imagor.Request{}, fmt.Errorf("%w: %s", errBadRequest, err.Error())
 	}
 	token, userID, err := s.caller(ctx)
 	if err != nil {
 		return imagor.Request{}, err
+	}
+	if request.StorageObjectID != "" || request.RevisionID != "" {
+		if request.SourceKey != "" || request.StorageObjectID == "" || request.RevisionID == "" {
+			return imagor.Request{}, errBadRequest
+		}
+		reference, err := s.lookupStorageReference(ctx, token, request.StorageObjectID)
+		if err != nil {
+			return imagor.Request{}, err
+		}
+		if reference.Kind != "ready" || reference.SourceKey == "" {
+			return imagor.Request{}, errForbidden
+		}
+		if reference.RevisionID != request.RevisionID {
+			return imagor.Request{}, errConflict
+		}
+		request.SourceKey = reference.SourceKey
+	}
+	if err := imagor.Validate(request); err != nil {
+		return imagor.Request{}, fmt.Errorf("%w: %s", errBadRequest, err.Error())
+	}
+	parts, err := utils.ParseObjectKey(request.SourceKey)
+	if err != nil {
+		return imagor.Request{}, fmt.Errorf("%w: %s", errBadRequest, err.Error())
 	}
 	row, found, err := s.lookupKey(ctx, token, request.SourceKey)
 	if err != nil {
@@ -132,6 +152,8 @@ func (s *Server) prepareImage(ctx context.Context, envelope jobs.Envelope) (imag
 	if !exists {
 		return imagor.Request{}, errNotFound
 	}
+	request.StorageObjectID = parts.StorageObjectID
+	request.RevisionID = parts.StorageObjectDataID
 	return request, nil
 }
 

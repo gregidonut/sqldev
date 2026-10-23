@@ -1,22 +1,21 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getActorSupabaseJwt } from "./clerk.js";
+import { LOCAL_SUPABASE_URL } from "./localSupabase.js";
 import { isRecord } from "./narrow.js";
 
-function requireSupabaseEnv(): { supabaseUrl: string; supabaseKey: string } {
-  const supabaseUrl = process.env.SUPABASE_URL;
+function requireSupabaseKey(): string {
   const supabaseKey = process.env.SUPABASE_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("SUPABASE_URL and SUPABASE_KEY are required");
+  if (!supabaseKey) {
+    throw new Error("SUPABASE_KEY is required");
   }
-  return { supabaseUrl, supabaseKey };
+  return supabaseKey;
 }
 
 export async function withUserSupabase<T>(
   identifier: string,
   run: (supabase: SupabaseClient) => Promise<T>,
 ): Promise<T> {
-  const { supabaseUrl, supabaseKey } = requireSupabaseEnv();
-  const supabase = createClient(supabaseUrl, supabaseKey, {
+  const supabase = createClient(LOCAL_SUPABASE_URL, requireSupabaseKey(), {
     accessToken: () => getActorSupabaseJwt(identifier),
   });
   return run(supabase);

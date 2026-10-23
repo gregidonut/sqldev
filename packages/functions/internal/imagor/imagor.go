@@ -57,13 +57,17 @@ var (
 
 // Request is the queued transform. Its JSON shape matches the public API.
 type Request struct {
-	SourceKey string `json:"sourceKey"`
+	SourceKey string `json:"sourceKey,omitempty"`
 	Width     int    `json:"width"`
 	Height    int    `json:"height"`
 	Fit       string `json:"fit"`
 	Format    string `json:"format"`
 	Quality   int    `json:"quality"`
 	Preview   string `json:"preview,omitempty"`
+	// StorageObjectID and RevisionID address a logical object instead of a key.
+	// The worker fills SourceKey after authorization. Drive requests leave both empty.
+	StorageObjectID string `json:"storageObjectId,omitempty"`
+	RevisionID      string `json:"revisionId,omitempty"`
 }
 
 // Image is a bounded response from the private server.
@@ -172,6 +176,20 @@ func (c *Client) SetProgressURL(rawURL string) error {
 
 // Validate checks the typed options and storage-key shape before a path is signed.
 func Validate(request Request) error {
+	if err := ValidateOptions(request); err != nil {
+		return err
+	}
+	if err := validateSourceKey(request.SourceKey); err != nil {
+		return err
+	}
+	if !previewMatches(normalizePreview(request.Preview), sourceExtension(request.SourceKey)) {
+		return fmt.Errorf("%w: preview does not match the file", ErrInvalid)
+	}
+	return nil
+}
+
+// ValidateOptions checks the resize options before a storage key is known.
+func ValidateOptions(request Request) error {
 	if request.Width < 1 || request.Width > MaxEdge || request.Height < 1 || request.Height > MaxEdge {
 		return fmt.Errorf("%w: dimensions are outside the allowed range", ErrInvalid)
 	}
@@ -190,12 +208,6 @@ func Validate(request Request) error {
 	}
 	if preview == PreviewAnimation && request.Format != FormatWebP {
 		return fmt.Errorf("%w: animation must be webp", ErrInvalid)
-	}
-	if err := validateSourceKey(request.SourceKey); err != nil {
-		return err
-	}
-	if !previewMatches(preview, sourceExtension(request.SourceKey)) {
-		return fmt.Errorf("%w: preview does not match the file", ErrInvalid)
 	}
 	return nil
 }
@@ -351,6 +363,12 @@ func previewMatches(preview, extension string) bool {
 	default:
 		return false
 	}
+}
+
+// Previewable reports whether a file name can produce a poster or animation.
+func Previewable(fileName string) bool {
+	extension := sourceExtension(fileName)
+	return extension == "pdf" || imageExtensions[extension] || videoExtensions[extension]
 }
 
 func sourceExtension(key string) string {

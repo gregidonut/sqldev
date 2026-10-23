@@ -16,7 +16,13 @@ func (s *Server) Execute(ctx context.Context, envelope jobs.Envelope) (jobs.Outc
 		if outcome.HTTPStatus != 0 {
 			return outcome, nil
 		}
-		return s.RenderImage(ctx, envelope, request)
+		rendered, err := s.RenderImage(ctx, envelope, request)
+		if err != nil {
+			return rendered, err
+		}
+		return bindImageResource(rendered, request), nil
+	case jobs.KindResolveStorageReference:
+		return s.executeResolveStorageReference(ctx, envelope)
 	case jobs.KindListView:
 		var payload struct {
 			View string `json:"view"`

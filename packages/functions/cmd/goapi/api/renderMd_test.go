@@ -189,3 +189,46 @@ func TestRenderMd_HandlerReturnsSanitizedJSON(t *testing.T) {
 		t.Errorf("expected sanitized output, got: %s", got)
 	}
 }
+
+func TestRenderMd_StorageReferencePlaceholder(t *testing.T) {
+	const id = "22222222-2222-4222-8222-222222222222"
+	got := renderMd(t, "![Cape & Co](uploads://"+strings.ToUpper(id)+")")
+	want := `<span data-sqldev-storage-object="` + id + `">Cape &amp; Co</span>`
+	if !strings.Contains(got, want) {
+		t.Fatalf("placeholder = %s", got)
+	}
+	hostile := renderMd(t, `![<img src=x onerror=alert(1)>](uploads://`+id+`)`)
+	if strings.Contains(hostile, "<img") || strings.Contains(hostile, "onerror") || strings.Contains(hostile, "alert(1)") {
+		t.Fatalf("label was not neutralized: %s", hostile)
+	}
+	if !strings.Contains(hostile, `data-sqldev-storage-object="`+id+`"`) {
+		t.Fatalf("hostile label dropped the reference: %s", hostile)
+	}
+}
+
+func TestRenderMd_StorageReferenceStaysInert(t *testing.T) {
+	const id = "22222222-2222-4222-8222-222222222222"
+	cases := []string{
+		"![x](uploads://not-a-uuid)",
+		"`![x](uploads://" + id + ")`",
+		"```\n![x](uploads://" + id + ")\n```",
+		`<span data-sqldev-storage-object="` + id + `">forged</span>`,
+		"![x](https://example.com/a.png)",
+	}
+	for _, markdown := range cases {
+		got := renderMd(t, markdown)
+		if strings.Contains(got, `data-sqldev-storage-object="`+id+`"`) {
+			t.Errorf("transformed %q\n%s", markdown, got)
+		}
+	}
+}
+
+func TestRenderMd_OrdinaryImageStillRenders(t *testing.T) {
+	got := renderMd(t, "before ![x](uploads://22222222-2222-4222-8222-222222222222) ![pic](https://example.com/a.png)")
+	if !strings.Contains(got, `data-sqldev-storage-object="22222222-2222-4222-8222-222222222222"`) {
+		t.Fatalf("missing placeholder: %s", got)
+	}
+	if !strings.Contains(got, `src="https://example.com/a.png"`) {
+		t.Fatalf("ordinary image changed: %s", got)
+	}
+}

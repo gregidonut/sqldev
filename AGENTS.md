@@ -55,8 +55,8 @@ Staging network and Clerk facts the harness depends on (verified): a live Clerk
 instance (`sk_live_`) rejects the Backend API `sessions.createSession`
 (`request_invalid_for_environment`), so `packages/e2et/cypress/tasks/clerk.ts`
 creates actor sessions by exchanging a sign-in token through the Frontend API
-(`clerkFapi.ts`); dev keeps `createSession`. Staging's `SupabaseUrl` is a private
-VPC address and the `GoApi` API Gateway resource policy
+(`clerkFapi.ts`); dev keeps `createSession`. Staging Postgres listens on the host
+loopback, and the `GoApi` API Gateway resource policy
 (`infra/api.ts`) denies every caller except the NAT egress IP, so a developer
 machine can reach neither. Cypress seed tasks (`createIgPostAsUser`,
 `createTdsTodoSpaceAsUser`/`createTdsTodosAsUser`) therefore use the deployed

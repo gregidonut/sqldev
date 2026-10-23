@@ -33,6 +33,9 @@ const (
 	KindDeleteObject   = "deleteSingleObject"
 	KindDeleteObjects  = "deleteObjects"
 	KindImagor         = "imagor"
+	// KindResolveStorageReference reads one object for the current viewer.
+	// It is not a mutation: a repeated call must see the current authorization.
+	KindResolveStorageReference = "resolveStorageReference"
 
 	// KindSetStorageVisibility begins make-public or makes an object private.
 	KindSetStorageVisibility = "setStorageVisibility"
@@ -58,6 +61,14 @@ type Envelope struct {
 	Fingerprint string `json:"fingerprint,omitempty"`
 }
 
+// ResourceBinding is the storage object a completed image job must still be
+// allowed to read before a new result URL is signed. It never contains the
+// storage key.
+type ResourceBinding struct {
+	StorageObjectID string `json:"storageObjectId,omitempty"`
+	RevisionID      string `json:"revisionId,omitempty"`
+}
+
 // Artifact is the transformed image stored before the caller receives a URL.
 type Artifact struct {
 	Key         string `json:"key"`
@@ -70,6 +81,8 @@ type Outcome struct {
 	Body       json.RawMessage `json:"body,omitempty"`
 	Message    string          `json:"message,omitempty"`
 	Artifact   *Artifact       `json:"artifact,omitempty"`
+	// Resource binds an image result to the object revision it rendered.
+	Resource *ResourceBinding `json:"resource,omitempty"`
 	// Fingerprint is copied from the envelope. DBOS records the outcome, so it
 	// lets the worker tell an identical replay from a conflicting one after the
 	// job-status record has expired and been recreated.
@@ -145,7 +158,7 @@ func knownKind(kind string) bool {
 		KindGetTodoTree, KindMoveTodoItems, KindCreateTodo, KindBucketExists,
 		KindListStorage, KindPresign, KindCommit, KindAbort, KindDownload,
 		KindCopy, KindDeleteObject, KindDeleteObjects, KindImagor,
-		KindSetStorageVisibility, KindConfirmOperation:
+		KindResolveStorageReference, KindSetStorageVisibility, KindConfirmOperation:
 		return true
 	default:
 		return false

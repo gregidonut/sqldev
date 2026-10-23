@@ -90,15 +90,44 @@ export interface ConfirmationStore {
 const FOCUS_RESTORE_DELAY_MS = 250;
 
 /**
- * Moves focus to the best remaining target if React Aria's own restoration left
- * it on nothing: the menu trigger, else the object's row, else the page heading.
+ * Moves focus to the menu trigger when it is still usable, even if React Aria
+ * restored the tile row. Otherwise, if focus was left on nothing: the object's
+ * row, else the page heading. A focused control that is not the row is left
+ * alone. While the dialog is still mounted, this waits and tries again.
  */
-export function restoreFocusNow(focus: DialogSubject["focus"]): void {
+export function restoreFocusNow(
+    focus: DialogSubject["focus"],
+    attempt = 0,
+): void {
     const active = document.activeElement;
+    const inDialog =
+        active?.closest("[data-cy='confirm_dialog']") != null;
+    // The modal can still be mounted when the first timer fires. Stepping in
+    // then sees the confirm button and gives up. Try again once it is gone.
+    if (inDialog) {
+        if (attempt < 4) {
+            setTimeout(
+                () => restoreFocusNow(focus, attempt + 1),
+                FOCUS_RESTORE_DELAY_MS,
+            );
+        }
+        return;
+    }
+    const target = resolveFocusTarget(focus);
+    // The menu trigger outranks the tile row React Aria restores. Another
+    // focused control is left alone.
+    if (
+        focus.origin !== null &&
+        target === focus.origin &&
+        active !== focus.origin
+    ) {
+        focus.origin.focus();
+        return;
+    }
     if (active !== null && active !== document.body) {
         return;
     }
-    resolveFocusTarget(focus)?.focus();
+    target?.focus();
 }
 
 export const realDeps: ConfirmationDeps = {
@@ -112,7 +141,7 @@ export const realDeps: ConfirmationDeps = {
     newToken: () => asOperationToken(crypto.randomUUID()),
     restoreFocus(focus) {
         // The modal animates out and React Aria restores focus when it unmounts.
-        // Only step in afterwards, and only if focus was left on nothing.
+        // Step in afterwards: the menu trigger wins over the tile row.
         setTimeout(() => restoreFocusNow(focus), FOCUS_RESTORE_DELAY_MS);
     },
     onVisible(listener) {

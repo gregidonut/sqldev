@@ -450,6 +450,8 @@ describe("drive", () => {
     }).as("abortObject");
     // Last-defined route wins: prepare still runs, then the PUT target is
     // rewritten to a same-origin stub so this never depends on AWS hostnames.
+    // Only a presign result carries `pendingUpload`; thumbnail jobs also
+    // return a `url` and can finish first.
     // Later job polls pass through untouched, so a poll the browser cancels on
     // navigation cannot fail the response callback.
     let putTargetRewritten = false;
@@ -462,7 +464,8 @@ describe("drive", () => {
         if (
           isRecord(body) &&
           isRecord(body.result) &&
-          typeof body.result.url === "string"
+          typeof body.result.url === "string" &&
+          isRecord(body.result.pendingUpload)
         ) {
           body.result.url = `${Cypress.config("baseUrl")}${failedPutPath}`;
           putTargetRewritten = true;
@@ -828,6 +831,7 @@ describe("drive", () => {
     cy.visit("/drive/mine?view=detailed");
     cy.waitForClerkLoaded();
     cy.location("search").should("eq", "?view=detailed");
+    objectsGrid().should("exist");
     cy.get("[data-cy='dStorage_view_options']").should("be.visible");
     cy.get("[role='columnheader']").should("exist");
 
@@ -847,6 +851,7 @@ describe("drive", () => {
     cy.waitForClerkLoaded();
     cy.location("pathname").should("eq", "/drive/public");
     cy.location("search").should("eq", "?owner=kept");
+    objectsGrid().should("exist");
     cy.get("[data-cy='dStorage_view_options']").should("not.exist");
     cy.get("[aria-label='Columns']").should("be.visible");
     cy.get("[data-cy='dStorage_objects']").should("exist");

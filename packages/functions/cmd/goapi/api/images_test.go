@@ -226,6 +226,7 @@ func TestExecuteImagorAuthorizesBeforeRendering(t *testing.T) {
 	db := &fakeDB{rpcByName: map[string]json.RawMessage{
 		"get_d_storage_object_by_key": json.RawMessage(`[{"storage_object_id":"22222222-2222-2222-2222-222222222222","public":false}]`),
 		"authorize_d_storage_object":  json.RawMessage(`true`),
+		"resolve_d_storage_reference": json.RawMessage(`{"kind":"ready","fileName":"photo.jpg","revisionId":"33333333-3333-3333-3333-333333333333","sourceKey":"` + imageKey + `"}`),
 	}}
 	images := &fakeImages{image: imagor.Image{ContentType: "image/jpeg", Body: []byte("jpeg-bytes")}}
 	server := imageServer(t, db, &fakeObjects{exists: true}, images)
@@ -262,6 +263,9 @@ func TestExecuteImagorAuthorizesBeforeRendering(t *testing.T) {
 	result, ok := state.Result.(map[string]any)
 	if !ok || result["contentType"] != "image/jpeg" || result["url"] == "" {
 		t.Fatalf("result = %#v", state.Result)
+	}
+	if strings.Contains(response.Body.String(), imageKey) || strings.Contains(response.Body.String(), "sourceKey") {
+		t.Fatalf("result leaked the storage key: %s", response.Body.String())
 	}
 	server.Identity = rejectIdentity{}
 	denied := requestJSON(t, server, http.MethodGet, "/api/jobs/"+envelope.JobID, "other-token", nil)

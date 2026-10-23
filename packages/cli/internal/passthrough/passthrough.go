@@ -46,10 +46,6 @@ func cypressEnv(a *app.App, res sst.Resources) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	supabaseURL, err := res.String("SupabaseUrl", "value")
-	if err != nil {
-		return nil, err
-	}
 	supabaseKey, err := res.String("SupabaseKey", "value")
 	if err != nil {
 		return nil, err
@@ -71,7 +67,6 @@ func cypressEnv(a *app.App, res sst.Resources) ([]string, error) {
 		"SST_STAGE=" + a.Cfg.Stage,
 		"CLERK_PUBLISHABLE_KEY=" + clerkPublishable,
 		"CLERK_SECRET_KEY=" + clerkSecret,
-		"SUPABASE_URL=" + supabaseURL,
 		"SUPABASE_KEY=" + supabaseKey,
 		"CLERK_FE_DOMAIN=" + clerkFeDomain,
 		"NOTIFY_IG_POSTS_VIEW_URL=" + goAPI + "notify",

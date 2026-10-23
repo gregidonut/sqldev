@@ -103,6 +103,18 @@ export function uploadThroughDialog(file: { contents: string; fileName: string }
   objectsGrid().should("contain", file.fileName);
 }
 
+/** Makes one private object public through the confirmation dialog. */
+export function makeObjectPublic(fileName: string) {
+  openActions(fileName);
+  cy.get("[data-cy='dStorage_make_public']").should("be.visible").click();
+  cy.get("[data-cy='confirm_dialog']", { timeout: 20000 }).should("be.visible");
+  cy.get("[data-cy='confirm_dialog_confirm']", { timeout: 20000 })
+    .should("be.enabled")
+    .click();
+  cy.get("[data-cy='confirm_dialog']", { timeout: 60000 }).should("not.exist");
+  rowFor(fileName).contains(/^Public$/, { timeout: 20000 }).should("be.visible");
+}
+
 export type StoredObject = {
   storageObjectId: string;
   configVersion: number;

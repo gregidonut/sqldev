@@ -6,6 +6,7 @@ import {
     type ViewMap,
 } from "@/components/react/DDrvList/viewMap.ts";
 import { useListStore } from "@/components/react/DDrvList/store/store.ts";
+import { PreviewCoordinator } from "@/components/react/StorageTile/PreviewCoordinator.tsx";
 
 export default function ListUI<K extends keyof ViewMap>({
     posts,
@@ -24,7 +25,8 @@ export default function ListUI<K extends keyof ViewMap>({
     const idKey = viewIdKeys[viewKey];
 
     return (
-        <GridList
+        <PreviewCoordinator>
+            <GridList
             className="w-full"
             aria-label={view}
             // selectionMode="single"
@@ -39,5 +41,6 @@ export default function ListUI<K extends keyof ViewMap>({
         >
             {(post) => <Item post={post} view={viewKey} />}
         </GridList>
+        </PreviewCoordinator>
     );
 }

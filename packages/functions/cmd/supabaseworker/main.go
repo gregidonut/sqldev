@@ -213,7 +213,11 @@ func imageOutcome(prepared imagePrep, render func(imagor.Request) (jobs.Outcome,
 	if prepared.Outcome.HTTPStatus != 0 {
 		return prepared.Outcome, nil
 	}
-	return render(prepared.Request)
+	outcome, err := render(prepared.Request)
+	if err != nil {
+		return outcome, err
+	}
+	return api.BindImageResource(outcome, prepared.Request), nil
 }
 
 func (p *processor) Accept(ctx context.Context, envelope jobs.Envelope) error {

@@ -82,16 +82,16 @@ func (e ImageResultContentType) Valid() bool {
 
 // Defines values for ImageTransformFit.
 const (
-	Contain ImageTransformFit = "contain"
-	Cover   ImageTransformFit = "cover"
+	ImageTransformFitContain ImageTransformFit = "contain"
+	ImageTransformFitCover   ImageTransformFit = "cover"
 )
 
 // Valid indicates whether the value is a known member of the ImageTransformFit enum.
 func (e ImageTransformFit) Valid() bool {
 	switch e {
-	case Contain:
+	case ImageTransformFitContain:
 		return true
-	case Cover:
+	case ImageTransformFitCover:
 		return true
 	default:
 		return false
@@ -100,19 +100,19 @@ func (e ImageTransformFit) Valid() bool {
 
 // Defines values for ImageTransformFormat.
 const (
-	Jpeg ImageTransformFormat = "jpeg"
-	Png  ImageTransformFormat = "png"
-	Webp ImageTransformFormat = "webp"
+	ImageTransformFormatJpeg ImageTransformFormat = "jpeg"
+	ImageTransformFormatPng  ImageTransformFormat = "png"
+	ImageTransformFormatWebp ImageTransformFormat = "webp"
 )
 
 // Valid indicates whether the value is a known member of the ImageTransformFormat enum.
 func (e ImageTransformFormat) Valid() bool {
 	switch e {
-	case Jpeg:
+	case ImageTransformFormatJpeg:
 		return true
-	case Png:
+	case ImageTransformFormatPng:
 		return true
-	case Webp:
+	case ImageTransformFormatWebp:
 		return true
 	default:
 		return false
@@ -121,22 +121,22 @@ func (e ImageTransformFormat) Valid() bool {
 
 // Defines values for ImageTransformPreview.
 const (
-	Animation ImageTransformPreview = "animation"
-	Image     ImageTransformPreview = "image"
-	Pdf       ImageTransformPreview = "pdf"
-	Video     ImageTransformPreview = "video"
+	ImageTransformPreviewAnimation ImageTransformPreview = "animation"
+	ImageTransformPreviewImage     ImageTransformPreview = "image"
+	ImageTransformPreviewPdf       ImageTransformPreview = "pdf"
+	ImageTransformPreviewVideo     ImageTransformPreview = "video"
 )
 
 // Valid indicates whether the value is a known member of the ImageTransformPreview enum.
 func (e ImageTransformPreview) Valid() bool {
 	switch e {
-	case Animation:
+	case ImageTransformPreviewAnimation:
 		return true
-	case Image:
+	case ImageTransformPreviewImage:
 		return true
-	case Pdf:
+	case ImageTransformPreviewPdf:
 		return true
-	case Video:
+	case ImageTransformPreviewVideo:
 		return true
 	default:
 		return false
@@ -266,6 +266,69 @@ func (e RejectionReason) Valid() bool {
 	case RejectionReasonStaleRevision:
 		return true
 	case RejectionReasonSupersededChallenge:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StoragePreviewRequestFit.
+const (
+	StoragePreviewRequestFitContain StoragePreviewRequestFit = "contain"
+	StoragePreviewRequestFitCover   StoragePreviewRequestFit = "cover"
+)
+
+// Valid indicates whether the value is a known member of the StoragePreviewRequestFit enum.
+func (e StoragePreviewRequestFit) Valid() bool {
+	switch e {
+	case StoragePreviewRequestFitContain:
+		return true
+	case StoragePreviewRequestFitCover:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StoragePreviewRequestFormat.
+const (
+	StoragePreviewRequestFormatJpeg StoragePreviewRequestFormat = "jpeg"
+	StoragePreviewRequestFormatPng  StoragePreviewRequestFormat = "png"
+	StoragePreviewRequestFormatWebp StoragePreviewRequestFormat = "webp"
+)
+
+// Valid indicates whether the value is a known member of the StoragePreviewRequestFormat enum.
+func (e StoragePreviewRequestFormat) Valid() bool {
+	switch e {
+	case StoragePreviewRequestFormatJpeg:
+		return true
+	case StoragePreviewRequestFormatPng:
+		return true
+	case StoragePreviewRequestFormatWebp:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StoragePreviewRequestPreview.
+const (
+	StoragePreviewRequestPreviewAnimation StoragePreviewRequestPreview = "animation"
+	StoragePreviewRequestPreviewImage     StoragePreviewRequestPreview = "image"
+	StoragePreviewRequestPreviewPdf       StoragePreviewRequestPreview = "pdf"
+	StoragePreviewRequestPreviewVideo     StoragePreviewRequestPreview = "video"
+)
+
+// Valid indicates whether the value is a known member of the StoragePreviewRequestPreview enum.
+func (e StoragePreviewRequestPreview) Valid() bool {
+	switch e {
+	case StoragePreviewRequestPreviewAnimation:
+		return true
+	case StoragePreviewRequestPreviewImage:
+		return true
+	case StoragePreviewRequestPreviewPdf:
+		return true
+	case StoragePreviewRequestPreviewVideo:
 		return true
 	default:
 		return false
@@ -552,6 +615,32 @@ type StorageObjectRow struct {
 	UserId          *openapi_types.UUID `json:"user_id,omitempty"`
 }
 
+// StoragePreviewRequest defines model for StoragePreviewRequest.
+type StoragePreviewRequest struct {
+	Fit             StoragePreviewRequestFit     `json:"fit"`
+	Format          StoragePreviewRequestFormat  `json:"format"`
+	Height          int                          `json:"height"`
+	Preview         StoragePreviewRequestPreview `json:"preview"`
+	Quality         int                          `json:"quality"`
+	RevisionId      openapi_types.UUID           `json:"revisionId"`
+	StorageObjectId openapi_types.UUID           `json:"storageObjectId"`
+	Width           int                          `json:"width"`
+}
+
+// StoragePreviewRequestFit defines model for StoragePreviewRequest.Fit.
+type StoragePreviewRequestFit string
+
+// StoragePreviewRequestFormat defines model for StoragePreviewRequest.Format.
+type StoragePreviewRequestFormat string
+
+// StoragePreviewRequestPreview defines model for StoragePreviewRequest.Preview.
+type StoragePreviewRequestPreview string
+
+// StorageReferenceRequest defines model for StorageReferenceRequest.
+type StorageReferenceRequest struct {
+	StorageObjectId openapi_types.UUID `json:"storageObjectId"`
+}
+
 // StorageTab defines model for StorageTab.
 type StorageTab string
 
@@ -691,6 +780,11 @@ type SetStorageObjectVisibilityParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
+// PreviewStorageReferenceParams defines parameters for PreviewStorageReference.
+type PreviewStorageReferenceParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
 // CreateTodoParams defines parameters for CreateTodo.
 type CreateTodoParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
@@ -749,6 +843,12 @@ type CopyObjectJSONRequestBody = CopyDestination
 
 // SetStorageObjectVisibilityJSONRequestBody defines body for SetStorageObjectVisibility for application/json ContentType.
 type SetStorageObjectVisibilityJSONRequestBody = StorageVisibilityChange
+
+// ResolveStorageReferenceJSONRequestBody defines body for ResolveStorageReference for application/json ContentType.
+type ResolveStorageReferenceJSONRequestBody = StorageReferenceRequest
+
+// PreviewStorageReferenceJSONRequestBody defines body for PreviewStorageReference for application/json ContentType.
+type PreviewStorageReferenceJSONRequestBody = StoragePreviewRequest
 
 // CreateTodoMultipartRequestBody defines body for CreateTodo for multipart/form-data ContentType.
 type CreateTodoMultipartRequestBody = FormBody
@@ -1012,6 +1112,16 @@ type ClientInterface interface {
 	SetStorageObjectVisibilityWithBody(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	SetStorageObjectVisibility(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, body SetStorageObjectVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ResolveStorageReferenceWithBody request with any body
+	ResolveStorageReferenceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ResolveStorageReference(ctx context.Context, body ResolveStorageReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PreviewStorageReferenceWithBody request with any body
+	PreviewStorageReferenceWithBody(ctx context.Context, params *PreviewStorageReferenceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PreviewStorageReference(ctx context.Context, params *PreviewStorageReferenceParams, body PreviewStorageReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetClerkUser request
 	GetClerkUser(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1278,6 +1388,54 @@ func (c *Client) SetStorageObjectVisibilityWithBody(ctx context.Context, bucketN
 
 func (c *Client) SetStorageObjectVisibility(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, body SetStorageObjectVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetStorageObjectVisibilityRequest(c.Server, bucketName, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ResolveStorageReferenceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResolveStorageReferenceRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ResolveStorageReference(ctx context.Context, body ResolveStorageReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewResolveStorageReferenceRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PreviewStorageReferenceWithBody(ctx context.Context, params *PreviewStorageReferenceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPreviewStorageReferenceRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PreviewStorageReference(ctx context.Context, params *PreviewStorageReferenceParams, body PreviewStorageReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPreviewStorageReferenceRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2234,6 +2392,99 @@ func NewSetStorageObjectVisibilityRequestWithBody(server string, bucketName Buck
 	return req, nil
 }
 
+// NewResolveStorageReferenceRequest calls the generic ResolveStorageReference builder with application/json body
+func NewResolveStorageReferenceRequest(server string, body ResolveStorageReferenceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewResolveStorageReferenceRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewResolveStorageReferenceRequestWithBody generates requests for ResolveStorageReference with any type of body
+func NewResolveStorageReferenceRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/storage/references")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPreviewStorageReferenceRequest calls the generic PreviewStorageReference builder with application/json body
+func NewPreviewStorageReferenceRequest(server string, params *PreviewStorageReferenceParams, body PreviewStorageReferenceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPreviewStorageReferenceRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewPreviewStorageReferenceRequestWithBody generates requests for PreviewStorageReference with any type of body
+func NewPreviewStorageReferenceRequestWithBody(server string, params *PreviewStorageReferenceParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/storage/references/preview")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		var headerParam0 string
+
+		headerParam0, err = runtime.StyleParamWithOptions("simple", false, "Idempotency-Key", params.IdempotencyKey, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Idempotency-Key", headerParam0)
+
+	}
+
+	return req, nil
+}
+
 // NewGetClerkUserRequest generates requests for GetClerkUser
 func NewGetClerkUserRequest(server string, userId ClerkUserId) (*http.Request, error) {
 	var err error
@@ -2762,6 +3013,16 @@ type ClientWithResponsesInterface interface {
 
 	SetStorageObjectVisibilityWithResponse(ctx context.Context, bucketName BucketName, params *SetStorageObjectVisibilityParams, body SetStorageObjectVisibilityJSONRequestBody, reqEditors ...RequestEditorFn) (*SetStorageObjectVisibilityResponse, error)
 
+	// ResolveStorageReferenceWithBodyWithResponse request with any body
+	ResolveStorageReferenceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveStorageReferenceResponse, error)
+
+	ResolveStorageReferenceWithResponse(ctx context.Context, body ResolveStorageReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveStorageReferenceResponse, error)
+
+	// PreviewStorageReferenceWithBodyWithResponse request with any body
+	PreviewStorageReferenceWithBodyWithResponse(ctx context.Context, params *PreviewStorageReferenceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PreviewStorageReferenceResponse, error)
+
+	PreviewStorageReferenceWithResponse(ctx context.Context, params *PreviewStorageReferenceParams, body PreviewStorageReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*PreviewStorageReferenceResponse, error)
+
 	// GetClerkUserWithResponse request
 	GetClerkUserWithResponse(ctx context.Context, userId ClerkUserId, reqEditors ...RequestEditorFn) (*GetClerkUserResponse, error)
 
@@ -3234,6 +3495,74 @@ func (r SetStorageObjectVisibilityResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r SetStorageObjectVisibilityResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type ResolveStorageReferenceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *JobAccepted
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r ResolveStorageReferenceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ResolveStorageReferenceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r ResolveStorageReferenceResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type PreviewStorageReferenceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON202      *JobAccepted
+	JSON400      *BadRequest
+	JSON401      *Unauthorized
+	JSON403      *Forbidden
+	JSON409      *Conflict
+	JSON500      *InternalError
+}
+
+// Status returns HTTPResponse.Status
+func (r PreviewStorageReferenceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PreviewStorageReferenceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PreviewStorageReferenceResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -3740,6 +4069,40 @@ func (c *ClientWithResponses) SetStorageObjectVisibilityWithResponse(ctx context
 		return nil, err
 	}
 	return ParseSetStorageObjectVisibilityResponse(rsp)
+}
+
+// ResolveStorageReferenceWithBodyWithResponse request with arbitrary body returning *ResolveStorageReferenceResponse
+func (c *ClientWithResponses) ResolveStorageReferenceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ResolveStorageReferenceResponse, error) {
+	rsp, err := c.ResolveStorageReferenceWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResolveStorageReferenceResponse(rsp)
+}
+
+func (c *ClientWithResponses) ResolveStorageReferenceWithResponse(ctx context.Context, body ResolveStorageReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*ResolveStorageReferenceResponse, error) {
+	rsp, err := c.ResolveStorageReference(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseResolveStorageReferenceResponse(rsp)
+}
+
+// PreviewStorageReferenceWithBodyWithResponse request with arbitrary body returning *PreviewStorageReferenceResponse
+func (c *ClientWithResponses) PreviewStorageReferenceWithBodyWithResponse(ctx context.Context, params *PreviewStorageReferenceParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PreviewStorageReferenceResponse, error) {
+	rsp, err := c.PreviewStorageReferenceWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePreviewStorageReferenceResponse(rsp)
+}
+
+func (c *ClientWithResponses) PreviewStorageReferenceWithResponse(ctx context.Context, params *PreviewStorageReferenceParams, body PreviewStorageReferenceJSONRequestBody, reqEditors ...RequestEditorFn) (*PreviewStorageReferenceResponse, error) {
+	rsp, err := c.PreviewStorageReference(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePreviewStorageReferenceResponse(rsp)
 }
 
 // GetClerkUserWithResponse request returning *GetClerkUserResponse
@@ -4557,6 +4920,114 @@ func ParseSetStorageObjectVisibilityResponse(rsp *http.Response) (*SetStorageObj
 	return response, nil
 }
 
+// ParseResolveStorageReferenceResponse parses an HTTP response from a ResolveStorageReferenceWithResponse call
+func ParseResolveStorageReferenceResponse(rsp *http.Response) (*ResolveStorageReferenceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ResolveStorageReferenceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePreviewStorageReferenceResponse parses an HTTP response from a PreviewStorageReferenceWithResponse call
+func ParsePreviewStorageReferenceResponse(rsp *http.Response) (*PreviewStorageReferenceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PreviewStorageReferenceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
+		var dest JobAccepted
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON202 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest Forbidden
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
+		var dest Conflict
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON409 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest InternalError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetClerkUserResponse parses an HTTP response from a GetClerkUserWithResponse call
 func ParseGetClerkUserResponse(rsp *http.Response) (*GetClerkUserResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -5046,6 +5517,12 @@ type ServerInterface interface {
 	// Make an owned object private, or begin the make-public confirmation
 	// (POST /api/storage/buckets/{bucketName}/objects/visibility)
 	SetStorageObjectVisibility(w http.ResponseWriter, r *http.Request, bucketName BucketName, params SetStorageObjectVisibilityParams)
+	// Resolve a storage object for the current viewer
+	// (POST /api/storage/references)
+	ResolveStorageReference(w http.ResponseWriter, r *http.Request)
+	// Queue a preview of the latest authorized revision
+	// (POST /api/storage/references/preview)
+	PreviewStorageReference(w http.ResponseWriter, r *http.Request, params PreviewStorageReferenceParams)
 	// Get a Clerk user profile
 	// (GET /api/users/get/{userId})
 	GetClerkUser(w http.ResponseWriter, r *http.Request, userId ClerkUserId)
@@ -5847,6 +6324,77 @@ func (siw *ServerInterfaceWrapper) SetStorageObjectVisibility(w http.ResponseWri
 	handler.ServeHTTP(w, r)
 }
 
+// ResolveStorageReference operation middleware
+func (siw *ServerInterfaceWrapper) ResolveStorageReference(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ResolveStorageReference(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PreviewStorageReference operation middleware
+func (siw *ServerInterfaceWrapper) PreviewStorageReference(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, ClerkBearerScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PreviewStorageReferenceParams
+
+	headers := r.Header
+
+	// ------------- Required header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKey
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "Idempotency-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: true, Type: "string", Format: ""})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "Idempotency-Key", Err: err})
+			return
+		}
+
+		params.IdempotencyKey = IdempotencyKey
+
+	} else {
+		err = fmt.Errorf("Header parameter Idempotency-Key is required, but not found")
+		siw.ErrorHandlerFunc(w, r, &RequiredHeaderError{ParamName: "Idempotency-Key", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PreviewStorageReference(w, r, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetClerkUser operation middleware
 func (siw *ServerInterfaceWrapper) GetClerkUser(w http.ResponseWriter, r *http.Request) {
 
@@ -6421,6 +6969,10 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/presign", wrapper.PresignObject).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/storage/buckets/{bucketName}/objects/visibility", wrapper.SetStorageObjectVisibility).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/api/storage/references", wrapper.ResolveStorageReference).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/api/storage/references/preview", wrapper.PreviewStorageReference).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/api/users/get/{userId}", wrapper.GetClerkUser).Methods(http.MethodGet)
 
@@ -7513,6 +8065,163 @@ func (response SetStorageObjectVisibility500JSONResponse) VisitSetStorageObjectV
 	return err
 }
 
+type ResolveStorageReferenceRequestObject struct {
+	Body *ResolveStorageReferenceJSONRequestBody
+}
+
+type ResolveStorageReferenceResponseObject interface {
+	VisitResolveStorageReferenceResponse(w http.ResponseWriter) error
+}
+
+type ResolveStorageReference202JSONResponse struct{ JobAcceptedJSONResponse }
+
+func (response ResolveStorageReference202JSONResponse) VisitResolveStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveStorageReference400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response ResolveStorageReference400JSONResponse) VisitResolveStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveStorageReference401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response ResolveStorageReference401JSONResponse) VisitResolveStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ResolveStorageReference500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response ResolveStorageReference500JSONResponse) VisitResolveStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewStorageReferenceRequestObject struct {
+	Params PreviewStorageReferenceParams
+	Body   *PreviewStorageReferenceJSONRequestBody
+}
+
+type PreviewStorageReferenceResponseObject interface {
+	VisitPreviewStorageReferenceResponse(w http.ResponseWriter) error
+}
+
+type PreviewStorageReference202JSONResponse struct{ JobAcceptedJSONResponse }
+
+func (response PreviewStorageReference202JSONResponse) VisitPreviewStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewStorageReference400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response PreviewStorageReference400JSONResponse) VisitPreviewStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewStorageReference401JSONResponse struct{ UnauthorizedJSONResponse }
+
+func (response PreviewStorageReference401JSONResponse) VisitPreviewStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewStorageReference403JSONResponse struct{ ForbiddenJSONResponse }
+
+func (response PreviewStorageReference403JSONResponse) VisitPreviewStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewStorageReference409JSONResponse struct{ ConflictJSONResponse }
+
+func (response PreviewStorageReference409JSONResponse) VisitPreviewStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type PreviewStorageReference500JSONResponse struct{ InternalErrorJSONResponse }
+
+func (response PreviewStorageReference500JSONResponse) VisitPreviewStorageReferenceResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetClerkUserRequestObject struct {
 	UserId ClerkUserId `json:"userId"`
 }
@@ -8204,6 +8913,12 @@ type StrictServerInterface interface {
 	// Make an owned object private, or begin the make-public confirmation
 	// (POST /api/storage/buckets/{bucketName}/objects/visibility)
 	SetStorageObjectVisibility(ctx context.Context, request SetStorageObjectVisibilityRequestObject) (SetStorageObjectVisibilityResponseObject, error)
+	// Resolve a storage object for the current viewer
+	// (POST /api/storage/references)
+	ResolveStorageReference(ctx context.Context, request ResolveStorageReferenceRequestObject) (ResolveStorageReferenceResponseObject, error)
+	// Queue a preview of the latest authorized revision
+	// (POST /api/storage/references/preview)
+	PreviewStorageReference(ctx context.Context, request PreviewStorageReferenceRequestObject) (PreviewStorageReferenceResponseObject, error)
 	// Get a Clerk user profile
 	// (GET /api/users/get/{userId})
 	GetClerkUser(ctx context.Context, request GetClerkUserRequestObject) (GetClerkUserResponseObject, error)
@@ -8661,6 +9376,70 @@ func (sh *strictHandler) SetStorageObjectVisibility(w http.ResponseWriter, r *ht
 	}
 }
 
+// ResolveStorageReference operation middleware
+func (sh *strictHandler) ResolveStorageReference(w http.ResponseWriter, r *http.Request) {
+	var request ResolveStorageReferenceRequestObject
+
+	var body ResolveStorageReferenceJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.ResolveStorageReference(ctx, request.(ResolveStorageReferenceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ResolveStorageReference")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ResolveStorageReferenceResponseObject); ok {
+		if err := validResponse.VisitResolveStorageReferenceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PreviewStorageReference operation middleware
+func (sh *strictHandler) PreviewStorageReference(w http.ResponseWriter, r *http.Request, params PreviewStorageReferenceParams) {
+	var request PreviewStorageReferenceRequestObject
+
+	request.Params = params
+
+	var body PreviewStorageReferenceJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PreviewStorageReference(ctx, request.(PreviewStorageReferenceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PreviewStorageReference")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PreviewStorageReferenceResponseObject); ok {
+		if err := validResponse.VisitPreviewStorageReferenceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetClerkUser operation middleware
 func (sh *strictHandler) GetClerkUser(w http.ResponseWriter, r *http.Request, userId ClerkUserId) {
 	var request GetClerkUserRequestObject
@@ -8971,78 +9750,82 @@ func (sh *strictHandler) RenderMd(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

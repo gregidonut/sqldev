@@ -78,12 +78,12 @@ The editor is now a reusable component; the demo is one consumer.
   other keymap extension; external RHF value syncs are guarded with an
   `externalSync` annotation to avoid feedback loops; one `EditorView` per mount,
   destroyed on unmount.
-- **Server is the trust boundary.** `renderMd.go` runs unextended
-  `goldmark.Convert` then a single package-level `bluemonday.UGCPolicy()`
-  (constructed once, never mutated, reused concurrently). The client
-  `SanitizedHtml` brand is provenance only — introduced solely by a validated
-  2xx response — and only `OutputTabs`'s single preview sink accepts it. Source
-  tabs are text-only.
+- **Server is the trust boundary.** `renderMd.go` runs Goldmark with one
+  storage-image extender, then one reusable `bluemonday.UGCPolicy()`. A canonical
+  `![label](uploads://<storage-object-uuid>)` becomes a span whose only extra
+  attribute is `data-sqldev-storage-object`. The visual editor restores that
+  image syntax in `storageImageSyntax.ts` because its link shortcut otherwise
+  escapes the leading `!`. The client `SanitizedHtml` brand is provenance only.
 - **Exact proxy rewrite.** `mapBrowserApiPath` rewrites only `/api/renderMd` →
   `/renderMd`; all other `/api/**` paths and the query string are unchanged. The
   browser calls same-origin `/api/renderMd` (authenticated); the Go `/renderMd`

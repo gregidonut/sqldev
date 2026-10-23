@@ -21,7 +21,7 @@ Governing skills — load them when touching this area:
 
 ## (a) Where the rail state lives
 
-- Store: `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/store/thumbnailRailStore.ts` — the Zustand store (`useThumbnailRailStore`) that owns the per-tile rail lifecycle, readiness, poster slice, and the side-effecting timer/token identity.
+- Store: `packages/frontend/src/components/react/StorageTile/thumbnailRailStore.ts` — the Zustand store (`useThumbnailRailStore`) that owns the per-tile rail lifecycle, readiness, poster slice, and the side-effecting timer/token identity. The drive path re-exports it. The map key is the tile instance, not the storage key, so two embeds of one object do not reset each other.
 - Consumer: `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/storage/StorageThumbnail.tsx` — contains the `useThumbnailPreview` hook (bridges TanStack Query / DOM image events into store actions and selects the derived view back out), the `railView()` derivation, and the `ThumbnailProgressRail` component (renders a `react-aria` `ProgressBar`, or a failed `role="status"` rail).
 
 The store is in the same `store/` folder as `storageTableStore.ts`, matching the established in-folder store pattern.

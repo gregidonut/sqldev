@@ -37,6 +37,7 @@ var functions = map[string]functionSpec{
 	"commit_d_storage_upload":       {args: []string{"p_storage_object_id", "p_storage_object_data_id", "p_file_name"}},
 	"abort_d_storage_upload":        {args: []string{"p_storage_object_id", "p_is_new_object"}, kind: returnsVoid},
 	"get_d_storage_object_by_key":   {args: []string{"p_s3_object_key"}},
+	"resolve_d_storage_reference":   {args: []string{"p_storage_object_id"}, kind: returnsScalar},
 	"authorize_d_storage_object":    {args: []string{"p_requested_user_id", "p_requested_permission", "p_requested_storage_object_id"}, kind: returnsScalar, cast: map[string]string{"p_requested_permission": "public.d_storage_objects_permission"}},
 	"notify_ig_posts_view_for_post": {args: []string{"p_post_id"}, kind: returnsVoid},
 

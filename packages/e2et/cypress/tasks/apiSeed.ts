@@ -1,7 +1,7 @@
 // Seeding through the deployed frontend's same-origin `/api/*` proxy, for stages
 // whose Supabase and Go API are not reachable from the machine running Cypress.
 //
-// Staging's Supabase is a private VPC address, and the Go API Gateway has a
+// Staging Postgres listens on the host loopback, and the Go API Gateway has a
 // resource policy that denies every caller except the app's NAT egress IP, so a
 // developer machine can reach neither. The deployed frontend is the sanctioned
 // entry point: it authenticates with Clerk, forwards the session token, and

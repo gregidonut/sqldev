@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readCanonicalResetSql } from "./canonicalResetSql.js";
+import { LOCAL_SUPABASE_URL } from "./localSupabase.js";
 import { isNodeError, isRecord } from "./narrow.js";
 
 const supabaseDir = fileURLToPath(
@@ -70,10 +71,10 @@ function sameLoopbackEndpoint(left: URL, right: URL): boolean {
 
 export function assertLocalApiUrl(supabaseUrl: string, apiPort: number): URL {
   const url = new URL(supabaseUrl);
-  assertLoopback(url, "SUPABASE_URL");
+  assertLoopback(url, "local Supabase API");
   if (Number(url.port) !== apiPort) {
     throw new Error(
-      `Refusing SUPABASE_URL port ${url.port || "(default)"}; expected local api port ${apiPort} from config.toml`,
+      `Refusing local Supabase API port ${url.port || "(default)"}; expected local api port ${apiPort} from config.toml`,
     );
   }
   return url;
@@ -177,11 +178,6 @@ function redact(text: string, secret: string): string {
 export async function truncateLocalTestData(): Promise<null> {
   assertLocalDevStage();
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  if (!supabaseUrl) {
-    throw new Error("SUPABASE_URL is required to verify the local API target");
-  }
-
   const toml = readFileSync(configPath, "utf8");
   const apiPort = readTomlPort(toml, "api");
   const dbPort = readTomlPort(toml, "db");
@@ -190,7 +186,7 @@ export async function truncateLocalTestData(): Promise<null> {
     throw new Error("config.toml is missing [api].port or [db].port");
   }
 
-  const apiUrl = assertLocalApiUrl(supabaseUrl, apiPort);
+  const apiUrl = assertLocalApiUrl(LOCAL_SUPABASE_URL, apiPort);
   const { stdout } = await spawnText(
     "bunx",
     ["supabase", "status", "-o", "json", "--yes"],
@@ -204,7 +200,7 @@ export async function truncateLocalTestData(): Promise<null> {
   assertLoopback(statusApi, "supabase status API_URL");
   if (!sameLoopbackEndpoint(statusApi, apiUrl)) {
     throw new Error(
-      `supabase status API origin ${statusApi.origin} does not match SUPABASE_URL origin ${apiUrl.origin}`,
+      `supabase status API origin ${statusApi.origin} does not match local Supabase API origin ${apiUrl.origin}`,
     );
   }
 

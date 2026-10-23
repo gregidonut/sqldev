@@ -34,6 +34,8 @@ type item struct {
 	ProgressCompleted int    `dynamodbav:"progressCompleted,omitempty"`
 	ProgressTotal     int    `dynamodbav:"progressTotal,omitempty"`
 	Fingerprint       string `dynamodbav:"fingerprint,omitempty"`
+	StorageObjectID   string `dynamodbav:"storageObjectId,omitempty"`
+	RevisionID        string `dynamodbav:"revisionId,omitempty"`
 }
 
 func NewDynamo(ctx context.Context, table string) (*Dynamo, error) {
@@ -102,6 +104,11 @@ func (d *Dynamo) Update(ctx context.Context, record Record) error {
 	if record.Attempt > 0 {
 		set += ", attempt = :attempt"
 		values[":attempt"] = &types.AttributeValueMemberN{Value: strconv.Itoa(record.Attempt)}
+	}
+	if record.StorageObjectID != "" && record.RevisionID != "" {
+		set += ", storageObjectId = :storageObjectId, revisionId = :revisionId"
+		values[":storageObjectId"] = &types.AttributeValueMemberS{Value: record.StorageObjectID}
+		values[":revisionId"] = &types.AttributeValueMemberS{Value: record.RevisionID}
 	}
 	expression := set + " REMOVE progressPhase, progressCompleted, progressTotal"
 	_, err := d.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
@@ -184,23 +191,27 @@ func toItem(record Record) item {
 		ProgressCompleted: record.Progress.Completed,
 		ProgressTotal:     record.Progress.Total,
 		Fingerprint:       record.Fingerprint,
+		StorageObjectID:   record.StorageObjectID,
+		RevisionID:        record.RevisionID,
 	}
 }
 
 func fromItem(stored item) Record {
 	return Record{
-		JobID:       stored.JobID,
-		Owner:       stored.Owner,
-		Kind:        stored.Kind,
-		Status:      stored.Status,
-		HTTPStatus:  stored.HTTPStatus,
-		Body:        []byte(stored.Body),
-		ResultKey:   stored.ResultKey,
-		ContentType: stored.ContentType,
-		Message:     stored.Message,
-		ExpiresAt:   time.Unix(stored.ExpiresAt, 0),
-		Attempt:     stored.Attempt,
-		Fingerprint: stored.Fingerprint,
+		JobID:           stored.JobID,
+		Owner:           stored.Owner,
+		Kind:            stored.Kind,
+		Status:          stored.Status,
+		HTTPStatus:      stored.HTTPStatus,
+		Body:            []byte(stored.Body),
+		ResultKey:       stored.ResultKey,
+		ContentType:     stored.ContentType,
+		Message:         stored.Message,
+		ExpiresAt:       time.Unix(stored.ExpiresAt, 0),
+		Attempt:         stored.Attempt,
+		Fingerprint:     stored.Fingerprint,
+		StorageObjectID: stored.StorageObjectID,
+		RevisionID:      stored.RevisionID,
 		Progress: Progress{
 			Phase:     stored.ProgressPhase,
 			Completed: stored.ProgressCompleted,

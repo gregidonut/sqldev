@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -163,18 +164,31 @@ func (s *Server) GetJob(ctx context.Context, request GetJobRequestObject) (GetJo
 		}
 	}
 	if record.Status == status.Completed && record.ContentType != "" {
-		if record.ResultKey == "" || s.Results == nil {
-			return GetJob500JSONResponse{InternalErrorJSONResponse: InternalErrorJSONResponse{Message: "internal error"}}, nil
+		if record.ResultKey != "" {
+			if s.Results == nil {
+				return GetJob500JSONResponse{InternalErrorJSONResponse: InternalErrorJSONResponse{Message: "internal error"}}, nil
+			}
+			if err := s.recheckImageAccess(ctx, record); err != nil {
+				return imageAccessFailure(err), nil
+			}
+			signed, signErr := s.Results.PresignGet(ctx, record.ResultKey, record.ContentType, imagePresignTTL)
+			if signErr != nil {
+				return GetJob500JSONResponse{InternalErrorJSONResponse: InternalErrorJSONResponse{Message: "internal error"}}, nil
+			}
+			state.Result = map[string]string{
+				"url":         signed,
+				"contentType": record.ContentType,
+			}
+			return GetJob200JSONResponse(state), nil
 		}
-		signed, signErr := s.Results.PresignGet(ctx, record.ResultKey, record.ContentType, imagePresignTTL)
-		if signErr != nil {
-			return GetJob500JSONResponse{InternalErrorJSONResponse: InternalErrorJSONResponse{Message: "internal error"}}, nil
+		if stored, ok := storedImageResult(record.Body); ok {
+			if err := s.recheckImageAccess(ctx, record); err != nil {
+				return imageAccessFailure(err), nil
+			}
+			state.Result = stored
+			return GetJob200JSONResponse(state), nil
 		}
-		state.Result = map[string]string{
-			"url":         signed,
-			"contentType": record.ContentType,
-		}
-		return GetJob200JSONResponse(state), nil
+		return GetJob500JSONResponse{InternalErrorJSONResponse: InternalErrorJSONResponse{Message: "internal error"}}, nil
 	}
 	if record.Status == status.Completed {
 		body := record.Body
@@ -220,6 +234,10 @@ func (s *Server) Finish(ctx context.Context, envelope jobs.Envelope, outcome job
 		record.ResultKey = outcome.Artifact.Key
 		record.ContentType = outcome.Artifact.ContentType
 		record.Body = nil
+		if outcome.Resource != nil {
+			record.StorageObjectID = outcome.Resource.StorageObjectID
+			record.RevisionID = outcome.Resource.RevisionID
+		}
 	} else {
 		record.Status = status.Completed
 		record.ContentType = ""
@@ -235,6 +253,38 @@ func (s *Server) Finish(ctx context.Context, envelope jobs.Envelope, outcome job
 		}
 	}
 	return s.Jobs.Update(ctx, record)
+}
+
+func (s *Server) recheckImageAccess(ctx context.Context, record status.Record) error {
+	// The API Lambda has no database, so a fresh signature there is not
+	// rechecked. A database-backed caller refuses the read before signing when
+	// the bound object is no longer authorized.
+	if record.Kind != jobs.KindImagor || record.StorageObjectID == "" || s.DB == nil {
+		return nil
+	}
+	return s.authorizeImageResult(ctx, record)
+}
+
+func imageAccessFailure(err error) GetJobResponseObject {
+	statusCode, message := classify(err)
+	if statusCode == http.StatusNotFound {
+		return GetJob404JSONResponse{NotFoundJSONResponse: NotFoundJSONResponse{Message: "Not found"}}
+	}
+	return GetJob500JSONResponse{InternalErrorJSONResponse: InternalErrorJSONResponse{Message: message}}
+}
+
+func storedImageResult(body []byte) (map[string]string, bool) {
+	if len(body) == 0 || string(body) == "null" {
+		return nil, false
+	}
+	var decoded map[string]string
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return nil, false
+	}
+	if decoded["url"] == "" || decoded["contentType"] == "" {
+		return nil, false
+	}
+	return decoded, true
 }
 
 func httpStatusPointer(statusCode int) *int {

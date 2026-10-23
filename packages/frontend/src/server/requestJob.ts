@@ -85,10 +85,20 @@ async function pollJob<T>(
     const delays = [200, 400, 800, 1200, 1600, 2000];
     for (let attempt = 0; attempt < 60; attempt += 1) {
         throwIfAborted(options.signal);
-        const { data } = await axios.get<unknown>(`/api/jobs/${jobId}`, {
+        const delay =
+            options.pollIntervalMs ??
+            delays[Math.min(attempt, delays.length - 1)] ??
+            2000;
+        const response = await axios.get<unknown>(`/api/jobs/${jobId}`, {
             signal: options.signal,
+            validateStatus: (status) =>
+                (status >= 200 && status < 300) || isTransientStatus(status),
         });
-        const job = parseJob(data);
+        if (isTransientStatus(response.status)) {
+            await wait(delay, options.signal);
+            continue;
+        }
+        const job = parseJob(response.data);
         if (job.status === "completed") {
             return job.result as T;
         }
@@ -98,13 +108,14 @@ async function pollJob<T>(
         if (job.progress) {
             options.onProgress?.(job.progress);
         }
-        const delay =
-            options.pollIntervalMs ??
-            delays[Math.min(attempt, delays.length - 1)] ??
-            2000;
         await wait(delay, options.signal);
     }
     throw new JobFailedError(504, "job timed out");
+}
+
+/** Lambda throttling surfaces as 429, and as 5xx through API Gateway and CloudFront. */
+function isTransientStatus(status: number): boolean {
+    return status === 429 || (status >= 500 && status <= 504);
 }
 
 function parseJob(value: unknown): RunningJob | CompletedJob | FailedJob {

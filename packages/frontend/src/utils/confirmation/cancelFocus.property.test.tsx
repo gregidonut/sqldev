@@ -116,13 +116,13 @@ describe("cancel and stale results", () => {
         );
     });
 
-    test("focus already placed by the modal is left alone", () => {
+    test("the menu trigger wins when the modal restored the row", () => {
         buildPage("origin");
         const origin = document.getElementById("origin")!;
         const row = document.getElementById("row")!;
         row.focus();
         restoreFocusNow({ origin, rowKey: "row-1" });
-        expect(document.activeElement).toBe(row);
+        expect(document.activeElement).toBe(origin);
     });
 
     test("a detached origin falls back to the row, then the heading", () => {
