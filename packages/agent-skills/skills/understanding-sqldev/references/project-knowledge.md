@@ -24,6 +24,7 @@ Curated source map for future tasks. Update it only under the rules in [../SKILL
 | HTTP contract | `packages/functions/cmd/goapi/api.yaml` and `config.yaml`; handlers are beside `api/api.gen.go`. Regenerate with `go generate` in `packages/functions/cmd/goapi` |
 | Realtime authorizer | `packages/functions/cmd/realtimeAuthorizer/main.go`, wired by `infra/realtime.ts` |
 | Frontend config | `packages/frontend/astro.config.mjs`, `packages/frontend/package.json` |
+| Cursor project skills and MCP | `.cursor/skills/`, `.cursor/mcp.json`. SQLDev-specific skills stay in `packages/agent-skills` |
 | Auth middleware | `packages/frontend/src/middleware.ts` |
 | Theme tokens | `packages/frontend/src/styles/global.css` |
 | Upload flow | `packages/frontend/src/pages/drive/[driveTab]/_components/react/RACCRUDTable/forms/useStorageUppy.ts`. Astro `src/fetch.ts` forwards `/api/**` to the Go API |

@@ -10,6 +10,14 @@ Before editing files for a substantial task:
 - Multiple matches: prefer the most specific local skill for the package or concern you are changing; load additional skills only when the task spans multiple packages or concerns.
 <!-- intent-skills:end -->
 
+## Cursor project skills and MCP
+
+Project-level Cursor skills live in `.cursor/skills/` and the project MCP
+config in `.cursor/mcp.json`. Cursor agents (local, Cloud Agents, and remote
+workers) load both from the repository. Do not reinstall the same skills into
+`.claude/`, `.agents/`, `agent/`, or `packages/frontend/{.agents,.claude,agent}`.
+SQLDev-specific skills stay in `packages/agent-skills`.
+
 ## Required project context
 
 Before every repository task, read and follow `packages/agent-skills/skills/understanding-sqldev/SKILL.md`.
